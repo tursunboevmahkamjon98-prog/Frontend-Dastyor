@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:ns1="http://sozi.baierouge.fr"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    id="svg2"
+    sodipodi:docname="parabola.svg"
+    viewBox="0 0 805 915.76"
+    version="1.1"
+    inkscape:version="0.47 r22583"
+  >
+  <title
+      id="title7052"
+    >Parabola</title
+  >
+  <sodipodi:namedview
+      id="base"
+      bordercolor="#666666"
+      inkscape:pageshadow="2"
+      inkscape:window-y="-4"
+      pagecolor="#ffffff"
+      inkscape:window-height="753"
+      inkscape:window-maximized="1"
+      inkscape:zoom="0.35"
+      inkscape:window-x="-4"
+      showgrid="false"
+      borderopacity="1.0"
+      inkscape:current-layer="layer1"
+      inkscape:cx="942.56102"
+      inkscape:cy="417.93161"
+      inkscape:window-width="1280"
+      inkscape:pageopacity="0.0"
+      inkscape:document-units="px"
+  />
+  <g
+      id="layer1"
+      inkscape:label="Layer 1"
+      inkscape:groupmode="layer"
+      transform="translate(444.55 185.08)"
+    >
+    <rect
+        id="rect4539"
+        style="color:#000000;fill:none"
+        rx="5"
+        ry="5"
+        height="547.5"
+        width="474.77"
+        y="-85.07"
+        x="-662.66"
+    />
+    <path
+        id="path4553"
+        style="color:#000000;fill:none"
+        d="m-662.66 462.43h474.77m-237.39 0v-547.5m-237.38 629.63c22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464 22.608-7.8215 45.216-15.643 67.825-23.464"
+        title="x"
+    />
+    <g
+        id="g7002"
+      >
+      <g
+          id="g6934"
+        >
+        <g
+            id="g6888"
+          >
+          <g
+              id="g6023"
+              style="stroke:#000000;stroke-width:2"
+              inkscape:label="SubMinorXGridlines"
+              transform="translate(-442.05 -175.14)"
+            >
+            <path
+                id="path6025"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:1"
+                d="m40 0v800"
+            />
+            <path
+                id="path6027"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:2"
+                d="m80 0v800"
+            />
+            <path
+                id="path6029"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:3"
+                d="m120 0v800"
+            />
+            <path
+                id="path6031"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:4"
+                d="m160 0v800"
+            />
+            <path
+                id="path6033"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:1"
+                d="m240 0v800"
+            />
+            <path
+                id="path6035"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:2"
+                d="m280 0v800"
+            />
+            <path
+                id="path6037"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:3"
+                d="m320 0v800"
+            />
+            <path
+                id="path6039"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:4"
+                d="m360 0v800"
+            />
+            <path
+                id="path6041"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:1"
+                d="m440 0v800"
+            />
+            <path
+                id="path6043"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:2"
+                d="m480 0v800"
+            />
+            <path
+                id="path6045"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:3"
+                d="m520 0v800"
+            />
+            <path
+                id="path6047"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:4"
+                d="m560 0v800"
+            />
+            <path
+                id="path6049"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:1"
+                d="m640 0v800"
+            />
+            <path
+                id="path6051"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:2"
+                d="m680 0v800"
+            />
+            <path
+                id="path6053"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:3"
+                d="m720 0v800"
+            />
+            <path
+                id="path6055"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:4"
+                d="m760 0v800"
+            />
+          </g
+          >
+          <g
+              id="g6057"
+              style="stroke:#000000;stroke-width:2"
+              inkscape:label="SubMinorYGridlines"
+              transform="translate(-442.05 -175.14)"
+            >
+            <path
+                id="path6059"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:1"
+                d="m0 40h800"
+            />
+            <path
+                id="path6061"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:2"
+                d="m0 80h800"
+            />
+            <path
+                id="path6063"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:3"
+                d="m0 120h800"
+            />
+            <path
+                id="path6065"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv0:0:4"
+                d="m0 160h800"
+            />
+            <path
+                id="path6067"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:1"
+                d="m0 240h800"
+            />
+            <path
+                id="path6069"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:2"
+                d="m0 280h800"
+            />
+            <path
+                id="path6071"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:3"
+                d="m0 320h800"
+            />
+            <path
+                id="path6073"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv1:0:4"
+                d="m0 360h800"
+            />
+            <path
+                id="path6075"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:1"
+                d="m0 440h800"
+            />
+            <path
+                id="path6077"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:2"
+                d="m0 480h800"
+            />
+            <path
+                id="path6079"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:3"
+                d="m0 520h800"
+            />
+            <path
+                id="path6081"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv2:0:4"
+                d="m0 560h800"
+            />
+            <path
+                id="path6083"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:1"
+                d="m0 640h800"
+            />
+            <path
+                id="path6085"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:2"
+                d="m0 680h800"
+            />
+            <path
+                id="path6087"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:3"
+                d="m0 720h800"
+            />
+            <path
+                id="path6089"
+                style="stroke:#000000;stroke-width:2;fill:none"
+                inkscape:label="SubminorXDiv3:0:4"
+                d="m0 760h800"
+            />
+          </g
+          >
+          <path
+              id="path4528"
+              style="color:#000000;fill:none"
+              d="m-317.14 495.22h225.71m-112.86 0v-178.57m-112.86 62.5c10.748 22.955 21.497 41.541 32.245 55.758s21.497 24.048 32.245 29.519c10.748 5.4708 21.497 6.5554 32.245 3.2799s21.497-10.937 32.245-22.959 21.497-28.43 32.245-49.198 21.497-45.923 32.245-75.437c10.748-29.515 21.497-63.415 32.245-101.68"
+              title="2*pow(x,2)+3*x+4"
+          />
+          <g
+              id="g6007"
+              style="stroke:#000000;stroke-width:5"
+              inkscape:label="MajorXGridlines"
+              transform="translate(-442.05 -175.14)"
+            >
+            <path
+                id="path6009"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorXDiv1"
+                d="m200 0v800"
+            />
+            <path
+                id="path6011"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorXDiv2"
+                d="m400 0v800"
+            />
+            <path
+                id="path6013"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorXDiv3"
+                d="m600 0v800"
+            />
+          </g
+          >
+          <g
+              id="g6015"
+              style="stroke:#000000;stroke-width:5"
+              inkscape:label="MajorYGridlines"
+              transform="translate(-442.05 -175.14)"
+            >
+            <path
+                id="path6017"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorYDiv1"
+                d="m0 200h800"
+            />
+            <path
+                id="path6019"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorYDiv2"
+                d="m0 400h800"
+            />
+            <path
+                id="path6021"
+                style="stroke:#000000;stroke-width:5;fill:none"
+                inkscape:label="MajorYDiv3"
+                d="m0 600h800"
+            />
+          </g
+          >
+          <rect
+              id="rect6091"
+              style="stroke:#000000;stroke-width:5;fill:none"
+              height="800"
+              width="800"
+              y="-175.14"
+              x="-442.05"
+              inkscape:label="Border"
+          />
+        </g
+        >
+        <path
+            id="path6786"
+            d="m-437.38 529.41c37.439 33.686 74.879 57.754 112.32 72.204 37.439 14.451 74.879 19.245 112.32 14.441 37.439-4.804 74.879-19.264 112.32-43.323 37.439-24.058 74.879-57.773 112.32-101.09 37.439-43.313 74.879-96.282 112.32-158.85 37.439-62.568 74.879-134.79 112.32-216.61 37.439-81.822 74.879-173.3 112.32-274.38"
+            style="stroke-linejoin:round;color:#000000;stroke:#000080;stroke-linecap:round;stroke-width:13.775;fill:none"
+            title="pow(x,2)+3*x+2"
+        />
+      </g
+      >
+      <path
+          id="path7000"
+          style="fill:#000000"
+          d="m-264.87 728.69c-6.3207-3.854-6.4377-7.5132-0.32125-10.047 2.5541-1.0579 3.2665-0.94444 5.6017 0.89241 3.6275 2.8534 6.017 2.6471 9.4826-0.81857 4.5019-4.5019 3.9403-6.1032-1.8982-5.4117-8.8992 1.054-14.179-4.2401-14.179-14.218 0-5.4471 3.869-25.327 5.2933-27.197 1.087-1.4278 8.3059-1.7075 9.1423-0.35431 0.30446 0.49263-0.55682 6.2553-1.914 12.806-1.9401 9.3642-2.2554 12.679-1.475 15.505 1.1387 4.1239 3.1535 5.2987 6.0498 3.5273 3.6212-2.2148 5.7621-7.1129 8.3593-19.126 1.4051-6.4988 2.8039-12.219 3.1086-12.712 0.30462-0.49289 2.5523-0.89617 4.9948-0.89617 3.2257 0 4.441 0.39931 4.441 1.4592 0 2.2502-8.7163 42.708-9.8236 45.597-4.0142 10.475-18.195 16.278-26.863 10.993zm128.45-16.615c-3.6073-1.9573-5.7664-6.3291-5.7461-11.635 0.0379-9.9118 9.1148-18.133 20.02-18.133 4.2219 0 5.9632-0.37907 5.9632-1.2982 0-2.3844-3.8767-3.5278-9.5557-2.8183l-5.4443 0.68022v-3.64c0-3.0471 0.44793-3.8128 2.75-4.7007 1.5125-0.58338 5.8402-0.89205 9.6172-0.68594 6.2561 0.34141 7.1237 0.66185 9.75 3.6012 3.526 3.9462 3.639 6.7398 0.80246 19.832-1.4901 6.8778-1.7738 9.9087-1 10.683 1.1794 1.1794 1.4371 5.5873 0.4734 8.0986-0.74457 1.9403-4.9901 2.0108-8.3716 0.13886-2.107-1.1664-2.8866-1.1611-5.2003 0.0354-3.5132 1.8168-10.565 1.7376-14.059-0.1579zm14.078-9.0355c7.2374-5.0692 3.3626-14.109-4.8243-11.255-3.5478 1.2368-5.0163 3.5027-5.0163 7.7404 0 4.8164 5.2864 6.7044 9.8406 3.5145zm198.24 9.6748c-0.77804-0.4925-3.8059-0.64865-6.7286-0.347-3.9995 0.41279-5.4417 0.2052-5.8305-0.83924-0.28413-0.76323 2.0712-13.538 5.234-28.388l5.7506-27 4.891-0.31078 4.891-0.31077-0.5953 4.8108c-0.32742 2.6459-0.91469 6.3488-1.3051 8.2286-0.64216 3.0923-0.52799 3.3437 1.1988 2.6395 1.0497-0.42807 3.7086-0.97826 5.9086-1.2226 8.1757-0.90818 13.5 5.6108 13.5 16.529 0 14.858-9.8585 27.169-21.718 27.121-2.0802-0.008-4.4187-0.41826-5.1967-0.91075zm11.425-11.384c5.5484-5.5483 7.2422-18.204 2.8648-21.405-2.3151-1.6928-2.5264-1.6609-6.3903 0.96492-6.5984 4.4841-9.8146 16.959-5.5799 21.643 2.6837 2.9684 5.2763 2.6258 9.1054-1.2033zm149.39 10.04c-6.5579-4.381-8.428-12.215-5.3722-22.504 4.3673-14.706 21.36-23.869 31.483-16.976 5.4633 3.7204 5.9909 5.4805 2.4917 8.3123-3.6485 2.9526-4.9424 3.0214-8.2271 0.43772-3.1952-2.5133-4.9263-2.5087-9.081 0.0244-6.7438 4.1116-9.5226 16.736-4.7373 21.521 2.9344 2.9344 5.0338 3.0705 9.0454 0.58626 2.659-1.6466 3.3126-1.6999 5.75-0.46906 4.1721 2.1068 3.5241 4.8905-1.9458 8.3594-6.1242 3.8839-14.211 4.1789-19.406 0.70805zm-340.88 0.0199c0.008-0.6875 3.3829-5.2167 7.5-10.065 4.1171-4.8482 7.4856-9.4672 7.4856-10.264 0-0.79729-1.5757-5.3574-3.5016-10.134-1.9611-4.8634-3.1223-9.0632-2.6395-9.546 0.47416-0.47417 3.0025-0.7224 5.6185-0.55163 4.745 0.30974 4.761 0.32307 6.7094 5.5605 1.0742 2.8875 2.3169 5.25 2.7617 5.25 0.44475 0 2.9231-2.475 5.5074-5.5 4.5155-5.2855 4.8908-5.5 9.6215-5.5 3.0363 0 4.9227 0.43962 4.9227 1.1472 0 0.63098-3.375 5.0934-7.5 9.9166-4.125 4.8231-7.5 9.442-7.5 10.264 0 0.82215 1.575 5.1746 3.5 9.672 4.7379 11.069 4.719 11.165-2.1436 10.8l-5.6436-0.2999-1.9904-5.25c-1.0947-2.8875-2.4926-5.2249-3.1064-5.1942-0.61384 0.0307-3.0498 2.5057-5.4134 5.5-4.1685 5.281-4.4457 5.4442-9.25 5.4442-3.3032 0-4.9479-0.41632-4.9383-1.25zm125.51 0.0832c-0.26444-0.73324-0.60217-4.9332-0.75052-9.3332l-0.26973-8-8.75-0.28894c-7.865-0.2597-8.75-0.48335-8.75-2.2111 0-1.7277 0.88503-1.9514 8.75-2.2111l8.75-0.28893 0.5-9c0.39506-7.1111 0.81481-9 2-9s1.6049 1.8889 2 9l0.5 9 8.75 0.28893c7.865 0.25971 8.75 0.48335 8.75 2.2111 0 1.7277-0.88503 1.9514-8.75 2.2111l-8.75 0.28894-0.5 8.9206c-0.32898 5.8694-0.92737 9.0617-1.7495 9.3332-0.68721 0.22692-1.4658-0.18735-1.7303-0.92058zm81.494-0.0832c0.008-0.6875 3.3829-5.2167 7.5-10.065 4.1171-4.8482 7.4856-9.4672 7.4856-10.264 0-0.79729-1.5757-5.3574-3.5016-10.134-1.9611-4.8634-3.1223-9.0632-2.6395-9.546 0.47416-0.47417 3.0025-0.7224 5.6185-0.55163 4.745 0.30974 4.761 0.32307 6.7094 5.5605 1.0742 2.8875 2.3169 5.25 2.7617 5.25 0.44475 0 2.9231-2.475 5.5074-5.5 4.5155-5.2855 4.8908-5.5 9.6215-5.5 3.0363 0 4.9227 0.43962 4.9227 1.1472 0 0.63098-3.375 5.0934-7.5 9.9166-4.125 4.8231-7.5 9.442-7.5 10.264 0 0.82215 1.575 5.1746 3.5 9.672 4.7379 11.069 4.719 11.165-2.1436 10.8l-5.6436-0.2999-1.9904-5.25c-1.0947-2.8875-2.4926-5.2249-3.1064-5.1942-0.61384 0.0307-3.0498 2.5057-5.4134 5.5-4.1685 5.281-4.4457 5.4442-9.25 5.4442-3.3032 0-4.9479-0.41632-4.9383-1.25zm85.506 0.0832c-0.26444-0.73324-0.60217-4.9332-0.75052-9.3332l-0.26973-8-8.75-0.28894c-7.865-0.2597-8.75-0.48335-8.75-2.2111 0-1.7277 0.88503-1.9514 8.75-2.2111l8.75-0.28893 0.5-9c0.39506-7.1111 0.81481-9 2-9s1.6049 1.8889 2 9l0.5 9 8.75 0.28893c7.865 0.25971 8.75 0.48335 8.75 2.2111 0 1.7277-0.88503 1.9514-8.75 2.2111l-8.75 0.28894-0.5 8.9206c-0.32898 5.8694-0.92737 9.0617-1.7495 9.3332-0.68721 0.22692-1.4658-0.18735-1.7303-0.92058zm-392.54-11.83c0-1.9969 0.44133-2.0355 20.25-1.7707 17.213 0.23011 20.25 0.49567 20.25 1.7707s-3.037 1.5406-20.25 1.7707c-19.809 0.26481-20.25 0.22622-20.25-1.7707zm0-15c0-1.9969 0.44133-2.0355 20.25-1.7707 17.213 0.23011 20.25 0.49567 20.25 1.7707s-3.037 1.5406-20.25 1.7707c-19.809 0.26481-20.25 0.22622-20.25-1.7707zm155-9.1169c0-0.65279 4.05-5.3733 9-10.49 7.158-7.3992 9-9.9013 9-12.226 0-1.6073-0.69382-3.4982-1.5418-4.202-1.28-1.0623-2.0557-0.89963-4.5686 0.95821-1.6647 1.2308-3.6709 1.9906-4.4582 1.6885-4.3533-1.6705 2.461-8.612 8.4542-8.612 4.6025 0 6.8881 1.5925 7.894 5.5 1.3225 5.1373 0.29247 8.0235-5.2703 14.767-2.9605 3.5892-5.1112 6.7973-4.7794 7.1292 0.33186 0.33186 2.1333 0.60339 4.0031 0.60339 3.1189 0 3.3736 0.2272 3.0833 2.75l-0.31642 2.75-10.25 0.28498c-7.4028 0.20582-10.25-0.0447-10.25-0.90192z"
+      />
+    </g
+    >
+  </g
+  >
+  <metadata
+    >
+    <rdf:RDF
+      >
+      <cc:Work
+        >
+        <dc:format
+          >image/svg+xml</dc:format
+        >
+        <dc:type
+            rdf:resource="http://purl.org/dc/dcmitype/StillImage"
+        />
+        <cc:license
+            rdf:resource="http://creativecommons.org/licenses/publicdomain/"
+        />
+        <dc:publisher
+          >
+          <cc:Agent
+              rdf:about="http://openclipart.org/"
+            >
+            <dc:title
+              >Openclipart</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:publisher
+        >
+        <dc:title
+          >Parabola</dc:title
+        >
+        <dc:date
+          >2010-05-13T20:44:46</dc:date
+        >
+        <dc:description
+          >A parabola on a Cartesian coordinate grid. Typeface is Tuffy (public domain, created by Thatcher Ulrich) from openfontlibrary.org&#13;\n</dc:description
+        >
+        <dc:source
+          >https://openclipart.org/detail/60223/parabola-by-mazeo</dc:source
+        >
+        <dc:creator
+          >
+          <cc:Agent
+            >
+            <dc:title
+              >mazeo</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:creator
+        >
+        <dc:subject
+          >
+          <rdf:Bag
+            >
+            <rdf:li
+              >algebra</rdf:li
+            >
+            <rdf:li
+              >cartesian coordinates</rdf:li
+            >
+            <rdf:li
+              >conic section</rdf:li
+            >
+            <rdf:li
+              >coordinates</rdf:li
+            >
+            <rdf:li
+              >geometry</rdf:li
+            >
+            <rdf:li
+              >math</rdf:li
+            >
+            <rdf:li
+              >mathematics</rdf:li
+            >
+            <rdf:li
+              >parabola</rdf:li
+            >
+          </rdf:Bag
+          >
+        </dc:subject
+        >
+      </cc:Work
+      >
+      <cc:License
+          rdf:about="http://creativecommons.org/licenses/publicdomain/"
+        >
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Reproduction"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Distribution"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#DerivativeWorks"
+        />
+      </cc:License
+      >
+    </rdf:RDF
+    >
+  </metadata
+  >
+</svg
+>

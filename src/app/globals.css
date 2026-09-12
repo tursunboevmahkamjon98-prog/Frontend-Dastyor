@@ -1,0 +1,718 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Color palette — the web project's own "modern red" identity, distinct from
+ * the Flutter app's teal theme (teach_ai/lib/theme/app_theme.dart) by
+ * explicit request. Category colors (konspekt/test/presentation)
+ * stay differentiated so material types remain visually distinguishable —
+ * only the brand/CTA accent is red.
+ * ------------------------------------------------------------------------- */
+:root {
+  /* Brand — red */
+  --color-primary: #dc2626;
+  --color-primary-light: #ef4444;
+  --color-primary-dark: #b91c1c;
+  --color-primary-50: #fff1f1;
+
+  /* Backgrounds */
+  --color-background: #fffbfa;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fff5f4;
+
+  /* Text */
+  --color-text-primary: #291315;
+  --color-text-secondary: #6b4b4c;
+  --color-text-tertiary: #a98687;
+  --color-text-on-primary: #ffffff;
+
+  /* Category colors — konspekt/test/presentation/lecture */
+  --color-note-bg: #dbeafe;
+  --color-note-icon: #3b82f6;
+  --color-test-bg: #d1fae5;
+  --color-test-icon: #10b981;
+  --color-pres-bg: #fce7f3;
+  --color-pres-icon: #ec4899;
+  --color-lecture-bg: #fef3c7;
+  --color-lecture-icon: #d97706;
+  --color-amaliy-bg: #ccfbf1;
+  --color-amaliy-icon: #0d9488;
+  --color-igra-bg: #ede9fe;
+  --color-igra-icon: #7c3aed;
+
+  /* Status */
+  --color-success: #059669;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
+
+  /* Borders/dividers */
+  --color-border: #f3d9d8;
+  --color-border-light: #faeceb;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-50: var(--color-primary-50);
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-on-primary: var(--color-text-on-primary);
+  --color-note-bg: var(--color-note-bg);
+  --color-note-icon: var(--color-note-icon);
+  --color-test-bg: var(--color-test-bg);
+  --color-test-icon: var(--color-test-icon);
+  --color-pres-bg: var(--color-pres-bg);
+  --color-pres-icon: var(--color-pres-icon);
+  --color-lecture-bg: var(--color-lecture-bg);
+  --color-lecture-icon: var(--color-lecture-icon);
+  --color-amaliy-bg: var(--color-amaliy-bg);
+  --color-amaliy-icon: var(--color-amaliy-icon);
+  --color-igra-bg: var(--color-igra-bg);
+  --color-igra-icon: var(--color-igra-icon);
+  --color-success: var(--color-success);
+  --color-error: var(--color-error);
+  --color-warning: var(--color-warning);
+  --color-border: var(--color-border);
+  --color-border-light: var(--color-border-light);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  /* No page ever scrolls sideways. Individual wide things — data tables,
+   * the slide thumbnail strip — scroll inside their own containers, which
+   * is deliberate; what this stops is a single decorative element
+   * overhanging its box and dragging the whole document wider than the
+   * screen, which is invisible on a desktop and immediately obvious on a
+   * phone.
+   *
+   * `clip`, not `hidden`. overflow-x: hidden makes body a scroll
+   * container, which silently breaks `position: sticky` descendants and
+   * can capture the page's own scrolling; overflow-x: clip just clips.
+   * The specific fixes are still made at the source (see GamePlayer's
+   * gallery row and PresentMode) — this is the net under them, not a
+   * substitute for them. */
+  overflow-x: clip;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mascot (components/Mascot.tsx) — the Duolingo-style companion character
+ * in the material-creation wizard, built from the brand mark's own red
+ * line-art rather than a new design. Named (not inline-styled) keyframes
+ * so every mascot instance on a page shares one set of @keyframes instead
+ * of each duplicating its own <style> block.
+ * ------------------------------------------------------------------------- */
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes mascot-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes mascot-celebrate {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-14px) rotate(-4deg); }
+  50% { transform: translateY(-2px) rotate(0deg); }
+  75% { transform: translateY(-14px) rotate(4deg); }
+}
+@keyframes mascot-arm-wave {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-30deg); }
+}
+@keyframes mascot-arm-wave-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(30deg); }
+}
+/* Gentle idle arm sway outside "celebrating" — small enough to read as
+ * "alive", not "waving at you". */
+@keyframes mascot-arm-idle-left {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes mascot-arm-idle-right {
+  0%, 100% { transform: rotate(3deg); }
+  50% { transform: rotate(-3deg); }
+}
+/* Squash-and-stretch companion to mascot-bob — stretches tall at the top
+ * of the bob, squashes wide at the bottom, same timing so it reads as one
+ * motion instead of two competing ones. */
+@keyframes mascot-squash {
+  0%, 100% { transform: scale(1, 1); }
+  25% { transform: scale(0.97, 1.04); }
+  50% { transform: scale(1.05, 0.94); }
+  75% { transform: scale(0.97, 1.04); }
+}
+/* Ground shadow — shrinks/lightens as the body rises, grows/darkens as it
+ * lands, the classic cheap trick that sells a bounce as touching a floor. */
+@keyframes mascot-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 0.16; }
+  50% { transform: scaleX(0.7); opacity: 0.08; }
+}
+@keyframes mascot-shadow-celebrate {
+  0%, 100% { transform: scaleX(1); opacity: 0.16; }
+  25% { transform: scaleX(0.55); opacity: 0.06; }
+  75% { transform: scaleX(0.55); opacity: 0.06; }
+}
+/* One-shot "pop" played once whenever the mood prop changes (see
+ * Mascot.tsx's bumpKey) — NOT `infinite`, so it plays exactly once per
+ * transition instead of looping. */
+@keyframes mascot-pop {
+  0% { transform: scale(0.8) rotate(-3deg); }
+  55% { transform: scale(1.15) rotate(2deg); }
+  80% { transform: scale(0.96) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+/* Small head tilt while "thinking" — a slow side-to-side sway read as
+ * pondering, distinct from the quicker idle bob. */
+@keyframes mascot-tilt {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+/* Sparkle burst — one star's single play-through (scale+spin+fade). Each
+ * star in Mascot.tsx staggers its animation-delay so they don't all pop
+ * in lockstep. */
+@keyframes mascot-sparkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  35% { transform: scale(1) rotate(80deg); opacity: 1; }
+  100% { transform: scale(0.3) rotate(160deg); opacity: 0; }
+}
+/* Pencil held in the right hand — a small writing wiggle while
+ * "thinking", rotating around the grip point (not the pencil's center),
+ * so it reads as the tip scribbling rather than the whole pencil
+ * spinning. */
+@keyframes mascot-pencil-write {
+  0%, 100% { transform: rotate(22deg); }
+  50% { transform: rotate(32deg); }
+}
+
+/* ---------------------------------------------------------------------------
+ * Game engine (components/game/*) — the full-screen "Igra" material player.
+ * Kept in its own section since these keyframes are reused across the start/
+ * solo/duel/result screens rather than any single component owning them.
+ * ------------------------------------------------------------------------- */
+
+/* A confetti piece's one fall-cycle: drifts sideways via the --drift custom
+ * property each <span> sets inline (see effects.tsx's Confetti), so every
+ * piece follows its own path off one shared keyframe. `infinite` here just
+ * means "loop for as long as the result screen is mounted" — each piece's
+ * own animation-delay staggers when its loop starts. */
+@keyframes game-confetti-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  100% { transform: translate(var(--drift, 0px), 340px) rotate(540deg); opacity: 0; }
+}
+/* One dot of Burst's radial celebration ring — travels from the center out
+ * to the (--bx, --by) offset each dot sets inline, fading as it goes. */
+@keyframes game-burst {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate(var(--bx, 0px), var(--by, 0px)) scale(1); opacity: 0; }
+}
+/* Answer button feedback: a quick settle-in used when a round's content
+ * (a new question, a new puzzle) mounts, so each round arrives with a
+ * little life instead of popping in flat. */
+@keyframes game-round-in {
+  0% { transform: translateY(14px) scale(0.98); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+/* Wrong-answer shake — a short, snappy horizontal rattle. */
+@keyframes game-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+/* Score/streak counter bump on every point gained. */
+@keyframes game-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+/* Slow ambient drift for the start/result screen's background blobs. */
+@keyframes game-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2%, -3%) scale(1.06); }
+}
+/* Countdown ring pulse before a round's timer starts. */
+@keyframes game-pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+/* Game templates (components/game/templates.tsx) — the little car's idle
+ * bob while it sits at its current track position, and a coin's one-shot
+ * drop-and-settle the instant it's added to the pile. */
+@keyframes game-car-bob {
+  0%, 100% { transform: translateY(-50%) rotate(0deg); }
+  50% { transform: translateY(calc(-50% - 2px)) rotate(-3deg); }
+}
+@keyframes game-coin-drop {
+  0% { transform: translateY(-10px) scale(0.4) rotate(-20deg); opacity: 0; }
+  60% { transform: translateY(2px) scale(1.15) rotate(10deg); opacity: 1; }
+  100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+}
+/* The round card's last-3-seconds pulse (Stage in SoloGame.tsx, DuelStage in
+ * DuelGame.tsx) — a heartbeat-ish glow+scale so the clock running out reads
+ * as tension, not just a number quietly counting down. Continuous (not
+ * one-shot) for as long as the urgent condition holds. */
+@keyframes game-urgent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); transform: scale(1); }
+  50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); transform: scale(1.015); }
+}
+/* A streak counter's continuous "on fire" glow once it's hot (>=3) —
+ * distinct from game-pop's one-shot bump on every increment, this loops
+ * for as long as the streak stays hot. */
+@keyframes game-flame-glow {
+  0%, 100% { filter: drop-shadow(0 0 0px rgba(251,146,60,0.8)); }
+  50% { filter: drop-shadow(0 0 6px rgba(251,146,60,0.9)); }
+}
+/* MatchingStage/DuelMatching's connector line — drawn left-to-right via the
+ * classic pathLength=1 + stroke-dasharray/dashoffset trick, so a matched
+ * pair reads as "linked" (per the reference product's spec) instead of
+ * just two boxes independently turning green. */
+@keyframes game-line-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+/* OrderStage/DuelOrder's win moment — a quick "Победа!"-style pop+settle
+ * on the whole card once the sequence is fully correct. */
+@keyframes game-order-win {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+/* SoloGame's level-up toast — pop in, hold, fade — driven purely by a
+ * `key={level}` remount (see SoloGame.tsx) rather than a state timer, so
+ * the centering translateX(-50%) lives in every step here instead of a
+ * separate Tailwind transform utility the `animation` shorthand would
+ * otherwise clobber for its duration. `forwards` leaves it parked at
+ * opacity 0 afterwards — invisible and inert, never unmounted. */
+@keyframes game-levelup-toast {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+  15% { opacity: 1; transform: translateX(-50%) scale(1); }
+  80% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.92); }
+}
+
+/* Little "bulbs" twinkling on independent staggered delays (set per-bulb
+ * inline) so a ring of them reads as lit-up rather than as static dots.
+ * Named for the random wheel it was written for; that feature is gone and
+ * the games kept the effect — see GamePlayer and the magicshuffle cards. */
+@keyframes wheel-bulb-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* "Ken Burns" slow zoom/drift for a full-bleed static photo background
+ * (see game/templates.tsx's classroom TemplateScene) — a completely still
+ * photo behind an otherwise animated, lively screen reads as a paused
+ * video; this alone makes it feel like a living scene instead of a static
+ * poster, at a speed slow enough to never distract from the actual game. */
+@keyframes game-kenburns {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.08) translate(-1%, -1%); }
+}
+
+/* Landing page (app/page.tsx) — hero background blobs drift slowly on
+ * independent offsets/durations (set per-blob inline via animation-delay)
+ * so the glow behind the hero never feels perfectly synced/mechanical. */
+@keyframes landing-blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -4%) scale(1.08); }
+  66% { transform: translate(-3%, 3%) scale(0.95); }
+}
+
+/* Sections fade/rise into place once (see components/Reveal.tsx) instead
+ * of just appearing — small, one-shot, never re-triggers on scroll-back. */
+@keyframes landing-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero illustration card (app/page.tsx) — a slow continuous float, plus its
+ * two corner "proof" chips floating on their own independent, offset
+ * rhythms so the whole thing reads as gently alive rather than a static
+ * screenshot. Kept to translateY only (no rotation) so drop-shadows never
+ * smear. */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes landing-float-chip {
+  0%, 100% { transform: translateY(0) rotate(var(--chip-rot, 0deg)); }
+  50% { transform: translateY(-6px) rotate(var(--chip-rot, 0deg)); }
+}
+
+/* Dashed accent ring slowly orbiting the hero illustration — pure CSS
+ * conic-gradient dashes via a border, no image. */
+@keyframes landing-spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Squiggle underline beneath the hero's accent word — draws itself in
+ * once on load using the same stroke-dashoffset trick as an SVG "signature"
+ * animation, so the emphasis lands a beat after the headline appears. */
+@keyframes landing-draw {
+  from { stroke-dashoffset: 220; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+ * "Қуттиҳои сеҳрнок" (components/magicshuffle/*) — the shell-game where a
+ * clown shuffles three magic boxes. Kept in its own section since none of
+ * these are reused by the main game engine above.
+ *
+ * Note on the shuffle itself: the boxes MOVE via a CSS transition on
+ * `transform: translateX(...)` driven by each box's logical position (see
+ * useShuffleGame), not by a keyframe here — a keyframe can't know where a
+ * box is travelling to. These keyframes are the decoration around that.
+ * ------------------------------------------------------------------------- */
+
+/* Idle float — each box gets its own animation-delay so three boxes never
+ * bob in lockstep, which instantly reads as "static image with one effect". */
+@keyframes mbox-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+/* The glow ring behind a box, breathing. */
+@keyframes mbox-glow {
+  0%, 100% { opacity: 0.45; transform: scale(0.9); }
+  50% { opacity: 0.85; transform: scale(1.1); }
+}
+/* The prize box during "memorize" — a bigger, faster, unmistakable pulse
+ * plus a lift, so which box to remember is never ambiguous. */
+@keyframes mbox-marked {
+  0%, 100% { transform: translateY(-10px) scale(1.06); }
+  50% { transform: translateY(-18px) scale(1.12); }
+}
+/* Lid lifting off the chosen box: hinges back and rises away while the
+ * body stays put — the "box opens" beat, not a fade. */
+@keyframes mbox-lid-open {
+  0% { transform: translateY(0) rotateX(0deg); }
+  35% { transform: translateY(-6px) rotateX(-18deg); }
+  100% { transform: translateY(-46px) rotateX(-115deg); opacity: 0.85; }
+}
+/* Body shake right before the lid goes — anticipation. */
+@keyframes mbox-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-5px) rotate(-3deg); }
+  40% { transform: translateX(5px) rotate(3deg); }
+  60% { transform: translateX(-4px) rotate(-2deg); }
+  80% { transform: translateX(3px) rotate(2deg); }
+}
+/* Column of light escaping an opened box. */
+@keyframes mbox-lightbeam {
+  0% { opacity: 0; transform: scaleY(0.2) scaleX(0.6); }
+  40% { opacity: 0.9; transform: scaleY(1) scaleX(1); }
+  100% { opacity: 0; transform: scaleY(1.15) scaleX(1.1); }
+}
+/* One escaping star: flies out along the --sx/--sy offset set inline. */
+@keyframes mbox-starfly {
+  0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--sx, 0px), var(--sy, -60px)) scale(1) rotate(180deg); opacity: 0; }
+}
+/* The clown's hands during the shuffle — a busy back-and-forth sweep, in
+ * time with the swaps happening beneath them. */
+@keyframes mbox-clown-shuffle {
+  0%, 100% { transform: translateX(-10px) rotate(-5deg); }
+  50% { transform: translateX(10px) rotate(5deg); }
+}
+/* Wand waggle while casting. */
+@keyframes mbox-wand-wave {
+  0%, 100% { transform: rotate(-18deg); }
+  50% { transform: rotate(18deg); }
+}
+/* Ambient magic dust drifting up through the classroom. */
+@keyframes mbox-dust {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { opacity: 0.8; }
+  100% { transform: translateY(-90px) scale(1); opacity: 0; }
+}
+/* Score counter tick-up emphasis. */
+@keyframes mbox-score-bump {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.3); color: #fcd34d; }
+  100% { transform: scale(1); }
+}
+/* Combo/bonus toast: pops in, holds, floats away. */
+@keyframes mbox-toast {
+  0% { opacity: 0; transform: translateY(10px) scale(0.85); }
+  18% { opacity: 1; transform: translateY(0) scale(1.05); }
+  30% { transform: scale(1); }
+  78% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-22px); }
+}
+/* Result-screen trophy entrance. */
+@keyframes mbox-trophy-in {
+  0% { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+  55% { transform: scale(1.18) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+/* Each earned star landing on the result screen, staggered inline. */
+@keyframes mbox-star-land {
+  0% { transform: scale(0) rotate(-90deg); opacity: 0; }
+  60% { transform: scale(1.35) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* The question card physically travelling between the centre of the screen
+ * and a box. Both directions read the destination/origin offset from the
+ * --fx/--fy custom properties the component sets inline (computed from the
+ * target box's actual slot), so one pair of keyframes serves whichever of
+ * the three boxes is involved. */
+@keyframes mbox-card-into-box {
+  0%   { transform: translate(0,0) scale(1) rotate(0deg); opacity: 1; }
+  22%  { transform: translate(0,-26px) scale(1.06) rotate(-3deg); opacity: 1; }
+  70%  { transform: translate(calc(var(--fx) * 0.72), calc(var(--fy) * 0.62)) scale(0.42) rotate(9deg); opacity: 1; }
+  100% { transform: translate(var(--fx), var(--fy)) scale(0.06) rotate(16deg); opacity: 0; }
+}
+@keyframes mbox-card-out-of-box {
+  0%   { transform: translate(var(--fx), var(--fy)) scale(0.06) rotate(-14deg); opacity: 0; }
+  18%  { opacity: 1; }
+  62%  { transform: translate(calc(var(--fx) * 0.34), calc(var(--fy) * 0.3 - 34px)) scale(0.82) rotate(7deg); opacity: 1; }
+  84%  { transform: translate(0,-8px) scale(1.07) rotate(-2deg); opacity: 1; }
+  100% { transform: translate(0,0) scale(1) rotate(0deg); opacity: 1; }
+}
+/* The box that just swallowed the question gives one squash-and-flash. */
+@keyframes mbox-absorb {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.16, 0.86); }
+  65% { transform: scale(0.94, 1.08); }
+}
+/* Per-swap motion: while the boxes are travelling they also hop, tilt and
+ * scale slightly, which is what turns a flat slide into a shell-game
+ * shuffle. Runs on the inner wrapper so it never fights the translateX
+ * that actually moves the box between slots. */
+@keyframes mbox-swap-hop {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  30% { transform: translateY(-16px) rotate(-7deg) scale(1.05); }
+  60% { transform: translateY(-6px) rotate(5deg) scale(0.98); }
+}
+/* Little sparkle trail left behind a moving box. */
+@keyframes mbox-trail {
+  0% { transform: translateY(0) scale(1); opacity: 0.9; }
+  100% { transform: translateY(14px) scale(0.3); opacity: 0; }
+}
+
+/* Lid coming back down after a question has been posted inside. Mirrors
+ * mbox-lid-open in reverse, with a small settle so it reads as a real lid
+ * dropping onto the box rather than sliding into place. */
+@keyframes mbox-lid-close {
+  0% { transform: translateY(-46px) rotateX(-115deg); opacity: 0.85; }
+  65% { transform: translateY(-4px) rotateX(-12deg); opacity: 1; }
+  85% { transform: translateY(2px) rotateX(4deg); }
+  100% { transform: translateY(0) rotateX(0deg); opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------------
+ * "Лабораторияи махфӣ" (components/seclab/*) — the secret-laboratory game.
+ * Its own section; none of these are shared with the magic-box game above.
+ * ------------------------------------------------------------------------- */
+
+/* A reagent bottle idling on the bench. Every bottle uses the same phase —
+ * a per-bottle offset would give each one a recognisable rhythm, and these
+ * are meant to read as a matched set of lab glassware. */
+@keyframes lab-bottle-idle {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-5px) rotate(0.6deg); }
+}
+/* One bubble rising through liquid. Travel distance is set per bubble via
+ * --rise so a single keyframe serves bottles and the big flask alike. */
+@keyframes lab-bubble {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(var(--rise, -40px)) scale(1.1); opacity: 0; }
+}
+/* The chosen bottle's flight to the flask: lifts off the bench, arcs across,
+ * tips over to pour, then fades as the liquid transfers. --tx/--ty carry the
+ * delta to the flask, measured from the bottle's own slot. */
+@keyframes lab-bottle-pour {
+  0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+  22%  { transform: translate(calc(var(--tx) * 0.25), -70px) rotate(-8deg) scale(1.06); opacity: 1; }
+  55%  { transform: translate(calc(var(--tx) * 0.8), calc(var(--ty) - 40px)) rotate(-25deg) scale(1.02); opacity: 1; }
+  72%  { transform: translate(var(--tx), var(--ty)) rotate(-118deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) rotate(-118deg) scale(0.9); opacity: 0; }
+}
+/* The stream of liquid leaving a tipped bottle. */
+@keyframes lab-stream {
+  0%, 20% { opacity: 0; transform: scaleY(0); }
+  35% { opacity: 1; transform: scaleY(1); }
+  85% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(0.9); }
+}
+/* Liquid level climbing in the big flask as a reagent goes in. */
+@keyframes lab-fill {
+  from { height: 26%; }
+  to { height: 62%; }
+}
+/* Success: the flask blooms with light and swells. */
+@keyframes lab-react-success {
+  0% { transform: scale(1); filter: brightness(1); }
+  25% { transform: scale(1.07) rotate(-1deg); filter: brightness(1.5); }
+  50% { transform: scale(1.03) rotate(1deg); filter: brightness(1.85); }
+  100% { transform: scale(1); filter: brightness(1.2); }
+}
+/* Failure: a soft shake and a dim — deliberately gentle, never punishing. */
+@keyframes lab-react-fail {
+  0%, 100% { transform: translateX(0) scale(1); filter: brightness(1); }
+  20% { transform: translateX(-6px) scale(0.99); filter: brightness(0.75); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); filter: brightness(0.8); }
+  80% { transform: translateX(3px); }
+}
+/* A spark thrown out of a successful reaction, along --sx/--sy. */
+@keyframes lab-spark {
+  0% { transform: translate(0,0) scale(0.35); opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(1); opacity: 0; }
+}
+/* Vapour drifting off the bench. */
+@keyframes lab-smoke {
+  0% { transform: translateY(0) scale(0.8); opacity: 0; }
+  25% { opacity: 0.32; }
+  100% { transform: translateY(-120px) scale(1.7); opacity: 0; }
+}
+/* Dust motes caught in the lamp light. */
+@keyframes lab-mote {
+  0% { transform: translate(0,0); opacity: 0; }
+  20% { opacity: 0.75; }
+  100% { transform: translate(var(--mx, 18px), -110px); opacity: 0; }
+}
+/* Overhead lamp brightening when an experiment succeeds. */
+@keyframes lab-lamp-flare {
+  0%, 100% { opacity: 0.35; }
+  30% { opacity: 0.95; }
+}
+/* Camera push-in at the start of a round: the whole scene eases forward. */
+@keyframes lab-camera-in {
+  0% { transform: scale(1.14) translateY(14px); }
+  100% { transform: scale(1) translateY(0); }
+}
+/* Camera pull-back for the closing experiment. */
+@keyframes lab-camera-out {
+  0% { transform: scale(1); }
+  100% { transform: scale(0.9); }
+}
+/* The floating question panel arriving. */
+@keyframes lab-panel-in {
+  0% { opacity: 0; transform: translateY(22px) scale(0.94); filter: blur(6px); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.01); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* "+50 ⭐" award floating up and away. */
+@keyframes lab-score-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.7); }
+  20% { opacity: 1; transform: translateY(-6px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-64px) scale(1); }
+}
+/* A heart being spent — shrinks and fades rather than snapping away. */
+@keyframes lab-life-lost {
+  0% { transform: scale(1); opacity: 1; }
+  35% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.4); opacity: 0.25; }
+}
+/* Gentle pulse on the last remaining heart: a hint, not an alarm. */
+@keyframes lab-life-last {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.72; transform: scale(1.09); }
+}
+/* Station on the progress rail that the player is currently at. */
+@keyframes lab-station-active {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56,189,248,0.5); }
+  50% { transform: scale(1.16); box-shadow: 0 0 0 7px rgba(56,189,248,0); }
+}
+/* Loading scene: a molecule orbiting while the AI writes the questions. */
+@keyframes lab-orbit {
+  from { transform: rotate(0deg) translateX(48px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(48px) rotate(-360deg); }
+}
+/* Indeterminate progress sweep under "Саволҳо омода мешаванд...". */
+@keyframes lab-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+/* Result stats appearing one after another. */
+@keyframes lab-stat-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Scrollable without a visible scrollbar — used by the lab's question panel,
+ * which is height-capped so a very long question stays readable by scrolling
+ * rather than pushing the bench off screen. A browser scrollbar sitting on a
+ * glass game panel looks like a bug, so it's hidden while the panel stays
+ * fully scrollable (including by keyboard and touch). */
+.no-scrollbar {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.no-scrollbar::-webkit-scrollbar { /* Chrome/Safari */
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Presentation full-screen mode (components/PresentMode.tsx)
+ *
+ * Three things Tailwind utilities cannot express well enough to leave to
+ * class names, all of which only show up on a real phone:
+ *
+ * 1. `100vh` is the WRONG height in a mobile browser and inside the APK's
+ *    webview: it means the viewport with the URL bar hidden, so while the
+ *    bar is visible the element is taller than the screen and its bottom
+ *    row — the slide navigation — sits below the fold with no way to
+ *    scroll to it. `100dvh` is the dynamic height that accounts for it.
+ *    The `100vh` line stays first as the fallback for anything without
+ *    dvh support; browsers that understand the second declaration take it.
+ *
+ * 2. Notches and home indicators. The close button and the nav row are
+ *    positioned against the screen edge, which on a modern phone is
+ *    underneath the system UI. env(safe-area-inset-*) is the only way to
+ *    know how much to keep clear, and it evaluates to 0 everywhere it
+ *    doesn't apply, so the desktop case is unaffected.
+ *
+ * 3. Padding that scales with the viewport rather than stepping at a
+ *    breakpoint — the same reasoning as the clamp()ed type in that
+ *    component: a projector wants generous margins, a 360px phone wants
+ *    almost none, and there is no single step that suits both.
+ * ------------------------------------------------------------------------- */
+.present-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.present-close {
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+}
+
+.present-body {
+  padding-block: clamp(3.5rem, 7vh, 5rem) clamp(0.75rem, 2vh, 2rem);
+  padding-inline: clamp(1rem, 5vw, 4rem);
+  padding-left: max(clamp(1rem, 5vw, 4rem), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(1rem, 5vw, 4rem), env(safe-area-inset-right, 0px));
+}
+
+.present-nav {
+  padding-top: 0.5rem;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(0.75rem, 2.5vh, 1.75rem));
+}
+
+/* Landscape on a phone is the presenting posture, and there the vertical
+ * budget is tiny — the top padding that gives a projector breathing room
+ * would leave almost nothing for the slide itself. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .present-body {
+    padding-block: 2.75rem 0.5rem;
+  }
+  .present-nav {
+    padding-top: 0.25rem;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+}

@@ -1,0 +1,20 @@
+# Shell scripts must keep LF endings even when checked out on Windows.
+# A CRLF start.sh fails on the Linux host it is meant for, with the
+# famously unhelpful "bad interpreter: /usr/bin/env bash^M" — the file
+# looks perfectly correct in every editor.
+*.sh text eol=lf
+
+# Same reasoning: Docker reads these itself, and a \r ends up inside the
+# command it runs.
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+
+# Let git normalise everything else, and never touch binaries.
+* text=auto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

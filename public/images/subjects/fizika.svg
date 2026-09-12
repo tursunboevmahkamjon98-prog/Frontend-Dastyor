@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns:cc="http://web.resource.org/cc/"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:ns1="http://sozi.baierouge.fr"
+    id="svg2"
+    sodipodi:docname="Atom.svg"
+    viewBox="0 0 200 200"
+    sodipodi:version="0.32"
+    version="1.0"
+    inkscape:version="0.44.1"
+    sodipodi:docbase="C:\Documents and Settings\Andros\Desktop"
+  >
+  <sodipodi:namedview
+      id="base"
+      bordercolor="#666666"
+      inkscape:pageshadow="2"
+      guidetolerance="10.0"
+      pagecolor="#ffffff"
+      gridtolerance="10.0"
+      inkscape:zoom="1.89"
+      objecttolerance="10.0"
+      borderopacity="1.0"
+      inkscape:current-layer="svg2"
+      inkscape:cx="100"
+      inkscape:cy="100"
+      inkscape:window-y="220"
+      inkscape:window-x="220"
+      inkscape:window-height="573"
+      inkscape:pageopacity="0.0"
+      inkscape:window-width="853"
+  />
+  <defs
+      id="defs4"
+    >
+    <linearGradient
+        id="linearGradient5502"
+      >
+      <stop
+          id="stop5504"
+          style="stop-color:#00cbfa"
+          offset="0"
+      />
+      <stop
+          id="stop5506"
+          style="stop-color:#0000fa;stop-opacity:.97255"
+          offset="1"
+      />
+    </linearGradient
+    >
+    <radialGradient
+        id="radialGradient4597"
+        gradientUnits="userSpaceOnUse"
+        cy="96.032"
+        cx="98.942"
+        gradientTransform="matrix(1 0 0 1.0227 0 -2.1825)"
+        r="11.64"
+      >
+      <stop
+          id="stop4579"
+          style="stop-color:#ffa000"
+          offset="0"
+      />
+      <stop
+          id="stop4581"
+          style="stop-color:#f80000;stop-opacity:.96907"
+          offset="1"
+      />
+    </radialGradient
+    >
+    <radialGradient
+        id="radialGradient5500"
+        xlink:href="#linearGradient5502"
+        gradientUnits="userSpaceOnUse"
+        cy="20.106"
+        cx="12.698"
+        gradientTransform="matrix(1 0 0 .86618 0 2.6906)"
+        r="7.9074"
+    />
+  </defs
+  >
+  <g
+      id="layer1"
+    >
+    <path
+        id="path3682"
+        style="stroke:black;fill:none"
+        d="m119.58 109.26a23.016 78.571 0 1 1 -46.035 0 23.016 78.571 0 1 1 46.035 0z"
+        transform="matrix(.99742 0 0 1.2551 2.3658 -36.871)"
+    />
+    <path
+        id="path3690"
+        style="fill:url(#radialGradient4597)"
+        d="m110.58 96.032a11.64 11.905 0 1 1 -23.278 0 11.64 11.905 0 1 1 23.278 0z"
+        transform="translate(-1.0582 4.2328)"
+    />
+    <path
+        id="path4599"
+        style="stroke:black;fill:none"
+        d="m119.58 109.26a23.016 78.571 0 1 1 -46.035 0 23.016 78.571 0 1 1 46.035 0z"
+        transform="matrix(.70528 -.70528 .88752 .88752 -66.394 71.398)"
+    />
+    <path
+        id="path4601"
+        style="stroke:black;fill:none"
+        d="m119.58 109.26a23.016 78.571 0 1 1 -46.035 0 23.016 78.571 0 1 1 46.035 0z"
+        transform="matrix(.70528 .70528 -.88752 .88752 127.54 -64.807)"
+    />
+    <path
+        id="path4603"
+        style="stroke:black;fill:none"
+        d="m119.58 109.26a23.016 78.571 0 1 1 -46.035 0 23.016 78.571 0 1 1 46.035 0z"
+        transform="matrix(0 .99726 -1.2719 0 238.97 3.9685)"
+    />
+    <path
+        id="path4607"
+        style="fill-rule:evenodd;fill:url(#radialGradient5500)"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 26.005 38.021)"
+    />
+    <path
+        id="path5508"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 145.58 111.04)"
+    />
+    <path
+        id="path5512"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 118.6 18.974)"
+    />
+    <path
+        id="path5516"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 49.815 134.85)"
+    />
+    <path
+        id="path5520"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 157.22 59.714)"
+    />
+    <path
+        id="path5524"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 16.481 92.519)"
+    />
+    <path
+        id="path5528"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 101.14 148.07)"
+    />
+    <path
+        id="path5532"
+        style="fill:url(#radialGradient5500);fill-rule:evenodd"
+        d="m20.106 20.106a7.4074 6.3492 0 1 1 -14.815 0 7.4074 6.3492 0 1 1 14.815 0z"
+        transform="matrix(.99376 0 0 1.201 70.979 2.0424)"
+    />
+  </g
+  >
+  <metadata
+    >
+    <rdf:RDF
+      >
+      <cc:Work
+        >
+        <dc:format
+          >image/svg+xml</dc:format
+        >
+        <dc:type
+            rdf:resource="http://purl.org/dc/dcmitype/StillImage"
+        />
+        <cc:license
+            rdf:resource="http://creativecommons.org/licenses/publicdomain/"
+        />
+        <dc:publisher
+          >
+          <cc:Agent
+              rdf:about="http://openclipart.org/"
+            >
+            <dc:title
+              >Openclipart</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:publisher
+        >
+        <dc:title
+          >Atom Model</dc:title
+        >
+        <dc:date
+          >2006-10-16T00:11:56</dc:date
+        >
+        <dc:description
+          >Model of an atom.</dc:description
+        >
+        <dc:source
+          >https://openclipart.org/detail/652/atom-model-by-logomancer</dc:source
+        >
+        <dc:creator
+          >
+          <cc:Agent
+            >
+            <dc:title
+              >logomancer</dc:title
+            >
+          </cc:Agent
+          >
+        </dc:creator
+        >
+        <dc:subject
+          >
+          <rdf:Bag
+            >
+            <rdf:li
+              >atom</rdf:li
+            >
+            <rdf:li
+              >colour</rdf:li
+            >
+            <rdf:li
+              >icon</rdf:li
+            >
+            <rdf:li
+              >physics</rdf:li
+            >
+            <rdf:li
+              >science</rdf:li
+            >
+            <rdf:li
+              >sign</rdf:li
+            >
+          </rdf:Bag
+          >
+        </dc:subject
+        >
+      </cc:Work
+      >
+      <cc:License
+          rdf:about="http://creativecommons.org/licenses/publicdomain/"
+        >
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Reproduction"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#Distribution"
+        />
+        <cc:permits
+            rdf:resource="http://creativecommons.org/ns#DerivativeWorks"
+        />
+      </cc:License
+      >
+    </rdf:RDF
+    >
+  </metadata
+  >
+</svg
+>
