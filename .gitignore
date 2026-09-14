@@ -45,3 +45,27 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backend (Python/FastAPI) — added alongside the frontend in this repo.
+# Same "public repo, no secrets, ever" rule as the frontend .env block
+# above: backend/.env.example documents every variable with no values;
+# the real backend/.env stays off this repo entirely (unlike the
+# private monorepo it was split from, where committing it was a
+# deliberate, documented choice — see that repo's own .gitignore).
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/**/__pycache__/
+backend/venv/
+backend/venv*/
+backend/uploads/
+backend/logs/
+backend/*.db
+backend/tests/_decks/
+# Cached textbook TEXT (for AI reference) and PAGE IMAGES extracted from
+# real, copyrighted Ministry of Education textbooks — never belongs in a
+# PUBLIC repo regardless of how it's used internally. The private
+# monorepo this was split from keeps it (see that repo's own .gitignore
+# — or rather, the absence of a rule there, which is its own separate
+# judgment call for a private, personal-use repo); this one does not.
+backend/app/textbooks_cache/

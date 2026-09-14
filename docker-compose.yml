@@ -1,0 +1,115 @@
+# One command, the whole stack: Postgres + backend + frontend.
+#
+#     docker compose up -d --build
+#
+# Unlike the private "dastyor" monorepo this was split out of, backend/
+# has NO committed .env here (this repo is public — see .gitignore's own
+# comment on that). So unlike that repo's compose file, `backend` below
+# does NOT have an `env_file:` line pointing at a real secrets file —
+# there isn't one to point at. Instead:
+#
+#   1. Copy backend/.env.example to backend/.env on the SERVER (never
+#      committed, never leaves that machine) and fill in the real AI
+#      keys, JWT secret, admin phone/password, SMS provider credentials.
+#   2. `docker compose up -d --build` picks it up via the same
+#      `env_file: ./backend/.env` line below — Compose does not care
+#      whether that file is tracked by git, only that it exists on disk
+#      when you run the command.
+#
+# First boot only: POSTGRES_* below seeds a FRESH volume. If backend/.env
+# (once you've created it) names a different db/user/password, either
+# match them here or drop the `db` service and point DATABASE_URL at
+# your own Postgres — compose does not reconcile the two after the
+# volume already exists.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dastyor_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No `ports:` published to the host on purpose — only `backend` needs
+    # to reach Postgres, over the compose network by service name
+    # (db:5432), never through the host's own network stack. Publish
+    # 5432:5432 here only if you need psql from the host itself.
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      # Not committed — see this file's own top comment and
+      # .gitignore. Create it on the server before first `up`.
+      - ./backend/.env
+    environment:
+      # Whatever backend/.env's own DATABASE_URL says (typically
+      # "localhost", for running python -m uvicorn directly on a dev
+      # machine) — inside this network that has to be the `db` service's
+      # name instead. User/password/db name below must match the `db`
+      # service above (or your own external Postgres, in which case
+      # override DATABASE_URL entirely instead and remove this block).
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
+      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Avatars/generated-image uploads survive a container recreation —
+      # without this named volume every redeploy would silently orphan
+      # every teacher's avatar and every lesson illustration on disk
+      # while the DB rows still point at paths that no longer exist.
+      - backend_uploads:/app/uploads
+    ports:
+      - "${BACKEND_PORT:-8586}:8586"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8586/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      args:
+        # Baked into the browser bundle at BUILD time (see this repo's
+        # own Dockerfile comment) — "/api" makes the browser call this
+        # same frontend origin, which next.config.ts's rewrites then
+        # forward server-side to BACKEND_ORIGIN below. Change this only
+        # if the browser should call the backend directly instead (then
+        # BACKEND_ORIGIN's host must also be in the backend's
+        # CORS_ORIGINS, or every request fails in the browser alone).
+        NEXT_PUBLIC_API_URL: /api
+    restart: unless-stopped
+    environment:
+      # Runtime (not build-time) — read when the container starts.
+      # "backend" is the service name above, at the port its own
+      # Dockerfile/EXPOSE uses (8586, not FastAPI's more common default
+      # of 8001 — this repo's backend was deliberately moved to 8586).
+      # Docker's embedded DNS resolves "backend" on the compose network;
+      # "localhost" inside this container would mean the frontend
+      # container itself.
+      BACKEND_ORIGIN: http://backend:8586
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  backend_uploads:

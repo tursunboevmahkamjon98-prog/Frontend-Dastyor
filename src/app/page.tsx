@@ -286,19 +286,6 @@ export default function Home() {
                 alt=""
                 className="relative mx-auto h-auto w-full max-w-md drop-shadow-xl"
               />
-              {/* Dastyor logo overlaid where the teacher's board is —
-                  positioned by percentage against the SVG's own viewBox
-                  math (board quad ≈ x 33–58%, y 17–51% once the artwork's
-                  4:3 intrinsic width/height letterboxes the 744×1052
-                  viewBox), not eyeballed, so it tracks the artwork if this
-                  illustration is ever swapped for a same-ratio one. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt="Dastyor"
-                className="absolute"
-                style={{ left: "39%", top: "29%", width: "13%", transform: "rotate(-6deg)" }}
-              />
 
               <div
                 className="absolute left-2 top-4 flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-semibold text-primary shadow-md shadow-black/[0.06] backdrop-blur"
@@ -435,22 +422,59 @@ export default function Home() {
           number. One free generation per material type, then a flat price
           with no subscription/hidden tiers. */}
       {/* Real output, not mockups. Every image in public/samples/ is a page
-          rendered straight out of the product's own PDF export for one
-          generated lesson ("Фотосинтез", биология, 8 класс) — see the
+          rendered straight out of the product's own PDF export — see the
           backend's /materials/download-pdf. A landing page that describes
           the result in prose asks a teacher to take its word for it; this
           shows them the document they would get.
 
-          Regenerate the images the same way the originals were made:
-          generate one material of each type, POST its content to
-          download-pdf, and rasterise the page with PyMuPDF at 2x. Keep
-          them from the SAME lesson so the section reads as one coherent
-          set rather than five unrelated screenshots. */}
+          Each type is now its own independent topic on purpose (deliberate
+          call, not an oversight) — five tiles from one shared lesson read
+          like a single cherry-picked demo; five DIFFERENT real subjects
+          reads like "this works generally", which is the actual claim a
+          teacher deciding whether to sign up cares about:
+            konspekt/       Сохт ва вазифаи системаи нафаскашии инсон
+                             (биология, 8 класс)
+            lektsiya/        Исмоили Сомонӣ ва давлати Сомониён
+                             (история Таджикистана, 9 класс)
+            test/             Теоремаи Пифагор (геометрия, 8 класс)
+            amaliy/           Фотосинтез (биология, 8 класс)
+            prezentatsiya/    Рӯдакӣ — падари шеъри форсу тоҷик
+                             (таджикская литература, 9 класс)
+          This is why the copy below names neither a subject nor a grade —
+          there is no longer one to name. Keep each type's OWN pages
+          internally consistent (all of one type's pages from the same
+          lesson); nothing requires the five types to match each other.
+
+          lektsiya/ and prezentatsiya/ specifically were picked (and their
+          topics re-picked once already) for a REAL illustration landing
+          in the export, not just matching text — amaliy/ (practical
+          tasks) never renders one at all regardless of topic (see
+          ai_service.py's per-material_type dispatch: only konspekt,
+          lektsiya, prezentatsiya and occasionally test call the image
+          pipeline), so its topic carries no such requirement. Confirmed
+          live: a plain generate of these two types running through the
+          FULL concurrent image-fetch pass came back with zero pictures —
+          Wikimedia was already rate-limited hard from this same session's
+          own testing, and the 75s per-request budget ran out waiting on
+          it before Commons' fallback (Openverse, see image_builder.py's
+          _openverse_lesson_candidates) ever got a turn. What's checked in
+          here has the picture attached via one direct, unhurried
+          fetch_lesson_images() call outside that time budget instead —
+          the export code path is identical either way, only how this ONE
+          set of sample images was produced differs from a teacher's own
+          generate button.
+
+          Regenerate a given type's images the same way these were made:
+          generate that material, POST its content to download-pdf, and
+          rasterise the page with PyMuPDF (see frontend/public/samples/
+          for the matrix scale already in use — matched to the existing
+          834px-wide pages, or 1920px-wide for prezentatsiya's 16:9 deck,
+          so a resample doesn't stand out at a different size). */}
       <section id="samples" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="mx-auto mb-10 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Как выглядит результат</h2>
           <p className="mt-3 text-text-secondary">
-            Настоящие страницы, созданные Dastyor по одной теме — «Фотосинтез», биология, 8 класс.
+            Настоящие страницы, созданные Dastyor — не макеты.
           </p>
         </Reveal>
         <Reveal>

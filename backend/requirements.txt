@@ -1,0 +1,31 @@
+fastapi==0.115.6; python_version < "3.14"
+fastapi>=0.141; python_version >= "3.14"
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+greenlet==3.1.1  # SQLAlchemy async needs this; pip sometimes misses it as a transitive dep
+asyncpg==0.30.0; python_version < "3.14"
+psycopg[binary]>=3.2; python_version >= "3.14"
+psycopg2-binary==2.9.10
+alembic==1.14.0
+python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+# pydantic-core has no prebuilt wheel for Python 3.14 until pydantic 2.11+;
+# older pins here would force a from-source Rust build that fails without a
+# writable rustup cache (see README's Python 3.14 troubleshooting note).
+pydantic[email]==2.10.3; python_version < "3.14"
+pydantic[email]>=2.13; python_version >= "3.14"
+pydantic-settings==2.7.0; python_version < "3.14"
+pydantic-settings>=2.14; python_version >= "3.14"
+python-multipart==0.0.20
+aiofiles==24.1.0
+httpx==0.28.1
+truststore==0.10.4
+python-docx==1.1.2
+python-pptx==1.0.2
+reportlab==4.2.5
+aiosmtplib==3.0.2
+pypdf==5.1.0  # pure-Python PDF text extraction for konspekt "book mode" source uploads — no native build step
+Pillow==12.3.0  # transitive via python-pptx/python-docx already, pinned explicitly since app/map_builder.py imports it directly
+rembg==2.0.78  # local ONNX background removal for real_image_query "cutout" style (app/image_builder.py) — first run downloads the ~176MB u2net model
+onnxruntime==1.28.0  # rembg's inference backend — NOT pulled in automatically by plain "pip install rembg", must be installed explicitly or rembg raises SystemExit at import time

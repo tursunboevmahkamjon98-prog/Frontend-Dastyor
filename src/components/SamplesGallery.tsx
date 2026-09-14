@@ -47,7 +47,7 @@ const SAMPLES: Sample[] = [
   { id: "lektsiya", label: "Лекция", icon: Lightbulb, pages: 4, aspect: "595/842", span: "" },
   { id: "test", label: "Тест", icon: ClipboardCheck, pages: 3, aspect: "595/842", span: "" },
   { id: "amaliy", label: "Практическое задание", icon: ClipboardList, pages: 2, aspect: "595/842", span: "" },
-  { id: "prezentatsiya", label: "Презентация", icon: Presentation, pages: 9, aspect: "16/9", span: "col-span-2" },
+  { id: "prezentatsiya", label: "Презентация", icon: Presentation, pages: 11, aspect: "16/9", span: "col-span-2" },
 ];
 
 export default function SamplesGallery() {
