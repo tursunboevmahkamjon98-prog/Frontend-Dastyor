@@ -312,7 +312,7 @@ const ru = {
   "type.lektsiya": "Лекция",
   "type.test": "Тест",
   "type.prezentatsiya": "Презентация",
-  "type.amaliy": "Амалӣ супоришҳо",
+  "type.amaliy": "Практические задания",
   "type.igra": "Игра",
   // Accusative/object form of each type's name, for sentences like
   // "AI создаёт …" — type.* above is nominative ("Презентация"), which

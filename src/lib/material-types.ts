@@ -10,7 +10,11 @@ export const MATERIAL_TYPE_CONFIG: Record<
   lektsiya: { label: "Лекция", icon: Lightbulb, bg: "bg-lecture-bg", color: "text-lecture-icon" },
   test: { label: "Тест", icon: ClipboardCheck, bg: "bg-test-bg", color: "text-test-icon" },
   prezentatsiya: { label: "Презентация", icon: Presentation, bg: "bg-pres-bg", color: "text-pres-icon" },
-  amaliy: { label: "Амалӣ супоришҳо", icon: ClipboardList, bg: "bg-amaliy-bg", color: "text-amaliy-icon" },
+  // Russian, like every other label in this map (see the note on
+  // MATERIAL_TYPE_LABEL_KEY below) — this one was Tajik, so the Russian
+  // admin panel, which reads these directly, printed one row's type in
+  // the wrong language.
+  amaliy: { label: "Практические задания", icon: ClipboardList, bg: "bg-amaliy-bg", color: "text-amaliy-icon" },
   igra: { label: "Игра", icon: Gamepad2, bg: "bg-igra-bg", color: "text-igra-icon" },
 };
 
