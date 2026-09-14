@@ -105,9 +105,26 @@ def cached(key: str) -> io.BytesIO | None:
 # view). That is strictly better than the pair of them failing, and it
 # is the whole reason MAX_CONCURRENT_PPTX_CONVERSIONS is a setting: a
 # bigger server can raise it deliberately, having decided it has the RAM.
-_convert_slots = threading.Semaphore(
-    max(1, get_settings().MAX_CONCURRENT_PPTX_CONVERSIONS)
-)
+# Built on first use, not at import. Reading settings at module scope
+# means any problem with them — a missing variable, a bad value — becomes
+# an ImportError that takes the whole app down at boot instead of
+# degrading one feature. security.py's _ai_semaphore already learned this
+# and uses the same lazy shape.
+_convert_slots: "threading.Semaphore | None" = None
+_slots_lock = threading.Lock()
+
+
+def _slots() -> threading.Semaphore:
+    global _convert_slots
+    if _convert_slots is None:
+        with _slots_lock:
+            if _convert_slots is None:
+                try:
+                    n = max(1, get_settings().MAX_CONCURRENT_PPTX_CONVERSIONS)
+                except Exception:  # noqa: BLE001
+                    n = 1
+                _convert_slots = threading.Semaphore(n)
+    return _convert_slots
 
 
 def convert(pptx_bytes: bytes, cache_key: str) -> io.BytesIO | None:
@@ -140,7 +157,7 @@ def convert(pptx_bytes: bytes, cache_key: str) -> io.BytesIO | None:
         try:
             # Held only around the soffice process itself, not the
             # tempdir/IO around it — the memory spike is the process.
-            with _convert_slots:
+            with _slots():
                 result = subprocess.run(
                     [
                         binary,
