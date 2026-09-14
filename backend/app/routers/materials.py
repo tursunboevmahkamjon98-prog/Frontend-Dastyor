@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.database import get_db, async_session
+from app.database import get_db, async_session, released
 from app.models import User, Konspekt, Presentation, Test, Lecture, PracticalTask, Game, GameAttempt
 from app.schemas import (
     KonspektCreate, KonspektUpdate, KonspektOut,
@@ -1011,14 +1011,17 @@ async def reroll_game(
     await enforce_ai_edit_quota(user)
     try:
         logger.info(f"Reroll game request: id={item_id} title={item.title} user={user.id}")
-        content = await generate_material(
-            material_type="igra",
-            topic=item.title,
-            subject=item.subject,
-            language=data.language,
-            level=data.level,
-            grade=item.grade,
-        )
+        # The pool slot goes back while the model works — see released()
+        # in database.py for the outage this prevents.
+        async with released(db):
+            content = await generate_material(
+                material_type="igra",
+                topic=item.title,
+                subject=item.subject,
+                language=data.language,
+                level=data.level,
+                grade=item.grade,
+            )
         content["title"] = item.title
         item.game_json = json.dumps(content, ensure_ascii=False)
         await db.flush()
@@ -1169,36 +1172,50 @@ async def generate(
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
     require_game_access(user, data.material_type)
-    await enforce_generation_quota(user)
-
-    # Claimed BEFORE the AI call, atomically, and given back below if the
-    # generation fails — see app/limits.py. Doing it the other way round
-    # (check now, deduct after) is what let two simultaneous requests both
-    # pass the check and both generate on one charge.
-    charge = await limits.reserve(user.id, [data.material_type], language=user.language)
+    # Both of these deliberately run on their own short-lived sessions so
+    # their claims commit independently of this request. That means each
+    # one wants a SECOND pool connection while this request is already
+    # holding its own — and when a burst of requests all do that at once,
+    # every connection in the pool is held by a request waiting for a
+    # connection that can never come. Measured: 64 simultaneous
+    # generations deadlocked this way and 34 of them died after the full
+    # 30-second pool timeout; raising the pool from 30 to 60 barely
+    # moved the number, because a deadlock is not a capacity problem.
+    # Handing this request's connection back first means one connection
+    # per request at a time, and the burst merely queues.
+    async with released(db):
+        await enforce_generation_quota(user)
+        # Claimed BEFORE the AI call, atomically, and given back below if
+        # the generation fails — see app/limits.py. Doing it the other way
+        # round (check now, deduct after) is what let two simultaneous
+        # requests both pass the check and both generate on one charge.
+        charge = await limits.reserve(user.id, [data.material_type], language=user.language)
     try:
         # What this teacher already has on this topic, so a repeat request
         # produces a different lesson rather than the same one reworded.
         previous_digests = await _previous_digests(
             db, user, data.material_type, data.topic, data.subject)
 
-        content = await generate_material(
-            material_type=data.material_type,
-            topic=data.topic,
-            subject=data.subject,
-            language=data.language,
-            level=data.level,
-            grade=data.grade,
-            previous_digests=previous_digests,
-            slide_count=data.slide_count,
-            question_count=data.question_count,
-            test_type=data.test_type,
-            include_homework=data.include_homework,
-            include_fun_facts=data.include_fun_facts,
-            include_assessment=data.include_assessment,
-            template=data.template,
-            source_text=data.source_text,
-        )
+        # The pool slot goes back while the model works — see released()
+        # in database.py for the outage this prevents.
+        async with released(db):
+            content = await generate_material(
+                material_type=data.material_type,
+                topic=data.topic,
+                subject=data.subject,
+                language=data.language,
+                level=data.level,
+                grade=data.grade,
+                previous_digests=previous_digests,
+                slide_count=data.slide_count,
+                question_count=data.question_count,
+                test_type=data.test_type,
+                include_homework=data.include_homework,
+                include_fun_facts=data.include_fun_facts,
+                include_assessment=data.include_assessment,
+                template=data.template,
+                source_text=data.source_text,
+            )
         content["title"] = data.topic
 
         model_cls = _MATERIAL_MODELS[data.material_type]
@@ -1406,18 +1423,21 @@ async def regenerate_item_endpoint(
             f"idx={data.item_index} section={data.section} user={user.email}"
         )
 
-        item = await regenerate_item(
-            material_type=data.material_type,
-            topic=data.topic,
-            subject=data.subject,
-            language=data.language,
-            level=data.level,
-            grade=data.grade,
-            item_index=data.item_index,
-            existing_items=data.existing_items,
-            section=data.section,
-            existing_content=data.existing_content,
-        )
+        # The pool slot goes back while the model works — see released()
+        # in database.py for the outage this prevents.
+        async with released(db):
+            item = await regenerate_item(
+                material_type=data.material_type,
+                topic=data.topic,
+                subject=data.subject,
+                language=data.language,
+                level=data.level,
+                grade=data.grade,
+                item_index=data.item_index,
+                existing_items=data.existing_items,
+                section=data.section,
+                existing_content=data.existing_content,
+            )
         return {"status": "ok", "item": item}
     except HTTPException:
         raise
@@ -1442,16 +1462,19 @@ async def chat_edit_endpoint(
     await enforce_ai_edit_quota(user)
     try:
         logger.info(f"Chat-edit request: type={data.material_type} topic={data.topic} instruction={data.instruction[:80]!r} user={user.email}")
-        updated = await chat_edit_material(
-            material_type=data.material_type,
-            content=data.content,
-            instruction=data.instruction,
-            topic=data.topic,
-            subject=data.subject,
-            language=data.language,
-            level=data.level,
-            grade=data.grade,
-        )
+        # The pool slot goes back while the model works — see released()
+        # in database.py for the outage this prevents.
+        async with released(db):
+            updated = await chat_edit_material(
+                material_type=data.material_type,
+                content=data.content,
+                instruction=data.instruction,
+                topic=data.topic,
+                subject=data.subject,
+                language=data.language,
+                level=data.level,
+                grade=data.grade,
+            )
         return {"status": "ok", "content": updated}
     except HTTPException:
         raise
@@ -2110,23 +2133,26 @@ async def generate_lesson_material(
         previous_digests = await _previous_digests(
             db, user, data.material_type, data.topic, data.subject)
 
-        content = await generate_material(
-            material_type=data.material_type,
-            topic=data.topic,
-            subject=data.subject,
-            language=data.language,
-            level=data.level,
-            grade=data.grade,
-            previous_digests=previous_digests,
-            slide_count=data.slide_count,
-            question_count=data.question_count,
-            test_type=data.test_type,
-            include_homework=data.include_homework,
-            include_fun_facts=data.include_fun_facts,
-            include_assessment=data.include_assessment,
-            template=data.template,
-            source_text=data.source_text,
-        )
+        # The pool slot goes back while the model works — see released()
+        # in database.py for the outage this prevents.
+        async with released(db):
+            content = await generate_material(
+                material_type=data.material_type,
+                topic=data.topic,
+                subject=data.subject,
+                language=data.language,
+                level=data.level,
+                grade=data.grade,
+                previous_digests=previous_digests,
+                slide_count=data.slide_count,
+                question_count=data.question_count,
+                test_type=data.test_type,
+                include_homework=data.include_homework,
+                include_fun_facts=data.include_fun_facts,
+                include_assessment=data.include_assessment,
+                template=data.template,
+                source_text=data.source_text,
+            )
         content["title"] = data.topic
 
         model_cls = _MATERIAL_MODELS[data.material_type]

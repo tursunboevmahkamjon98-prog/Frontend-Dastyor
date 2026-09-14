@@ -217,8 +217,18 @@ class Settings(BaseSettings):
     # on the deployment: it must be (pool + overflow) x workers <= the
     # server's max_connections, or the pool exhausts into connection
     # errors under exactly the load it exists to survive.
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
+    # Measured: at 10+20 a burst of 64 simultaneous generations exhausted
+    # the pool and 41 of them died with "QueuePool limit ... reached"
+    # after waiting the full 30 seconds — and because the pool is shared,
+    # teachers who were only opening their library were served 500s too.
+    # A generation request wants two connections around the same moment
+    # (the request session from get_current_user, plus the quota check's
+    # own short-lived one), so the pool has to be sized against peak
+    # simultaneous REQUESTS, not against peak queries. 20+40 = 60 per
+    # worker still leaves room under Postgres's default max_connections
+    # of 100 for psql, backups and a second worker if one is ever added.
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 40
     DB_POOL_RECYCLE: int = 1800  # seconds; below most managed-PG idle timeouts
     DB_POOL_TIMEOUT: int = 30    # seconds to wait for a free connection
 

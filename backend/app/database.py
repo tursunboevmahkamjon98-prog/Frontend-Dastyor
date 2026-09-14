@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import secrets
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
@@ -42,6 +43,38 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 
 class Base(DeclarativeBase):
     pass
+
+
+@asynccontextmanager
+async def released(db: AsyncSession):
+    """Hands this request's database connection back to the pool for the
+    duration of the block.
+
+    A request-scoped session checks a connection out on its first query
+    (get_current_user's SELECT, on essentially every authenticated
+    request) and keeps it until the response is sent. For a generation
+    that means one connection sits idle for the whole 17-60 second AI
+    call, doing nothing but occupying a pool slot.
+
+    Measured, before this existed: 64 simultaneous generations exhausted
+    the 10+20 pool, and 35 of them died with
+    "QueuePool limit of size 10 overflow 20 reached" after waiting the
+    full 30 second timeout. Worse, the pool is shared, so teachers who
+    were only opening their library were served 500s and 28-second page
+    loads caused entirely by other people generating.
+
+    Closing the session releases the connection; SQLAlchemy checks a new
+    one out transparently on the next query. Safe here because the
+    sessionmaker above sets expire_on_commit=False, so ORM objects loaded
+    before the block (the User, chiefly) keep their values rather than
+    trying to refresh themselves while detached. Do not put queries
+    inside the block - that defeats the purpose and reconnects at once.
+    """
+    await db.close()
+    try:
+        yield
+    finally:
+        pass  # next db.execute() re-acquires from the pool on its own
 
 
 async def get_db():
