@@ -50,8 +50,12 @@ export default function ProfilePage() {
             {user.balance_somoni.toFixed(2)} {t("nav.somoni")}
           </p>
         </div>
-        <span className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">
-          {t("profile.topUp")}
+        {/* Was a "Пополнить баланс" button. Paid top-ups are not live
+            yet, so it promised an action that went nowhere — a teacher
+            who tapped it reached a page that could only tell them to
+            phone an administrator. Says when instead, until it is real. */}
+        <span className="shrink-0 rounded-xl bg-primary-50 px-4 py-2.5 text-xs font-semibold text-primary-dark">
+          {t("billing.soon")}
         </span>
       </Link>
 

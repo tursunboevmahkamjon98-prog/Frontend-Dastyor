@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Layers, PlusCircle, User, Wallet, WifiOff } from "lucide-react";
+import { Home, Layers, PlusCircle, User, WifiOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { markBackNavigationListener } from "@/lib/back-navigation";
@@ -117,22 +117,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Balance is what gates generating anything once the free
-            allowance is used up, so it belongs where it is always visible
-            rather than only inside Profile → Billing. */}
-        <Link
-          href="/dashboard/billing"
-          className="mx-3 flex items-center justify-between rounded-xl bg-surface-muted px-3 py-2.5 transition hover:bg-primary-50"
-        >
-          <span className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-            <Wallet className="h-4 w-4 shrink-0" />
-            {t("nav.balance")}
-          </span>
-          <span className="text-sm font-semibold text-text-primary">
-            {user.balance_somoni.toFixed(2)} {t("nav.somoni")}
-          </span>
-        </Link>
-
+        {/* The always-visible balance row was removed on purpose: paid
+            top-ups are not live yet (see dashboard/billing), so a running
+            somoni figure in the sidebar advertises a transaction a
+            teacher cannot actually make. It still appears inside
+            Profile → Billing, where the "not yet" is explained next to
+            it. Put this back when payment goes live. */}
         <Link
           href="/dashboard/profile"
           className="m-3 flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-surface-muted"
