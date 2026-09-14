@@ -31,12 +31,15 @@ yarn-error.log*
 
 # env files
 #
-# Frontend's own .env.local carries no secret (just NEXT_PUBLIC_API_URL,
-# which is not sensitive — see .env.production.example for the full,
-# value-free list). Kept out of git anyway since it's machine-local
-# config, not something worth a diff every time a dev's local port
-# differs. Rooted (leading /) so this does NOT also catch backend/.env
-# a few lines down, which — unlike this one — IS meant to be tracked.
+# NOT committed here. This repository is public: anything added to it
+# is world-readable and stays in the history even after a later
+# deletion. .env.production.example documents every variable without
+# carrying a single value. (2026-09-14: this repo went private->public
+# briefly went the other way and back — backend/.env was committed for
+# a few commits while private, then stripped from the ENTIRE history
+# via git-filter-repo before going public again. If you're reading this
+# because you're about to flip visibility to public yourself: check
+# `git log --all -- backend/.env` is empty FIRST, every time.)
 /.env
 /.env.*
 !/.env.production.example
@@ -48,14 +51,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# backend/.env IS committed to this repo on purpose (2026-09-14: this
-# repository was switched to private specifically to allow this — see
-# its GitHub visibility setting, and check before ever flipping it back
-# to public with this file still in history). Same reasoning as the
-# private "dastyor" monorepo backend/ was split from: a fresh clone on a
-# new server runs immediately via docker-compose.yml with no separate
-# secret-copying step. backend/.env.example carries the same variable
-# names with no values, for reference.
+# Same "public repo, no secrets, ever" rule as the frontend .env block
+# above — backend/.env.example documents every variable with no values;
+# the real backend/.env stays off this repo entirely.
+backend/.env
 backend/.env.*
 !backend/.env.example
 backend/**/__pycache__/
