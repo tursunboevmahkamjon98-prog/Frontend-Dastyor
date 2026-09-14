@@ -17,12 +17,15 @@ import math
 import os
 import uuid
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from app.fonts import font_path
 
 _TIMELINES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "timelines")
 
-_FONT_DIR = r"C:\Windows\Fonts"
-_FONT_REGULAR = os.path.join(_FONT_DIR, "segoeui.ttf")
-_FONT_BOLD = os.path.join(_FONT_DIR, "segoeuib.ttf")
+# Per role via app/fonts.py — these were pinned to C:\Windows\Fonts, so
+# every timeline label fell back to PIL's fixed-size bitmap face (which
+# ignores the requested size) off Windows. See fonts.py.
+_FONT_REGULAR = font_path("sans")
+_FONT_BOLD = font_path("sans_bold")
 
 # Rotates through these per card (not one flat color for every card) — the
 # app's validated categorical palette (see the dataviz skill's

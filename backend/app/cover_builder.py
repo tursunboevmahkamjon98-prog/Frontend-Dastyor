@@ -20,19 +20,22 @@ import os
 import re
 from datetime import date
 from PIL import Image, ImageDraw, ImageFont
+from app.fonts import font_path
 
-_FONT_DIR = r"C:\Windows\Fonts"
-_FONT_REGULAR = os.path.join(_FONT_DIR, "segoeui.ttf")
-_FONT_BOLD = os.path.join(_FONT_DIR, "segoeuib.ttf")
-# Serif alternative for "minimal"/"rasmiy" — Times New Roman ships with
-# every Windows install, same reasoning as export_builder.py reusing
-# Cambria for its own serif needs (a real font file, not a new
-# dependency). Georgia was tried here first but is missing glyphs for
-# Tajik-specific Cyrillic letters (ӯ/ҳ/ҷ/ӣ) — confirmed live: renders
-# tofu boxes for e.g. "Омӯзгор"/"Соли таҳсилӣ", silently breaking any
-# Tajik-language rasmiy/minimal cover. Times New Roman has full coverage.
-_FONT_SERIF = os.path.join(_FONT_DIR, "times.ttf")
-_FONT_SERIF_BOLD = os.path.join(_FONT_DIR, "timesbd.ttf")
+# Resolved per role by app/fonts.py rather than pinned to
+# C:\Windows\Fonts, which is what made every cover off a Windows machine
+# render as illegible specks (PIL's default bitmap fallback ignores the
+# requested size) — see that module's docstring.
+#
+# Serif is used by the "minimal"/"rasmiy" styles. Whatever backs it must
+# have the Tajik-specific Cyrillic letters ӯ/ҳ/ҷ/ӣ: Georgia was tried
+# here originally and renders tofu for "Омӯзгор"/"Соли таҳсилӣ", which
+# silently broke every Tajik-language cover. Times New Roman (Windows)
+# and DejaVu/Liberation Serif (Linux) all have full coverage.
+_FONT_REGULAR = font_path("sans")
+_FONT_BOLD = font_path("sans_bold")
+_FONT_SERIF = font_path("serif")
+_FONT_SERIF_BOLD = font_path("serif_bold")
 
 _DARK = (0x11, 0x2A, 0x5E)
 _LIGHT = (0x2E, 0x63, 0xC7)

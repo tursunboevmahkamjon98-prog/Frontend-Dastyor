@@ -26,13 +26,16 @@ import os
 import uuid
 
 from PIL import Image, ImageDraw, ImageFont
+from app.fonts import font_path
 
 _FIGURES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "figures")
 
-_FONT_DIR = r"C:\Windows\Fonts"
-_FONT_REGULAR = os.path.join(_FONT_DIR, "segoeui.ttf")
-_FONT_ITALIC = os.path.join(_FONT_DIR, "segoeuii.ttf")
-_FONT_BOLD = os.path.join(_FONT_DIR, "segoeuib.ttf")
+# Per role via app/fonts.py — these were pinned to C:\Windows\Fonts,
+# which drew every figure's labels in PIL's fixed-size bitmap fallback
+# (illegible specks) anywhere but a Windows machine. See fonts.py.
+_FONT_REGULAR = font_path("sans")
+_FONT_ITALIC = font_path("sans_italic")
+_FONT_BOLD = font_path("sans_bold")
 
 # Drawn at SS times the final size and downscaled at the end: PIL has no
 # antialiasing on lines/polygons, and a jagged cube looks like a bug rather

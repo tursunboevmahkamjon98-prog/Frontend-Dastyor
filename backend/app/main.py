@@ -98,15 +98,19 @@ async def lifespan(app: FastAPI):
     try:
         from app.export_builder import verify_pdf_fonts, verify_pptx_renderer
         from app.math_render import verify_math_fonts
+        from app.fonts import verify_fonts
         for problem in verify_pdf_fonts():
             logger.error(f"FONT PROBLEM: {problem}")
-        # Separate from verify_pdf_fonts: that one checks ReportLab's text
-        # font, this one checks the PIL faces math_render draws formulas
-        # with. They come from different packages and failed independently
-        # — a deploy had perfectly readable Tajik prose and unreadable
-        # mathematics on the same page.
+        # Three separate checks because there are three separate font
+        # stacks, and they have failed independently: ReportLab's text
+        # font (above), the PIL faces math_render draws formulas with,
+        # and the PIL faces cover/figure/timeline_builder draw with. A
+        # real deploy shipped a perfectly readable konspekt body on the
+        # same page as unreadable equations, behind an illegible cover.
         for problem in verify_math_fonts():
             logger.error(f"MATH FONT PROBLEM: {problem}")
+        for problem in verify_fonts():
+            logger.error(f"DRAWING FONT PROBLEM: {problem}")
         renderer = verify_pptx_renderer()
         if renderer:
             logger.warning(f"RENDERER: {renderer}")
