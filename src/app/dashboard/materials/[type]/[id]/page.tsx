@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Download, FileText, MonitorPlay, Trash2, Loader2, Undo2, RefreshCw, Pencil, Play, Send, Sparkles, RotateCw } from "lucide-react";
+import { ArrowLeft, Download, FileText, Trash2, Loader2, Undo2, RefreshCw, Pencil, Play, Send, Sparkles, RotateCw } from "lucide-react";
 import { materialsApi, downloadMaterial, MaterialOut, MaterialType, ApiError } from "@/lib/api";
 import PdfPreview from "@/components/PdfPreview";
 import { useT } from "@/lib/i18n";
@@ -63,21 +63,14 @@ export default function MaterialViewerPage() {
   const [hasUndo, setHasUndo] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [presenting, setPresenting] = useState(false);
-  // A presentation opens on its SLIDES, everything else on its content.
-  //
-  // "content" for a deck is the editable card list further down — one
-  // plain white card per slide, identical for every subject. That is a
-  // fine editing surface and a terrible preview, and it was the default,
-  // so a teacher opening a deck saw none of the design their subject
-  // actually gets: no layout, no motif, no palette, no figures. All of
-  // that lives in the .pptx, which the "pptx" view renders (via
-  // LibreOffice, see backend/app/pptx_pdf.py).
-  //
-  // Cost: the first open waits for that conversion (~7s for a 10-slide
-  // deck; the backend caches it, so re-opens are instant). Worth it —
-  // showing the real slides is the point of the screen.
-  const [view, setView] = useState<"content" | "pdf" | "pptx">(
-    type === "prezentatsiya" ? "pptx" : "content");
+  // Everything opens on its content. A deck briefly opened on a
+  // server-rendered image of its real slides instead; that is gone —
+  // rendering it meant running LibreOffice per view (300-500 MB a
+  // conversion), which took the whole API down when two teachers opened
+  // a deck at once on a small VPS. A presentation is downloaded and
+  // opened in PowerPoint now; "content" (the editable card list) is what
+  // the app itself shows.
+  const [view, setView] = useState<"content" | "pdf">("content");
   const [chatInstruction, setChatInstruction] = useState("");
   const [chatSubmitting, setChatSubmitting] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -490,48 +483,13 @@ export default function MaterialViewerPage() {
 
       {type === "prezentatsiya" && (
         <>
-          <div className="mb-4 inline-flex rounded-xl border border-border-light bg-surface p-0.5">
-            <button
-              onClick={() => setView("content")}
-              className={`rounded-[10px] px-4 py-1.5 text-sm transition ${
-                view === "content"
-                  ? "bg-primary-50 font-semibold text-primary"
-                  : "font-medium text-text-tertiary hover:text-text-primary"
-              }`}
-            >
-              {t("material.tabContent")}
-            </button>
-            {/* Sat in a tab strip but downloaded a file — it looked like
-                a second view of the deck and behaved like a button, so
-                nobody could see their slides without opening PowerPoint.
-                It is a real view now: the PDF the server returns for a
-                presentation is the .pptx itself put through LibreOffice
-                (see backend/app/pptx_pdf.py), so this shows the actual
-                16:9 slides rather than a second rendering of them. The
-                .pptx download is still one tap away in the row below. */}
-            <button
-              onClick={() => setView("pptx")}
-              className={`flex items-center gap-1.5 rounded-[10px] px-4 py-1.5 text-sm transition ${
-                view === "pptx"
-                  ? "bg-primary-50 font-semibold text-primary"
-                  : "font-medium text-text-tertiary hover:text-text-primary"
-              }`}
-            >
-              <MonitorPlay className="h-3.5 w-3.5" />
-              PPTX
-            </button>
-          </div>
-
-          {view === "pptx" && (
-            <PdfPreview
-              body={{
-                material_type: type,
-                content,
-                language: typeof content.language === "string" ? content.language : "Русский",
-              }}
-            />
-          )}
-
+          {/* No in-app rendering of the deck. Showing the real slides
+              meant converting the .pptx server-side with LibreOffice —
+              a 300-500 MB process per conversion, which on a small VPS
+              was enough to take the whole API down whenever two teachers
+              opened a deck at the same moment. Removed on purpose: a
+              presentation is now something you download and open, and
+              the card list below stays as the in-app editable view. */}
           <div className="mb-6 flex flex-wrap gap-2">
             {downloadFormats.map((f) => (
               <button

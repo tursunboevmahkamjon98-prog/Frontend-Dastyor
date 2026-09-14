@@ -9,32 +9,39 @@ WORKDIR /app
 # final layer isn't worth the complexity here since this is a single-stage
 # image and the packages are small.
 #
-# The three below are not optional extras — the product is broken
-# without them, and broken quietly, which is worse:
+# libreoffice-impress WAS here and is deliberately gone (2026-09-14). It
+# existed only to convert the generated .pptx into a PDF so the app could
+# show the real slides in-browser. Each conversion is a headless soffice
+# process holding 300-500 MB, and on the 2 GB VPS this is deployed to,
+# two teachers opening a deck at the same moment was enough to exhaust
+# the machine — the visible symptom being the entire API erroring, not a
+# slow preview. A deck is downloaded and opened in PowerPoint now, so the
+# ~400 MB of LibreOffice buys nothing and costs the whole server.
 #
-#   libreoffice-impress  renders the .pptx into the PDF the app shows as
-#       the presentation preview and serves from /download-pdf (see
-#       app/pptx_pdf.py). Without a soffice binary the code falls back to
-#       build_presentation_pdf, which SUCCEEDS — so nothing errors and
-#       no log line stands out, the teacher just silently gets an A4
-#       re-rendering instead of their actual slides. -impress rather than
-#       the full suite: ~400 MB against ~1 GB, and nothing here converts
-#       spreadsheets.
+# app/pptx_pdf.py is still present and degrades on purpose: find_binary()
+# returns None, convert() returns None, and /download-pdf falls back to
+# export_builder.build_presentation_pdf (an A4 rendering). Reinstalling
+# the package here is all it would take to turn the old path back on.
 #
-#   fonts-dejavu-core  is THE font for generated PDFs on Linux —
-#       export_builder._register_unicode_font looks for DejaVuSans.ttf by
-#       absolute path on non-Windows and has no further fallback. Without
-#       it every PDF comes out as empty boxes. DejaVu specifically,
-#       because of what this product is for: Tajik needs
-#       ғ қ ҳ ҷ ӣ ӯ, which the slimmer base fonts do not carry.
+# The two font packages are NOT optional — without them the product is
+# broken quietly, which is worse than loudly:
 #
-#   fonts-liberation  is metric-compatible with Arial/Times, so the decks
-#       LibreOffice renders keep the line breaks they were laid out with
-#       instead of reflowing into a substituted face.
+#   fonts-dejavu-core  is THE font for generated PDFs on Linux, for both
+#       ReportLab (export_builder._register_unicode_font) and every PIL
+#       drawing surface (app/fonts.py: covers, figures, timelines, and
+#       math_render's formulas). Without it PDFs come out as empty boxes
+#       and drawn pages as illegible specks. DejaVu specifically because
+#       of what this product is for: Tajik needs ғ қ ҳ ҷ ӣ ӯ, which the
+#       slimmer base fonts do not carry.
+#
+#   fonts-liberation  supplies the italic face app/fonts.py resolves for
+#       mathematics (DejaVu Serif's own italic ships in the -extra
+#       package, which is not installed). Variables are set in italic by
+#       convention, so this is most of the glyphs in any formula.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc libpq-dev curl \
-        libreoffice-impress fonts-dejavu-core fonts-liberation \
+        fonts-dejavu-core fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -47,10 +54,10 @@ COPY app ./app
 # they survive container recreation instead of vanishing on redeploy.
 RUN mkdir -p uploads/avatars
 
-EXPOSE 8586
+EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8586/api/health || exit 1
+    CMD curl -f http://localhost:8001/api/health || exit 1
 
 # Single worker, though no longer for the reason this comment used to
 # give: MAX_MATERIALS_PER_DAY stopped being enforced (see
@@ -65,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 # per-minute token quota is the one that bites first — and it bites as
 # 429s on everybody's generation, not just the excess ones. Move these
 # counters to Redis before raising this.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8586", "--workers", "1"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

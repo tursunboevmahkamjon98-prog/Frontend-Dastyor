@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
     # startup is the only place they can be noticed before a teacher
     # notices them.
     try:
-        from app.export_builder import verify_pdf_fonts, verify_pptx_renderer
+        from app.export_builder import verify_pdf_fonts
         from app.math_render import verify_math_fonts
         from app.fonts import verify_fonts
         for problem in verify_pdf_fonts():
@@ -111,9 +111,10 @@ async def lifespan(app: FastAPI):
             logger.error(f"MATH FONT PROBLEM: {problem}")
         for problem in verify_fonts():
             logger.error(f"DRAWING FONT PROBLEM: {problem}")
-        renderer = verify_pptx_renderer()
-        if renderer:
-            logger.warning(f"RENDERER: {renderer}")
+        # No LibreOffice check here any more: its absence is now the
+        # intended state (see backend/Dockerfile), so warning about it
+        # every boot would be noise that trains people to ignore this
+        # block — which is exactly what it exists not to be.
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Startup asset check skipped: {e}")
     yield
