@@ -170,6 +170,16 @@ class Settings(BaseSettings):
     # ordinary non-AI API calls responsive while generations are in
     # flight — they never touch this semaphore.
     MAX_CONCURRENT_AI_CALLS: int = 8
+
+    # How many LibreOffice conversions may run at once (see
+    # app/pptx_pdf.py). Each one is a real soffice process holding
+    # 300-500 MB, and nothing bounded this before — two teachers
+    # exporting a deck at the same moment were enough to run a 2 GB VPS
+    # out of memory, which surfaces as the whole API erroring rather
+    # than as a slow export. 1 is the safe default for the server size
+    # DEPLOY.md recommends; raise it only after checking the box has the
+    # RAM for N x 500 MB on top of Postgres and the app itself.
+    MAX_CONCURRENT_PPTX_CONVERSIONS: int = 1
     # How long a request will wait for a slot before giving up with 503.
     # Long enough to ride out a burst, short enough that a client is not
     # left holding an open connection indefinitely.

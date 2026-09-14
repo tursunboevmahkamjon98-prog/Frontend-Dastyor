@@ -23,8 +23,10 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
 from collections import OrderedDict
 
+from app.config import get_settings
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -85,12 +87,37 @@ def cached(key: str) -> io.BytesIO | None:
     return io.BytesIO(hit)
 
 
+# One conversion at a time, process-wide.
+#
+# Each call below spawns a real, headless LibreOffice — roughly 300-500 MB
+# resident while it runs. Nothing bounded that before, so two teachers
+# exporting at the same moment put two of them on the box at once; on a
+# small VPS (2 GB is the size DEPLOY.md recommends) that is enough to run
+# the machine out of memory, and what the second teacher sees is not a
+# slow export but the whole API failing while the kernel kills something.
+#
+# A threading.Semaphore, not asyncio: convert() is synchronous and is
+# already called from a worker thread, so the async primitive would not
+# apply here.
+#
+# Serialising costs the second export a wait (a conversion is ~17s, and
+# the result is cached afterwards so it is paid once per deck, not per
+# view). That is strictly better than the pair of them failing, and it
+# is the whole reason MAX_CONCURRENT_PPTX_CONVERSIONS is a setting: a
+# bigger server can raise it deliberately, having decided it has the RAM.
+_convert_slots = threading.Semaphore(
+    max(1, get_settings().MAX_CONCURRENT_PPTX_CONVERSIONS)
+)
+
+
 def convert(pptx_bytes: bytes, cache_key: str) -> io.BytesIO | None:
     """The deck as a PDF, or None if LibreOffice could not produce one.
 
     Never raises: every failure path here has a working fallback in the
     caller, and turning a preview into a 500 would be worse than showing
-    the older, document-shaped PDF."""
+    the older, document-shaped PDF.
+
+    Serialised against other conversions — see _convert_slots above."""
     key = cache_key
     hit = cached(key)
     if hit is not None:
@@ -111,19 +138,22 @@ def convert(pptx_bytes: bytes, cache_key: str) -> io.BytesIO | None:
         # up once two teachers export at the same time.
         profile = os.path.join(work, "profile")
         try:
-            result = subprocess.run(
-                [
-                    binary,
-                    f"-env:UserInstallation=file:///{profile.replace(os.sep, '/').lstrip('/')}",
-                    "--headless",
-                    "--norestore",
-                    "--convert-to", "pdf",
-                    "--outdir", work,
-                    src,
-                ],
-                capture_output=True,
-                timeout=_TIMEOUT_SECONDS,
-            )
+            # Held only around the soffice process itself, not the
+            # tempdir/IO around it — the memory spike is the process.
+            with _convert_slots:
+                result = subprocess.run(
+                    [
+                        binary,
+                        f"-env:UserInstallation=file:///{profile.replace(os.sep, '/').lstrip('/')}",
+                        "--headless",
+                        "--norestore",
+                        "--convert-to", "pdf",
+                        "--outdir", work,
+                        src,
+                    ],
+                    capture_output=True,
+                    timeout=_TIMEOUT_SECONDS,
+                )
         except subprocess.TimeoutExpired:
             logger.error(f"LibreOffice timed out after {_TIMEOUT_SECONDS}s converting a deck")
             return None
