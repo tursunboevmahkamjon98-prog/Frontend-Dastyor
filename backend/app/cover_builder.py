@@ -627,10 +627,29 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
         draw.text(((W - draw.textlength(text, font=font)) / 2, y), text, font=font, fill=fill)
 
     # ── top meta row: what year, and how long the lesson runs ──────────
-    meta_font = _font(_FONT_SERIF_BOLD, 34)
+    #
+    # Two strings pinned to opposite margins, so the only thing keeping
+    # them apart is whether they happen to be narrow enough. At a fixed
+    # 34pt they were not: the size was chosen against Segoe UI on a
+    # Windows dev machine, and the server resolves a different face (see
+    # app/fonts.py — DejaVu/Liberation, both wider), which ran
+    # "Соли таҳсилӣ 2026-2027" straight through "Давомнокии дарс: 1 соат".
+    #
+    # Fixed by measuring instead of assuming. The size steps down only as
+    # far as it must to leave a real gap, so on a font where 34 already
+    # fits nothing changes at all.
     meta_ink = (0x6B, 0x72, 0x80)
-    draw.text((margin, 120), f'{L["year_prefix"]} {_academic_year()}', font=meta_font, fill=meta_ink)
+    year_text = f'{L["year_prefix"]} {_academic_year()}'
     duration = N["duration"]
+    available = W - 2 * margin
+    min_gap = 40
+    for size in range(34, 21, -2):
+        meta_font = _font(_FONT_SERIF_BOLD, size)
+        used = (draw.textlength(year_text, font=meta_font)
+                + draw.textlength(duration, font=meta_font))
+        if used + min_gap <= available:
+            break
+    draw.text((margin, 120), year_text, font=meta_font, fill=meta_ink)
     draw.text((W - margin - draw.textlength(duration, font=meta_font), 120),
               duration, font=meta_font, fill=_NAK_BLUE)
     draw.line([(margin, 182), (W - margin, 182)], fill=hair, width=2)

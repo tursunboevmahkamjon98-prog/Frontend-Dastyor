@@ -3669,6 +3669,33 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
                 for i, image in enumerate(fetched):
                     image["_cache_slot"] = len(cached) + i
                 images.extend(fetched)
+
+        # Three independent sources feed `images` above — the textbook
+        # scan, the per-topic cache, and a fresh Commons/Openverse search
+        # — and until this ran, nothing compared them against each other.
+        # fetch_lesson_images dedupes only WITHIN its own call, and it is
+        # never told what the cache already returned, so the obvious case
+        # went straight through: the cache holds the one good picture for
+        # this topic, the search for the remaining slot finds that same
+        # Commons file, and the konspekt prints it twice. Reported from a
+        # real material.
+        #
+        # Keyed on the Commons file title where there is one and the
+        # saved path otherwise: two cache hits share a title but each
+        # download gets its own uuid filename, so path alone would call
+        # them different pictures.
+        _seen: set[str] = set()
+        _unique: list[dict] = []
+        for im in images:
+            key = str(im.get("file_title") or im.get("path") or "")
+            if key and key in _seen:
+                logger.info(f"Lesson image dropped as duplicate: {key}")
+                continue
+            if key:
+                _seen.add(key)
+            _unique.append(im)
+        images = _unique
+
         if images:
             _place_lesson_images(content, images, requests)
             images = await _caption_and_verify_images(
