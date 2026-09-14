@@ -38,13 +38,44 @@ if [ ! -f "$BACKEND_ENV" ]; then
     SECRET_KEY="$(openssl rand -hex 32)"
     ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | cut -c1-16)"
 
+    # The admin account is provisioned at backend startup by main.py's
+    # _provision_admin — which returns immediately unless ADMIN_EMAIL is
+    # set, and creates an account that CANNOT log in unless ADMIN_PHONE
+    # is too (sign-in is phone-only, see schemas.UserLogin). Generating a
+    # password without both of these produced exactly that: a printed
+    # password belonging to no account at all. Neither value can be
+    # invented — the phone has to be a real number that receives SMS —
+    # so ask, and only fall back to a warning when there's no terminal
+    # to ask from (CI, `docker compose` wrappers, a non-interactive
+    # provisioning script).
+    ADMIN_PHONE=""
+    if [ -t 0 ]; then
+        echo
+        echo "Admin sign-in is by PHONE, not email. Enter the phone number that"
+        echo "should own the admin account, in full international form."
+        printf "  Admin phone (e.g. +992901234567), or blank to skip: "
+        read -r ADMIN_PHONE
+        echo
+    fi
+
     # -i (in place, no backup suffix) — fine on the Linux servers this
     # targets; macOS/BSD sed would need -i '' instead, not handled here
     # since DEPLOY.md's whole deploy path is Ubuntu.
     sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" "$BACKEND_ENV"
     sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|" "$BACKEND_ENV"
 
-    GENERATED_ADMIN_PASSWORD="$ADMIN_PASSWORD"
+    if [ -n "$ADMIN_PHONE" ]; then
+        sed -i "s|^ADMIN_PHONE=.*|ADMIN_PHONE=${ADMIN_PHONE}|" "$BACKEND_ENV"
+        # _provision_admin keys off the EMAIL, so it has to be non-empty
+        # for the account to be created at all — it is never used to log
+        # in (phone-only), just as the provisioning key and the address
+        # shown in the admin panel. A placeholder on the machine's own
+        # hostname is enough and needs nothing from the operator.
+        sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=admin@$(hostname -f 2>/dev/null || echo localhost)|" "$BACKEND_ENV"
+        GENERATED_ADMIN_PASSWORD="$ADMIN_PASSWORD"
+    else
+        ADMIN_SETUP_SKIPPED=1
+    fi
 fi
 
 if [ ! -f "$ROOT_ENV" ]; then
@@ -76,18 +107,31 @@ echo "========================================================================"
 echo "  Frontend:  http://localhost:${FRONTEND_PORT:-8090}"
 echo "  Backend:   http://localhost:${BACKEND_PORT:-8586}/api/health"
 if [ -n "${GENERATED_ADMIN_PASSWORD:-}" ]; then
+    ADMIN_PHONE_SET="$(grep -m1 '^ADMIN_PHONE=' "$BACKEND_ENV" | cut -d= -f2-)"
     echo
-    echo "  Admin account was just created. SAVE THIS PASSWORD NOW — it is"
-    echo "  only ever shown this once:"
+    echo "  Admin account created. Sign in at the frontend with:"
     echo
+    echo "    Phone:    ${ADMIN_PHONE_SET}"
     echo "    Password: ${GENERATED_ADMIN_PASSWORD}"
     echo
-    echo "  Still needed before login/AI/SMS actually work — edit backend/.env:"
-    echo "    ADMIN_PHONE       your real phone number, to log in as this admin"
-    echo "    AI_API_KEY (..5)  a Cerebras account key, or material generation fails"
-    echo "    ROBITA_* or TWILIO_*   an SMS provider, or codes only print to the"
-    echo "                           backend's own logs instead of sending"
+    echo "  SAVE THE PASSWORD NOW — it is only ever shown this once."
     echo
-    echo "  After editing backend/.env: docker compose up -d --build (again)."
+elif [ -n "${ADMIN_SETUP_SKIPPED:-}" ]; then
+    echo
+    echo "  NO ADMIN ACCOUNT WAS CREATED — no phone number was given, and"
+    echo "  sign-in is phone-only, so an account without one cannot log in."
+    echo "  To create it: set BOTH of these in backend/.env, then re-run"
+    echo "  'docker compose up -d --build':"
+    echo "    ADMIN_PHONE=+992901234567     (your real number)"
+    echo "    ADMIN_EMAIL=admin@localhost   (any value; just the lookup key)"
+    echo "    ADMIN_PASSWORD=...            (already generated, see the file)"
+    echo
 fi
+echo "  Still needed before AI/SMS work — edit backend/.env, then re-run"
+echo "  'docker compose up -d --build':"
+echo "    AI_API_KEY (..5)       a Cerebras key, or generation fails"
+echo "    ROBITA_* or TWILIO_*   an SMS provider, or sign-up codes only"
+echo "                           print to 'docker compose logs backend'"
+echo "    CORS_ORIGINS           your real domain (only matters for the"
+echo "                           mobile app; the website proxies via /api)"
 echo "========================================================================"
