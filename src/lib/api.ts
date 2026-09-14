@@ -1011,7 +1011,9 @@ export const adminApi = {
   balanceHistory: (userId: string, params: { limit?: number; offset?: number } = {}) =>
     request<BalanceTransactionOut[]>(`/admin/users/${userId}/balance-history${qs(params)}`),
   removeUser: (userId: string) => request<void>(`/admin/users/${userId}`, { method: "DELETE" }),
-  listMaterials: (params: { type?: MaterialType; q?: string; limit?: number; offset?: number } = {}) =>
+  // user_id narrows the list to one teacher — what the "materials" button
+  // on an admin/users row opens.
+  listMaterials: (params: { type?: MaterialType; q?: string; user_id?: string; limit?: number; offset?: number } = {}) =>
     request<AdminMaterialsPage>(`/admin/materials${qs(params)}`),
   removeMaterial: (type: MaterialType, id: string) =>
     request<void>(`/admin/materials/${type}/${id}`, { method: "DELETE" }),

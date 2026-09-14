@@ -310,7 +310,8 @@ _MATERIAL_MODELS = {
 }
 
 
-async def _query_materials(db: AsyncSession, type: str | None, q: str | None):
+async def _query_materials(db: AsyncSession, type: str | None, q: str | None,
+                           owner_id: str | None = None):
     """Yields (material_type, row) across whichever table(s) are in scope
     for this request — one real SELECT per table (6 tables total, small
     tables, admin-only endpoint) rather than a raw UNION across
@@ -325,6 +326,12 @@ async def _query_materials(db: AsyncSession, type: str | None, q: str | None):
         query = select(model.id, model.title, model.subject, model.grade, model.owner_id, model.created_at)
         if q:
             query = query.where(model.title.ilike(f"%{q}%") | model.subject.ilike(f"%{q}%"))
+        # Narrow to one teacher. Added so an admin can answer "what has
+        # THIS account actually produced" — previously the only way was
+        # to eyeball the all-teachers list, which is the wrong tool the
+        # moment there is more than a handful of them.
+        if owner_id:
+            query = query.where(model.owner_id == owner_id)
         rows = (await db.execute(query)).all()
         out.extend((t, r) for r in rows)
     return out
@@ -334,6 +341,7 @@ async def _query_materials(db: AsyncSession, type: str | None, q: str | None):
 async def list_materials(
     type: str | None = None,
     q: str | None = None,
+    user_id: str | None = None,
     limit: int = 30,
     offset: int = 0,
     admin: User = Depends(get_current_admin),
@@ -346,7 +354,7 @@ async def list_materials(
     fetching all matching rows from each of the (small, pilot-scale)
     tables rather than a cross-table SQL ORDER BY/LIMIT, which would need
     a real UNION ALL — simpler and fast enough at this scale."""
-    tagged = await _query_materials(db, type, q)
+    tagged = await _query_materials(db, type, q, owner_id=user_id)
     tagged.sort(key=lambda pair: pair[1].created_at, reverse=True)
     total = len(tagged)
     page = tagged[offset: offset + min(limit, 100)]

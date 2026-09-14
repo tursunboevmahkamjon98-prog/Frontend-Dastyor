@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Trash2, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { adminApi, AdminMaterialOut, ApiError, MaterialType } from "@/lib/api";
@@ -14,6 +15,12 @@ const PAGE_SIZE = 30;
  * routers/admin.py) were already there too, just never wired to
  * anything, so the tab silently 404'd. This is that missing page. */
 export default function AdminMaterialsPage() {
+  // ?user=<id> narrows the list to one teacher — set by the "materials"
+  // button on an admin/users row, so an admin can go from "who is this
+  // account" straight to "what have they actually made" instead of
+  // hunting for their name in the all-teachers list.
+  const params = useSearchParams();
+  const userId = params.get("user") || "";
   const [query, setQuery] = useState("");
   const [type, setType] = useState<MaterialType | "">("");
   const [items, setItems] = useState<AdminMaterialOut[]>([]);
@@ -28,6 +35,7 @@ export default function AdminMaterialsPage() {
     try {
       const page = await adminApi.listMaterials({
         q: query || undefined,
+        user_id: userId || undefined,
         type: type || undefined,
         limit: PAGE_SIZE,
         offset: nextOffset,
@@ -40,7 +48,7 @@ export default function AdminMaterialsPage() {
     } finally {
       setLoading(false);
     }
-  }, [query, type]);
+  }, [query, type, userId]);
 
   // Debounced like admin/users — a search/type change goes back to page 1
   // rather than keeping whatever offset was scrolled to for the OLD filter.
@@ -48,7 +56,7 @@ export default function AdminMaterialsPage() {
     const t = setTimeout(() => load(0), 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, type]);
+  }, [query, type, userId]);
 
   async function remove(item: AdminMaterialOut) {
     // Same reasoning as admin/users' remove(): irreversible, no undo
@@ -74,9 +82,19 @@ export default function AdminMaterialsPage() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-text-primary">Материалы</h1>
-      <p className="mb-5 text-sm text-text-secondary">
-        Все сгенерированные материалы, всех учителей — {total} шт.
-      </p>
+      {userId ? (
+        <p className="mb-5 text-sm text-text-secondary">
+          Материалы одного учителя
+          {items[0]?.owner_name ? ` — ${items[0].owner_name}` : ""} ({total} шт.).{" "}
+          <Link href="/admin/materials" className="font-medium text-primary hover:underline">
+            Показать всех
+          </Link>
+        </p>
+      ) : (
+        <p className="mb-5 text-sm text-text-secondary">
+          Все сгенерированные материалы, всех учителей — {total} шт.
+        </p>
+      )}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">

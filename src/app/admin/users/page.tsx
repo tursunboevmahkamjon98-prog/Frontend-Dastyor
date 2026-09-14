@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, Shield, ShieldOff, Trash2, Loader2, Crown, Wallet } from "lucide-react";
+import { Search, Shield, ShieldOff, Trash2, Loader2, Crown, Wallet, FileText } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { adminApi, AdminUserOut, ApiError } from "@/lib/api";
 
@@ -183,6 +184,19 @@ export default function AdminUsersPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Straight to what this account has actually made.
+                      The admin materials list could already be searched
+                      by hand, but "which of these rows are hers" is not
+                      a search — it is a filter, and it belongs on the
+                      row that raises the question. */}
+                  <Link
+                    href={`/admin/materials?user=${u.id}`}
+                    title={`Материалы: ${u.full_name}`}
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-muted"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </Link>
 
                   <button
                     onClick={() => setTopUpOpenId(topUpOpenId === u.id ? null : u.id)}
