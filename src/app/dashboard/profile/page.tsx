@@ -3,12 +3,11 @@
 import { useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LogOut, Lock, Languages, ChevronRight, X, Loader2, Camera, Trash2, ShieldCheck, Wallet, Send, Mail } from "lucide-react";
+import { LogOut, Lock, Languages, ChevronRight, X, Loader2, Camera, Trash2, ShieldCheck, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi, ApiError, API_ORIGIN } from "@/lib/api";
 import { LANGUAGES } from "@/lib/material-types";
 import { useT, useLocale } from "@/lib/i18n";
-import { CONTACT } from "@/lib/contact";
 import { localeFromAccountLanguage } from "@/lib/messages";
 
 const FIELD = "w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text-primary outline-none focus:border-primary";
@@ -64,40 +63,13 @@ export default function ProfilePage() {
         <MenuRow icon={Languages} label={t("profile.language")} value={user.language} onClick={() => setOpenModal("language")} />
       </div>
 
-      {/* Связь — how to reach us. A teacher who has a question about a
-          material, a payment or an error needs a person, and the app is
-          where they are when the question comes up. */}
-      <div className="mb-6 overflow-hidden rounded-2xl border border-border-light bg-surface">
-        <p className="px-4 pt-3.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-          {t("profile.contact")}
-        </p>
-        <a
-          href={CONTACT.telegramUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 p-4 hover:bg-surface-muted"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50">
-            <Send className="h-4 w-4 text-primary" />
-          </div>
-          <span className="flex-1 text-sm font-medium text-text-primary">Telegram</span>
-          <span className="text-xs text-text-tertiary">{CONTACT.telegram}</span>
-          <ChevronRight className="h-4 w-4 text-text-tertiary" />
-        </a>
-        <div className="h-px bg-border-light" />
-        <a
-          href={`mailto:${CONTACT.email}`}
-          className="flex items-center gap-3 p-4 hover:bg-surface-muted"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50">
-            <Mail className="h-4 w-4 text-primary" />
-          </div>
-          <span className="flex-1 text-sm font-medium text-text-primary">Email</span>
-          <span className="max-w-[45%] truncate text-xs text-text-tertiary">{CONTACT.email}</span>
-          <ChevronRight className="h-4 w-4 text-text-tertiary" />
-        </a>
-      </div>
-
+      {/* The "Связь" block (personal Telegram handle and e-mail) was
+          removed. It put one person's private contact details in front of
+          every teacher who signs up — fine while the pilot was a handful
+          of people who already knew him, not once the app is sold. The
+          details themselves still live in lib/contact-info (mobile:
+          ContactInfo) for the places that genuinely need a human, like
+          the top-up flow. */}
       {user.role === "admin" && (
         <Link
           href="/admin"
