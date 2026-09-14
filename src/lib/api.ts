@@ -245,20 +245,6 @@ export interface MaterialOut {
   updated_at: string;
 }
 
-/** One saved play-through of a test (see materialsApi.submitTestAttempt/
- * listTestAttempts and components/TestPlayer.tsx). `answers_json` is a
- * JSON-encoded array mirroring TestPlayer's internal Answer[] — kept as a
- * raw string here the same way MaterialOut's *_json fields are, so this
- * type doesn't need to know that shape. */
-export interface TestAttemptOut {
-  id: string;
-  test_id: string;
-  score: number;
-  total: number;
-  answers_json: string;
-  created_at: string;
-}
-
 /** One saved play-through of a game (see components/game/GameEngine.tsx) —
  * NOT a cross-student leaderboard entry: this app has no student
  * login/roster, every attempt on one game is the same account replaying
@@ -516,16 +502,6 @@ export const materialsApi = {
     language?: string;
     count?: number;
   }) => request<QuizSetResponse>("/materials/quiz-set", { method: "POST", body }),
-  /** Saves one completed online play-through of a test (see
-   * components/TestPlayer.tsx) — `total` only counts auto-gradable
-   * questions (multiple_choice/true_false/multiple_select), open_ended
-   * ones are in `answers_json` for review but never scored. */
-  submitTestAttempt: (testId: string, body: { score: number; total: number; answers_json: string }) =>
-    request<TestAttemptOut>(`/materials/tests/${testId}/attempts`, { method: "POST", body }),
-  /** This account's past attempts at one test, most recent first — powers
-   * TestPlayer's "Результаты" history panel. */
-  listTestAttempts: (testId: string) =>
-    request<TestAttemptOut[]>(`/materials/tests/${testId}/attempts`),
   /** Saves one completed online play-through of a game (see
    * components/game/GameEngine.tsx's GameResult) — solo or duel. */
   submitGameAttempt: (

@@ -5038,8 +5038,14 @@ def _pdf_plan_body(content: dict, L: dict) -> list:
                 # a formula and then says what it is for.
                 blk.append(drawn)
                 if isinstance(f, dict) and f.get("explanation"):
+                    # Through _math_inline like every other body text: the
+                    # model routinely writes the formula it is describing
+                    # inline ("...решаҳои муодилаи $ax^{2}+bx+c=0$"), and
+                    # emitting the string raw printed those dollar signs
+                    # and the LaTeX verbatim on the page.
                     blk.append(Paragraph(
-                        f'<para alignment="center">{f["explanation"]}</para>',
+                        f'<para alignment="center">'
+                        f'{_math_inline(f["explanation"], 9.5, _PLAN_BG)}</para>',
                         ParagraphStyle(name=f"Fx{abs(hash(plain)) % 99999}",
                                        parent=S["body"], fontSize=9.5, leading=12.5,
                                        spaceBefore=1, spaceAfter=7),
@@ -5047,7 +5053,7 @@ def _pdf_plan_body(content: dict, L: dict) -> list:
             else:
                 line = f"<b>{plain}</b>"
                 if isinstance(f, dict) and f.get("explanation"):
-                    line += f" — {f['explanation']}"
+                    line += f" — {_math_inline(f['explanation'], 9.5)}"
                 blk.append(Paragraph(f"&nbsp;&nbsp;•&nbsp;&nbsp;{line}", S["bullet"]))
         heavy.append([head] + _plan_panel(blk[1:]))
 

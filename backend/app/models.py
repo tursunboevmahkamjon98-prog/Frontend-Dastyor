@@ -358,12 +358,13 @@ class Test(Base):
     subject: Mapped[str] = mapped_column(String(120), index=True)
     grade: Mapped[str] = mapped_column(String(20), index=True)
     questions_json: Mapped[str | None] = mapped_column(Text, default=None)
-    # Per-question countdown for online play (see TestAttempt below) — the
-    # teacher sets this once on the test (not per-question: one knob is
-    # simpler and matches the product ask), null means untimed. Column
-    # added to an already-existing `tests` table, so also needs the
-    # ALTER TABLE in database.py's init_db like every other post-launch
-    # column on this model.
+    # ORPHANED as of the online-play removal (2026-09-14): this drove the
+    # per-question countdown in the quiz runner, and nothing reads it now
+    # that a test is a printable document only. Kept rather than dropped
+    # because removing a column means a destructive migration against
+    # live data for zero functional gain — an unread column costs
+    # nothing. Delete it (with the matching ALTER TABLE) only if online
+    # play is ruled out for good.
     time_limit_seconds: Mapped[int | None] = mapped_column(default=None)
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     is_favorite: Mapped[bool] = mapped_column(default=False, index=True)
@@ -375,14 +376,26 @@ class Test(Base):
 
 
 class TestAttempt(Base):
-    """One completed online play-through of a Test (see TestPlayer.tsx) —
-    a separate table rather than a column on Test because a test is played
-    many times by the same account (retakes) and each play needs its own
+    """One completed online play-through of a Test.
+
+    ORPHANED as of 2026-09-14: online test play was removed on purpose —
+    the quiz runner, its /play route and both /tests/{id}/attempts
+    endpoints are gone, and a test is now a printable document only. No
+    code writes or reads this table anymore.
+
+    Kept rather than dropped because dropping it destroys whatever
+    attempt history already exists, irreversibly, to save nothing — an
+    unused table costs no runtime. Drop it (and the `attempts`
+    relationships on Test/User) only once that history is confirmed
+    worthless AND online play is ruled out for good.
+
+    Original shape, still accurate if it is ever revived: a separate
+    table rather than a column on Test because a test is played many
+    times by the same account (retakes) and each play needs its own
     score/answers kept, not overwritten. Auto-graded question types
-    (multiple_choice/true_false/multiple_select) count toward score/total;
-    open_ended answers are stored in answers_json for the pupil's own
-    review but excluded from both — there is no reliable auto-grader for
-    free text here."""
+    (multiple_choice/true_false/multiple_select) counted toward
+    score/total; open_ended answers were stored in answers_json for
+    review but excluded from both."""
     __tablename__ = "test_attempts"
 
     id: Mapped[str] = mapped_column(

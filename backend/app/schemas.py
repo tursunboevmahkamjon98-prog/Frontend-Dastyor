@@ -339,25 +339,6 @@ class TestOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Test attempts (online play — see TestPlayer.tsx) ───────────────────────
-
-class TestAttemptCreate(BaseModel):
-    score: int
-    total: int
-    answers_json: str
-
-
-class TestAttemptOut(BaseModel):
-    id: str
-    test_id: str
-    score: int
-    total: int
-    answers_json: str
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
 # ── Game attempts (online play — see components/game/GameEngine.tsx) ───────
 
 class GameAttemptCreate(BaseModel):

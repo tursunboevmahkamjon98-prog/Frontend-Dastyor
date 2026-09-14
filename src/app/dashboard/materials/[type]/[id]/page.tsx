@@ -9,7 +9,6 @@ import { useT } from "@/lib/i18n";
 import { MATERIAL_TYPE_CONFIG, KONSPEKT_TEMPLATES, getSubjectAccent } from "@/lib/material-types";
 import KonspektBody from "@/components/konspekt/KonspektBody";
 import GamePlayer from "@/components/GamePlayer";
-import TestPlayer from "@/components/TestPlayer";
 import PresentMode from "@/components/PresentMode";
 import VisualBlockView, { VisualBlock, SlideHeader } from "@/components/presentation/SlideVisuals";
 
@@ -436,32 +435,21 @@ export default function MaterialViewerPage() {
         </div>
       )}
 
-      {/* Online play (see components/TestPlayer.tsx) — sits above the PDF
-          preview/download row below, which stays untouched: a teacher
-          still wants the printable version too, this just adds a way to
-          run the same test live with a pupil instead of only handing out
-          paper. */}
+      {/* A test is a printable document, nothing more — the online
+          play-through (a full-screen quiz runner with a per-question
+          countdown, scoring and attempt history) was removed on purpose.
+          What stays is the editor and, below, the same PDF/DOCX preview
+          and download every other material type gets. */}
       {type === "test" && (content.questions as Question[] | undefined)?.length ? (
-        <>
-          {/* Only the editor lives up here. There used to be a "Пройти
-              тест" button beside it too, which read as a second, different
-              action but pushed to /dashboard/tests/[id]/play — a route
-              that mounts this very same TestPlayer with autoStart. So the
-              page showed two identical-looking buttons for one quiz, and
-              the top one silently skipped the card's per-question time
-              limit. The card below is the single way in now; the /play
-              route stays for direct links. */}
-          <div className="mb-3 flex">
-            <button
-              onClick={() => router.push(`/dashboard/tests/${id}/edit`)}
-              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface-muted"
-            >
-              <Pencil className="h-4 w-4" />
-              Редактировать тест
-            </button>
-          </div>
-          <TestPlayer content={content} materialId={id} initialTimeLimit={item.time_limit_seconds} />
-        </>
+        <div className="mb-3 flex">
+          <button
+            onClick={() => router.push(`/dashboard/tests/${id}/edit`)}
+            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface-muted"
+          >
+            <Pencil className="h-4 w-4" />
+            Редактировать тест
+          </button>
+        </div>
       ) : null}
 
       {/* konspekt/lektsiya/test/amaliy: PDF-only per explicit request — the

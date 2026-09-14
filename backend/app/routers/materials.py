@@ -7,11 +7,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db, async_session
-from app.models import User, Konspekt, Presentation, Test, TestAttempt, Lecture, PracticalTask, Game, GameAttempt
+from app.models import User, Konspekt, Presentation, Test, Lecture, PracticalTask, Game, GameAttempt
 from app.schemas import (
     KonspektCreate, KonspektUpdate, KonspektOut,
     PresentationCreate, PresentationUpdate, PresentationOut,
-    TestCreate, TestUpdate, TestOut, TestAttemptCreate, TestAttemptOut,
+    TestCreate, TestUpdate, TestOut,
     LectureCreate, LectureUpdate, LectureOut,
     PracticalTaskCreate, PracticalTaskUpdate, PracticalTaskOut,
     GameCreate, GameUpdate, GameOut, GameAttemptCreate, GameAttemptOut,
@@ -790,46 +790,6 @@ async def delete_test(
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     await db.delete(item)
-
-
-# ── Test attempts (online play — see frontend/src/components/TestPlayer.tsx) ─
-
-@router.post("/tests/{item_id}/attempts", response_model=TestAttemptOut, status_code=201)
-async def create_test_attempt(
-    item_id: str,
-    data: TestAttemptCreate,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    # 404 rather than a silent cross-account save if the test doesn't
-    # belong to (or doesn't exist for) this account — same ownership check
-    # every other /tests/{item_id} route already makes.
-    result = await db.execute(
-        select(Test).where(Test.id == item_id, Test.owner_id == user.id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Not found")
-    item = TestAttempt(test_id=item_id, user_id=user.id, **data.model_dump())
-    db.add(item)
-    await db.flush()
-    return TestAttemptOut.model_validate(item)
-
-
-@router.get("/tests/{item_id}/attempts", response_model=list[TestAttemptOut])
-async def list_test_attempts(
-    item_id: str,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    # Most recent first — the player's "Результаты" panel shows this as a
-    # plain reverse-chronological list, no pagination (a teacher retaking
-    # their own test a few dozen times is the realistic ceiling here).
-    result = await db.execute(
-        select(TestAttempt)
-        .where(TestAttempt.test_id == item_id, TestAttempt.user_id == user.id)
-        .order_by(TestAttempt.created_at.desc())
-    )
-    return [TestAttemptOut.model_validate(i) for i in result.scalars().all()]
 
 
 # ── Practical tasks ("💡 Амалӣ супоришҳо") ────────────────────────────────────

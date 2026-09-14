@@ -32,11 +32,72 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ── fonts ───────────────────────────────────────────────────────────────
-_FONT_DIR = r"C:\Windows\Fonts"
-_SERIF = _FONT_DIR + r"\cambria.ttc"
-_SERIF_I = _FONT_DIR + r"\cambriai.ttf"
-_SERIF_B = _FONT_DIR + r"\cambriab.ttf"
-_FALLBACK = _FONT_DIR + r"\times.ttf"
+# Resolved per role from a candidate list, first existing file wins.
+#
+# These were four hardcoded C:\Windows\Fonts paths, which meant every
+# formula in every PDF was silently broken the moment the app ran
+# anywhere but a Windows dev machine. The failure was NOT a clean "no
+# formula": _font() fell through Cambria -> times.ttf (also a Windows
+# path) -> ImageFont.load_default(), and PIL's default is a fixed-size
+# bitmap face that IGNORES the requested size. So _layout() measured
+# every glyph at ~11px whatever size it asked for, and the page came out
+# with formulas drawn on top of themselves, inline math missing entirely
+# (box.w <= 0 makes render_png return None), and the odd raw "$x^{2}$"
+# left as literal text. Confirmed on a real Dockerised deploy against a
+# grade-8 quadratic-equations konspekt.
+#
+# Linux candidates are the two font packages the backend Dockerfile
+# already installs (fonts-dejavu-core, fonts-liberation), so this needs
+# no new image dependency:
+#   * DejaVu Serif carries the widest math-symbol coverage of the two
+#     (√ ± ∑ ∈ ≤ …) plus full Cyrillic, so it leads for upright text.
+#   * DejaVu Serif's ITALIC lives in fonts-dejavu-extra, which is NOT
+#     installed — so italic (variables, the default in maths) falls to
+#     Liberation Serif Italic, which is metric-compatible with Times and
+#     does ship in fonts-liberation.
+import os as _os
+import platform as _platform_mod
+
+
+def _first_existing(*candidates: str) -> str:
+    """The first path that exists, or the last candidate as a last resort
+    so callers still get a string (and _font's own except-chain handles
+    the miss) rather than None."""
+    for path in candidates:
+        if path and _os.path.exists(path):
+            return path
+    return candidates[-1] if candidates else ""
+
+
+_WIN_FONTS = _os.path.join(_os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+_DEJAVU = "/usr/share/fonts/truetype/dejavu"
+_LIBERATION = "/usr/share/fonts/truetype/liberation"
+_IS_WINDOWS = _platform_mod.system() == "Windows"
+
+_SERIF = _first_existing(
+    _os.path.join(_WIN_FONTS, "cambria.ttc") if _IS_WINDOWS else "",
+    f"{_DEJAVU}/DejaVuSerif.ttf",
+    f"{_LIBERATION}/LiberationSerif-Regular.ttf",
+    f"{_DEJAVU}/DejaVuSans.ttf",
+)
+_SERIF_I = _first_existing(
+    _os.path.join(_WIN_FONTS, "cambriai.ttf") if _IS_WINDOWS else "",
+    f"{_LIBERATION}/LiberationSerif-Italic.ttf",
+    f"{_DEJAVU}/DejaVuSerif.ttf",
+    f"{_DEJAVU}/DejaVuSans-Oblique.ttf",
+)
+_SERIF_B = _first_existing(
+    _os.path.join(_WIN_FONTS, "cambriab.ttf") if _IS_WINDOWS else "",
+    f"{_DEJAVU}/DejaVuSerif-Bold.ttf",
+    f"{_LIBERATION}/LiberationSerif-Bold.ttf",
+    f"{_DEJAVU}/DejaVuSans-Bold.ttf",
+)
+_FALLBACK = _first_existing(
+    _os.path.join(_WIN_FONTS, "times.ttf") if _IS_WINDOWS else "",
+    f"{_DEJAVU}/DejaVuSans.ttf",
+    f"{_LIBERATION}/LiberationSerif-Regular.ttf",
+    _SERIF,
+)
 
 SS = 3                      # supersampling, as in figure_builder
 INK = (17, 17, 17)
@@ -44,7 +105,11 @@ INK = (17, 17, 17)
 _font_cache: dict = {}
 
 
+_default_font_warned = False
+
+
 def _font(path, size):
+    global _default_font_warned
     key = (path, int(size))
     if key not in _font_cache:
         try:
@@ -53,8 +118,43 @@ def _font(path, size):
             try:
                 _font_cache[key] = ImageFont.truetype(_FALLBACK, int(size))
             except Exception:
+                # Last resort, and a genuinely broken state: PIL's default
+                # is a fixed-size bitmap face that ignores `size`, so every
+                # measurement _layout() makes from here is wrong and the
+                # formulas come out overlapping or blank. Silent before —
+                # which is exactly how a whole Dockerised deploy shipped
+                # with unreadable mathematics. Warn once (not per glyph,
+                # which would be thousands of lines per export).
+                if not _default_font_warned:
+                    _default_font_warned = True
+                    try:
+                        from app.logger import get_logger
+                        get_logger(__name__).error(
+                            "MATH FONT MISSING: no usable TTF found (tried %r then %r) — "
+                            "falling back to PIL's fixed-size bitmap font. Every formula "
+                            "in every PDF will render overlapping or blank. Install "
+                            "fonts-dejavu-core and fonts-liberation.", path, _FALLBACK,
+                        )
+                    except Exception:
+                        pass
                 _font_cache[key] = ImageFont.load_default()
     return _font_cache[key]
+
+
+def verify_math_fonts() -> list[str]:
+    """Problems that would make formulas unreadable, for the startup check
+    in main.py — same "say it at boot, not when a teacher notices"
+    reasoning as export_builder's verify_pdf_fonts. Empty list = fine."""
+    problems: list[str] = []
+    for role, path in (("upright", _SERIF), ("italic", _SERIF_I), ("bold", _SERIF_B)):
+        if not path or not _os.path.exists(path):
+            problems.append(f"math {role} font not found at {path!r}")
+            continue
+        try:
+            ImageFont.truetype(path, 16)
+        except Exception as e:  # noqa: BLE001
+            problems.append(f"math {role} font at {path!r} failed to load: {e}")
+    return problems
 
 
 # ── symbol table ────────────────────────────────────────────────────────

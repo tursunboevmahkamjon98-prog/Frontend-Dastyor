@@ -97,8 +97,16 @@ async def lifespan(app: FastAPI):
     # notices them.
     try:
         from app.export_builder import verify_pdf_fonts, verify_pptx_renderer
+        from app.math_render import verify_math_fonts
         for problem in verify_pdf_fonts():
             logger.error(f"FONT PROBLEM: {problem}")
+        # Separate from verify_pdf_fonts: that one checks ReportLab's text
+        # font, this one checks the PIL faces math_render draws formulas
+        # with. They come from different packages and failed independently
+        # — a deploy had perfectly readable Tajik prose and unreadable
+        # mathematics on the same page.
+        for problem in verify_math_fonts():
+            logger.error(f"MATH FONT PROBLEM: {problem}")
         renderer = verify_pptx_renderer()
         if renderer:
             logger.warning(f"RENDERER: {renderer}")
