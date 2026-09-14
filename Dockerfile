@@ -57,9 +57,13 @@ USER nextjs
 # Unlike NEXT_PUBLIC_* above, this one IS a real runtime variable: it is
 # read when the server starts, so the same image can be pointed at a
 # different backend with `docker run -e BACKEND_ORIGIN=...` and no
-# rebuild. Inside Docker, "localhost" is this container — use the
-# compose service name (e.g. http://backend:8001) or a real host.
-ENV BACKEND_ORIGIN=http://localhost:8009
+# rebuild. Defaults to the compose service name + the port backend/
+# Dockerfile actually listens on (8586), NOT "localhost" — inside Docker
+# "localhost" is this container, so a localhost default is wrong for
+# every case this image is built for. docker-compose.yml sets the same
+# value explicitly; this just makes a bare `docker run` behave sanely
+# on a network where a container named "backend" exists.
+ENV BACKEND_ORIGIN=http://backend:8586
 
 EXPOSE 8090
 ENV PORT=8090

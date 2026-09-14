@@ -1,5 +1,23 @@
 node_modules
 .next
-.env*
-!.env.production.example
 *.log
+
+# This repo's build context is its ROOT (see docker-compose.yml's
+# frontend `context: .`), and the frontend Dockerfile does `COPY . .` —
+# so without this line the ENTIRE backend/ tree (~7.5 MB of Python,
+# fonts and subject artwork) is sent to the daemon and baked into the
+# builder layer on every single frontend build. The frontend needs
+# exactly none of it. backend/ has its own Dockerfile and its own
+# context (`context: ./backend`), unaffected by this file.
+backend/
+
+# Depth-matters: Docker matches these against the path from the context
+# root, so a bare ".env*" catches ./.env but NOT backend/.env — which is
+# exactly the file carrying every real secret once start.sh has
+# generated it on a server. "**/.env*" catches it at any depth. Kept
+# alongside backend/ above rather than relying on it: if the ignore of
+# backend/ is ever narrowed, this still holds the line.
+.env*
+**/.env*
+!.env.production.example
+!**/.env.example
