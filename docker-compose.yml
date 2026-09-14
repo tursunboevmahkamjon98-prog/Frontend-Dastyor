@@ -68,9 +68,19 @@ services:
       # while the DB rows still point at paths that no longer exist.
       - backend_uploads:/app/uploads
     ports:
-      - "${BACKEND_PORT:-8586}:8586"
+      # Host 8586 -> container 8001. The container port follows the
+      # backend Dockerfile, which serves 8001; only the HOST side is 8586,
+      # which is what nginx proxies to. These were briefly both 8586, by
+      # editing the Dockerfile — and that edit was then silently undone by
+      # a file copy from the other repo, leaving the container on 8001
+      # while compose still mapped and healthchecked 8586. Nothing was
+      # listening there, so the backend came up perfectly and was marked
+      # unhealthy, which reads as "backend failed to start". Keeping the
+      # container port identical in both repos is what stops that
+      # happening again.
+      - "${BACKEND_PORT:-8586}:8001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8586/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
       interval: 30s
       timeout: 5s
       start_period: 15s
@@ -94,17 +104,17 @@ services:
         # Dockerfile for the full explanation and the outage this caused.
         # Setting it only at runtime silently ships an image that proxies
         # /api to next.config.ts's localhost fallback.
-        BACKEND_ORIGIN: http://backend:8586
+        BACKEND_ORIGIN: http://backend:8001
     restart: unless-stopped
     environment:
       # Deliberately the same value as the build arg above. This one does
       # NOT drive the /api rewrite (that is already baked in by then) —
       # it only keeps anything reading process.env.BACKEND_ORIGIN at
       # runtime from disagreeing with what the build used. "backend" is
-      # the service name above, at the port its own Dockerfile/EXPOSE
-      # uses (8586, not FastAPI's more common 8001 — moved deliberately
-      # in this repo). "localhost" here would mean this container itself.
-      BACKEND_ORIGIN: http://backend:8586
+      # the service name above, at the port its own Dockerfile serves
+      # (8001) — NOT the host port 8586, which only exists outside this
+      # network. "localhost" here would mean this container itself.
+      BACKEND_ORIGIN: http://backend:8001
     depends_on:
       backend:
         condition: service_healthy

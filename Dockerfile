@@ -46,7 +46,7 @@ ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 # 500 straight through, while the backend itself was healthy the whole
 # time. The runtime ENV further down is kept, but it is NOT what makes
 # the proxy work; this ARG is.
-ARG BACKEND_ORIGIN=http://backend:8586
+ARG BACKEND_ORIGIN=http://backend:8001
 ENV BACKEND_ORIGIN=$BACKEND_ORIGIN
 RUN npm run build
 
@@ -77,12 +77,12 @@ USER nextjs
 # read when the server starts, so the same image can be pointed at a
 # different backend with `docker run -e BACKEND_ORIGIN=...` and no
 # rebuild. Defaults to the compose service name + the port backend/
-# Dockerfile actually listens on (8586), NOT "localhost" — inside Docker
+# Dockerfile actually listens on (8001), NOT "localhost" — inside Docker
 # "localhost" is this container, so a localhost default is wrong for
 # every case this image is built for. docker-compose.yml sets the same
 # value explicitly; this just makes a bare `docker run` behave sanely
 # on a network where a container named "backend" exists.
-ENV BACKEND_ORIGIN=http://backend:8586
+ENV BACKEND_ORIGIN=http://backend:8001
 
 EXPOSE 8090
 ENV PORT=8090
