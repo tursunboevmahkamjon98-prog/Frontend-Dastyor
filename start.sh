@@ -1,80 +1,93 @@
 #!/usr/bin/env bash
-# Production entrypoint for the Dastyor frontend (Next.js).
+# One command for the whole stack — Postgres + backend (:8586) +
+# frontend (:8090) — safe to run on a totally fresh clone, safe to run
+# again after every `git pull`.
 #
 #     ./start.sh
 #
-# Everything is read from the environment — nothing here holds a secret.
-# See .env.production.example for the full list.
+# First run only: backend/.env and .env (docker-compose.yml's own
+# overrides — see its top comment) don't exist yet, so this generates
+# them with random values for everything that's safe to invent locally
+# (JWT signing secret, Postgres's password, the admin account's
+# password) and leaves a clearly-marked blank for everything that
+# ISN'T — an AI provider key, an SMS provider's credentials, your own
+# phone number — because those are real accounts nobody but you has,
+# not secrets that can be conjured. Both files are gitignored (see
+# .gitignore) and never touched again once they exist, so editing them
+# by hand afterward is always safe — this script will not overwrite
+# your changes on the next run.
 set -euo pipefail
-
 cd "$(dirname "$0")"
 
-PORT="${PORT:-8090}"
+BACKEND_ENV="backend/.env"
+ROOT_ENV=".env"
 
-# Deliberately BIND_HOST and not HOSTNAME. Bash sets HOSTNAME itself, to
-# the machine's name, on every shell — so "${HOSTNAME:-0.0.0.0}" never
-# reaches its default and the server binds to the machine name instead of
-# all interfaces. That looks like it worked (the server prints Ready) and
-# then refuses every connection to 127.0.0.1, which is exactly what a
-# reverse proxy in front of it will be using.
-BIND_HOST="${BIND_HOST:-0.0.0.0}"
-
-# Where /api and /uploads get forwarded (see next.config.ts). Read when
-# THIS process starts, so pointing the site at a different backend is a
-# restart, not a rebuild.
-export BACKEND_ORIGIN="${BACKEND_ORIGIN:-http://localhost:8009}"
-
-# ── Checks that fail loudly here instead of quietly at 3am ──────────────
-
-if [ ! -d node_modules ]; then
-    echo "FATAL: node_modules is missing. Run 'npm ci' first." >&2
-    exit 1
-fi
-
-SERVER=".next/standalone/server.js"
-if [ ! -f "$SERVER" ]; then
-    echo "FATAL: there is no build to serve ($SERVER is missing)." >&2
-    echo "       Run 'npm run build' first — and read the note below about" >&2
-    echo "       NEXT_PUBLIC_API_URL, because it is baked in at BUILD time." >&2
-    exit 1
-fi
-
-# NEXT_PUBLIC_* values are compiled into the browser bundle by `npm run
-# build`; setting one here changes nothing at all. Saying so out loud
-# because the failure is otherwise baffling: the variable is plainly set
-# in the environment, and the browser still calls the old address.
-if [ -n "${NEXT_PUBLIC_API_URL:-}" ]; then
-    echo "NOTE: NEXT_PUBLIC_API_URL is set in this environment, but it only" >&2
-    echo "      takes effect at BUILD time. If it changed, rebuild:" >&2
-    echo "      NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL npm run build" >&2
-fi
-
-# next.config.ts sets output:"standalone", which means `next start` is NOT
-# the way to run this — Next refuses it with a warning and serves nothing
-# useful. server.js is self-contained, but Next leaves the static assets
-# out of it on purpose (the Dockerfile copies them in as separate layers),
-# so a plain host has to place them itself. Copied on every start rather
-# than once: it is a few MB, and the alternative is a rebuild silently
-# serving yesterday's CSS.
-mkdir -p .next/standalone/.next
-cp -r .next/static .next/standalone/.next/
-[ -d public ] && cp -r public .next/standalone/
-
-# A backend that isn't answering is worth one line now rather than a
-# stream of 502s later. Not fatal: the backend may simply be starting in
-# parallel, and refusing to serve the site over that would be worse.
-if command -v curl >/dev/null 2>&1; then
-    if ! curl -fsS --max-time 3 "${BACKEND_ORIGIN}/api/health" >/dev/null 2>&1; then
-        echo "WARNING: no healthy backend at ${BACKEND_ORIGIN}/api/health —" >&2
-        echo "         the site will load but every API call will fail." >&2
+if [ ! -f "$BACKEND_ENV" ]; then
+    if [ ! -f "backend/.env.example" ]; then
+        echo "FATAL: backend/.env.example is missing — can't generate backend/.env from it." >&2
+        exit 1
     fi
+    if ! command -v openssl >/dev/null 2>&1; then
+        echo "FATAL: openssl is required to generate random secrets (apt install openssl)." >&2
+        exit 1
+    fi
+
+    echo "No backend/.env — generating one (first run only)."
+    cp backend/.env.example "$BACKEND_ENV"
+
+    SECRET_KEY="$(openssl rand -hex 32)"
+    ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | cut -c1-16)"
+
+    # -i (in place, no backup suffix) — fine on the Linux servers this
+    # targets; macOS/BSD sed would need -i '' instead, not handled here
+    # since DEPLOY.md's whole deploy path is Ubuntu.
+    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" "$BACKEND_ENV"
+    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|" "$BACKEND_ENV"
+
+    GENERATED_ADMIN_PASSWORD="$ADMIN_PASSWORD"
 fi
 
-echo "Starting Dastyor frontend on ${BIND_HOST}:${PORT}"
-echo "  proxying /api and /uploads -> ${BACKEND_ORIGIN}"
+if [ ! -f "$ROOT_ENV" ]; then
+    echo "No .env — generating docker-compose's own Postgres password (first run only)."
+    POSTGRES_PASSWORD="$(openssl rand -hex 16)"
+    cat > "$ROOT_ENV" <<EOF
+# Generated by start.sh — see docker-compose.yml's own top comment for
+# what these three do. Safe to hand-edit; this script never overwrites
+# an existing .env.
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+BACKEND_PORT=8586
+FRONTEND_PORT=8090
+EOF
+fi
 
-# server.js reads these two by name; HOSTNAME is its own spelling for the
-# bind address, which is why BIND_HOST is translated into it only here.
-export PORT
-export HOSTNAME="$BIND_HOST"
-exec node "$SERVER"
+docker compose up -d --build
+
+# Only for this final printout — docker-compose.yml itself reads .env
+# on its own via Compose's built-in auto-load, this script doesn't need
+# these exported for `up` to see them. Sourced here (not just grepped)
+# so this stays correct even if .env sets other overrides.
+set -a
+# shellcheck disable=SC1090
+[ -f "$ROOT_ENV" ] && source "$ROOT_ENV"
+set +a
+
+echo
+echo "========================================================================"
+echo "  Frontend:  http://localhost:${FRONTEND_PORT:-8090}"
+echo "  Backend:   http://localhost:${BACKEND_PORT:-8586}/api/health"
+if [ -n "${GENERATED_ADMIN_PASSWORD:-}" ]; then
+    echo
+    echo "  Admin account was just created. SAVE THIS PASSWORD NOW — it is"
+    echo "  only ever shown this once:"
+    echo
+    echo "    Password: ${GENERATED_ADMIN_PASSWORD}"
+    echo
+    echo "  Still needed before login/AI/SMS actually work — edit backend/.env:"
+    echo "    ADMIN_PHONE       your real phone number, to log in as this admin"
+    echo "    AI_API_KEY (..5)  a Cerebras account key, or material generation fails"
+    echo "    ROBITA_* or TWILIO_*   an SMS provider, or codes only print to the"
+    echo "                           backend's own logs instead of sending"
+    echo
+    echo "  After editing backend/.env: docker compose up -d --build (again)."
+fi
+echo "========================================================================"
