@@ -1,14 +1,26 @@
 import type { NextConfig } from "next";
 
-// Where this server forwards /api and /uploads. Read at SERVER start, not
-// at build time — unlike NEXT_PUBLIC_*, changing it needs a restart, not a
-// rebuild, so one image can be pointed at staging or production.
+// Where this server forwards /api and /uploads.
 //
-// It used to be the literal "http://localhost:8009", which is correct on
-// the laptop and wrong everywhere else: on a hosting box nothing answers
-// on localhost:8009, so every proxied call 502s while the site itself
-// loads fine — a login page that looks healthy and cannot log anyone in.
-// The default is kept so local development still needs no .env at all.
+// Read at BUILD time, not at server start — this comment used to claim
+// the opposite ("changing it needs a restart, not a rebuild") and that
+// was simply wrong. Next calls rewrites() during `next build` and writes
+// the resolved destination into .next/routes-manifest.json and
+// .next/required-server-files.json; the standalone server reads those at
+// boot and never re-evaluates this file. Verified by grepping a real
+// build for the literal origin — it is in both manifests and server.js.
+//
+// Consequence, learned the hard way on a live deploy: setting
+// BACKEND_ORIGIN only as a runtime env var on the container does
+// NOTHING. The image ships with whatever value was present at build, so
+// a production frontend built without it proxies /api to the localhost
+// fallback below, inside its own container, where nothing is listening —
+// the site loads fine and every single API call 500s. Docker builds must
+// pass it via --build-arg / compose's build.args (both are set up in
+// this repo's Dockerfile and docker-compose.yml).
+//
+// The localhost fallback is kept so plain local development (backend run
+// directly on the host, port 8009 — see README) needs no .env at all.
 const BACKEND_ORIGIN =
   process.env.BACKEND_ORIGIN?.replace(/\/+$/, "") ?? "http://localhost:8009";
 

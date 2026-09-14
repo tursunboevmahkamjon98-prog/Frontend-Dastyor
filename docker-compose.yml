@@ -88,15 +88,22 @@ services:
         # BACKEND_ORIGIN's host must also be in the backend's
         # CORS_ORIGINS, or every request fails in the browser alone).
         NEXT_PUBLIC_API_URL: /api
+        # MUST be a build arg, not only the runtime `environment:` below.
+        # Next resolves next.config.ts's rewrites() during `next build`
+        # and freezes the destination into its route manifests — see the
+        # Dockerfile for the full explanation and the outage this caused.
+        # Setting it only at runtime silently ships an image that proxies
+        # /api to next.config.ts's localhost fallback.
+        BACKEND_ORIGIN: http://backend:8586
     restart: unless-stopped
     environment:
-      # Runtime (not build-time) — read when the container starts.
-      # "backend" is the service name above, at the port its own
-      # Dockerfile/EXPOSE uses (8586, not FastAPI's more common default
-      # of 8001 — this repo's backend was deliberately moved to 8586).
-      # Docker's embedded DNS resolves "backend" on the compose network;
-      # "localhost" inside this container would mean the frontend
-      # container itself.
+      # Deliberately the same value as the build arg above. This one does
+      # NOT drive the /api rewrite (that is already baked in by then) —
+      # it only keeps anything reading process.env.BACKEND_ORIGIN at
+      # runtime from disagreeing with what the build used. "backend" is
+      # the service name above, at the port its own Dockerfile/EXPOSE
+      # uses (8586, not FastAPI's more common 8001 — moved deliberately
+      # in this repo). "localhost" here would mean this container itself.
       BACKEND_ORIGIN: http://backend:8586
     depends_on:
       backend:

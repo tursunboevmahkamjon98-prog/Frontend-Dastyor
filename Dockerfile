@@ -29,6 +29,25 @@ ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
+# BACKEND_ORIGIN is ALSO a build-time value, despite being a plain
+# (non-NEXT_PUBLIC_) variable read server-side — next.config.ts uses it
+# inside rewrites(), and Next calls rewrites() during `next build`, then
+# serializes the resolved destination strings into routes-manifest.json /
+# required-server-files.json. The standalone server reads those manifests
+# at boot; it never re-evaluates next.config.ts. Confirmed by grepping a
+# real build: the literal origin appears in routes-manifest.json,
+# required-server-files.json AND server.js.
+#
+# This cost a live outage: compose passed BACKEND_ORIGIN only as a
+# runtime `environment:`, so the image shipped with next.config.ts's
+# localhost fallback baked in, and every /api/* call proxied to a port
+# inside the frontend's own container — nginx passed the resulting Next
+# 500 straight through, while the backend itself was healthy the whole
+# time. The runtime ENV further down is kept, but it is NOT what makes
+# the proxy work; this ARG is.
+ARG BACKEND_ORIGIN=http://backend:8586
+ENV BACKEND_ORIGIN=$BACKEND_ORIGIN
 RUN npm run build
 
 # ── runtime ──────────────────────────────────────────────────────────────
