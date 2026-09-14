@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 
 from app import limits
+from app.config import get_settings
 from app.database import async_session
 
 FAIL = []
@@ -47,11 +48,29 @@ async def make_user(balance_dirams: int, free_used: bool) -> str:
                 " balance_dirams, free_generation_used, phone_verified, is_premium, "
                 " free_konspekt_used, free_lektsiya_used, free_test_used, "
                 " free_prezentatsiya_used, free_amaliy_used, free_igra_used, created_at) "
-                "VALUES (:id, 'race test', 'x', 'Русский', 'user', :bal, :free, "
-                "        false, false, :free, :free, :free, "
-                "        :free, :free, :free, now())"
+                "VALUES (:id, 'race test', 'x', 'Русский', 'user', :bal, :free_flag, "
+                "        false, false, :spent, :spent, :spent, "
+                "        :spent, :spent, :spent, now())"
             ),
-            {"id": uid, "bal": balance_dirams, "free": free_used},
+            # Two parameters, not one, since the columns no longer share a
+            # type: free_generation_used is still the legacy BOOLEAN,
+            # while the six per-type columns are INTEGER counters (see
+            # models.py). Binding one value to both made asyncpg refuse
+            # the statement outright — "inconsistent types deduced for
+            # parameter $3: boolean and integer" — which is the test
+            # being stale, not the schema being wrong.
+            #
+            # "free_used" means "this account has already spent its free
+            # allowance", so it maps to the FULL allowance, not to 1: a
+            # test that wants the paid path must leave no free
+            # generations behind, and with the allowance now at 10 a
+            # single 1 would leave nine.
+            {
+                "id": uid,
+                "bal": balance_dirams,
+                "free_flag": free_used,
+                "spent": get_settings().FREE_GENERATIONS_PER_TYPE if free_used else 0,
+            },
         )
         await db.commit()
     return uid
@@ -87,22 +106,34 @@ async def try_reserve(uid, types):
         return e.status_code
 
 
-# ── 1. The free material is claimed exactly once, under a stampede ───────
+# ── 1. The free allowance is handed out exactly N times, under a stampede ─
 async def test_free_once():
-    print("\n1. Twenty simultaneous reservations against a brand-new account (0 balance)")
+    # Derived from the setting rather than written in. The allowance used
+    # to be one-per-type and these numbers were literals (1 granted, 19
+    # refused); that made this a test of the VALUE, so raising the
+    # allowance turned a correct system red. What it is actually for is
+    # the guarantee underneath: concurrent claims can never overshoot,
+    # because the bound is re-checked inside the UPDATE's WHERE clause.
+    # Twice the allowance is fired at it so there are always real losers.
+    free_n = get_settings().FREE_GENERATIONS_PER_TYPE
+    attempts = free_n * 2
+    print(f"\n1. {attempts} simultaneous reservations against a brand-new account (0 balance)")
     uid = await make_user(0, False)
     try:
-        results = await asyncio.gather(*[try_reserve(uid, ["konspekt"]) for _ in range(20)])
+        results = await asyncio.gather(*[try_reserve(uid, ["konspekt"]) for _ in range(attempts)])
         granted = [r for r in results if not isinstance(r, int)]
         refused = [r for r in results if r == 402]
-        check("exactly one reservation granted", len(granted) == 1, f"granted={len(granted)}")
-        check("the other nineteen got 402", len(refused) == 19, f"402s={len(refused)}")
-        check("the granted one was the free slot",
-              bool(granted) and granted[0].free_count == 1)
+        check(f"exactly {free_n} granted — the whole allowance, no more",
+              len(granted) == free_n, f"granted={len(granted)}")
+        check(f"the other {attempts - free_n} got 402",
+              len(refused) == attempts - free_n, f"402s={len(refused)}")
+        check("every granted one came from the free allowance",
+              bool(granted) and all(g.free_count == 1 for g in granted))
         balance, free_used, ledger = await state(uid)
-        check("free flag is set", free_used is True)
+        check("counter landed exactly on the allowance — never overshot",
+              free_used == free_n, f"counter={free_used}")
         check("balance untouched at 0", balance == 0, f"balance={balance}")
-        check("exactly one ledger row", ledger == 1, f"rows={ledger}")
+        check(f"exactly {free_n} ledger rows", ledger == free_n, f"rows={ledger}")
     finally:
         await cleanup(uid)
 
@@ -160,10 +191,10 @@ async def test_refund_free_slot():
     try:
         charge = await limits.reserve(uid, ["konspekt"])
         _, free_used, _ = await state(uid)
-        check("free slot claimed", free_used is True)
+        check("free slot claimed — counter went to 1", free_used == 1, f"counter={free_used}")
         await limits.refund(charge, reason="test")
         balance, free_used, _ = await state(uid)
-        check("free slot handed back", free_used is False)
+        check("free slot handed back — counter back to 0", free_used == 0, f"counter={free_used}")
         check("no phantom balance credited", balance == 0, f"balance={balance}")
         # Re-reserve the SAME type. The old version asked for "test" here,
         # which under per-type slots just claimed a different untouched

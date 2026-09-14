@@ -49,19 +49,28 @@ class User(Base):
     # by hand, in the admin panel (see routers/admin.py's set_premium),
     # once a teacher has actually paid some other way.
     is_premium: Mapped[bool] = mapped_column(default=False)
-    # One flag per material type, set True the moment that type's single
-    # free generation is used (see routers/materials.py's
-    # _check_can_generate). Deliberately NOT derived from "does the user
-    # currently have any row of this type" — that broke the free limit:
-    # deleting every konspekt reset the count to 0, making the account
-    # look like it had never used its free one and letting it generate
-    # for free again indefinitely. These flags never get reset by delete.
-    free_konspekt_used: Mapped[bool] = mapped_column(default=False)
-    free_lektsiya_used: Mapped[bool] = mapped_column(default=False)
-    free_test_used: Mapped[bool] = mapped_column(default=False)
-    free_prezentatsiya_used: Mapped[bool] = mapped_column(default=False)
-    free_amaliy_used: Mapped[bool] = mapped_column(default=False)
-    free_igra_used: Mapped[bool] = mapped_column(default=False)
+    # How many free generations of each type this account has spent.
+    #
+    # These were BOOLEANs — one free per type, flag flipped on use. They
+    # are counts now so the allowance is a setting
+    # (Settings.FREE_GENERATIONS_PER_TYPE, currently 10) rather than
+    # something baked into the column type; init_db migrates the old
+    # boolean columns in place, mapping TRUE to 1, so no account loses or
+    # gains anything at the moment of the change.
+    #
+    # Deliberately NOT derived from "does the user currently have any row
+    # of this type" — that broke the free limit before: deleting every
+    # konspekt reset the count to 0, making the account look like it had
+    # never used its free ones and letting it generate free indefinitely.
+    # These counters never go down on delete; the only thing that
+    # decrements them is limits.refund(), when a generation that was
+    # already claimed fails to produce anything.
+    free_konspekt_used: Mapped[int] = mapped_column(default=0)
+    free_lektsiya_used: Mapped[int] = mapped_column(default=0)
+    free_test_used: Mapped[int] = mapped_column(default=0)
+    free_prezentatsiya_used: Mapped[int] = mapped_column(default=0)
+    free_amaliy_used: Mapped[int] = mapped_column(default=0)
+    free_igra_used: Mapped[int] = mapped_column(default=0)
     # Historical. For a while pricing ran off a single account-wide
     # freebie instead of the per-type flags above, and this is the column
     # that held it; init_db still backfills it so the record of who spent

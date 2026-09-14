@@ -66,6 +66,7 @@ from dataclasses import dataclass, field
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from app.config import get_settings
 from app.database import async_session
 from app.i18n import get_message
 from app.logger import get_logger
@@ -146,10 +147,15 @@ class InsufficientBalance(HTTPException):
 
 
 async def _claim_free(conn, user_id: str, material_type: str) -> bool:
-    """Claims this account's free slot for [material_type], atomically.
-    True only for the single request that wins it; every later (or
-    concurrent) call sees rowcount 0 because the flag is already TRUE by
-    the time their UPDATE re-evaluates its WHERE clause.
+    """Claims one of this account's free generations for
+    [material_type], atomically. True only while the account still has
+    one left; concurrent callers cannot overshoot the allowance because
+    the bound is re-evaluated inside the UPDATE's own WHERE clause, so
+    the (N+1)th request sees rowcount 0.
+
+    The allowance is Settings.FREE_GENERATIONS_PER_TYPE. It used to be a
+    boolean flag, i.e. hardcoded at one; the column is a counter now so
+    raising it is a config change, not a migration.
 
     Returns False immediately for a type with no free slot (see
     FREE_SLOT_COLUMN), so those are always paid."""
@@ -158,13 +164,15 @@ async def _claim_free(conn, user_id: str, material_type: str) -> bool:
         return False
     # The column name is interpolated because a bound parameter cannot
     # name a column. It never comes from a request: it is a value of
-    # FREE_SLOT_COLUMN, looked up above by an exact dict hit.
+    # FREE_SLOT_COLUMN, looked up above by an exact dict hit. The limit
+    # IS bound — it is a plain number and has no business in the SQL
+    # text.
     result = await conn.execute(
         text(
-            f"UPDATE users SET {column} = TRUE "
-            f"WHERE id = :uid AND {column} = FALSE"
+            f"UPDATE users SET {column} = {column} + 1 "
+            f"WHERE id = :uid AND {column} < :limit"
         ),
-        {"uid": user_id},
+        {"uid": user_id, "limit": get_settings().FREE_GENERATIONS_PER_TYPE},
     )
     return result.rowcount == 1
 
@@ -314,8 +322,14 @@ async def refund(charge: Charge, material_types: list[str] | None = None,
                     if column is not None:
                         # Interpolated for the same reason as in
                         # _claim_free, and equally not request data.
+                        #
+                        # GREATEST(..., 0) so a double refund — a retry,
+                        # a partial failure refunded twice — can never
+                        # drive the counter negative and quietly hand out
+                        # more free generations than the allowance.
                         await conn.execute(
-                            text(f"UPDATE users SET {column} = FALSE WHERE id = :uid"),
+                            text(f"UPDATE users SET {column} = GREATEST({column} - 1, 0) "
+                                 f"WHERE id = :uid"),
                             {"uid": charge.user_id},
                         )
                     balance = (await conn.execute(

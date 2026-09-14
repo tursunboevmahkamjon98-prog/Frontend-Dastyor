@@ -169,6 +169,13 @@ class Settings(BaseSettings):
     # request slower, not just the new ones). The queue is what keeps
     # ordinary non-AI API calls responsive while generations are in
     # flight — they never touch this semaphore.
+    # How many of EACH material type a new account gets free, before the
+    # balance starts being charged (see app/limits.py's FREE_SLOT_COLUMN
+    # and _claim_free). Was effectively 1, stored as a boolean "used"
+    # flag per type; now a count, so this is a number a person can change
+    # without a schema change.
+    FREE_GENERATIONS_PER_TYPE: int = 10
+
     MAX_CONCURRENT_AI_CALLS: int = 8
 
     # How many LibreOffice conversions may run at once (see

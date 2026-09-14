@@ -10,6 +10,7 @@ import httpx
 from sqlalchemy import text
 
 from app.auth import create_access_token, hash_password
+from app.config import get_settings
 from app.database import async_session
 
 BASE = os.environ.get("DASTYOR_TEST_BASE", "http://127.0.0.1:8010")
@@ -31,10 +32,24 @@ async def make_user(role="user", balance=0, free_used=True) -> str:
                 " balance_dirams, free_generation_used, phone_verified, is_premium, "
                 " free_konspekt_used, free_lektsiya_used, free_test_used, "
                 " free_prezentatsiya_used, free_amaliy_used, free_igra_used, created_at) "
+                # The six per-type columns are INTEGER counters now (see
+                # models.py) — "false" here is a type error against them.
+                # free_generation_used is still the legacy BOOLEAN.
+                #
+                # free_used=True means "no free generations left", which
+                # is the default this helper wants: these tests are about
+                # guards (auth, roles, size caps), and an account with a
+                # free allowance would sail past the paywall checks they
+                # are trying to reach. So it maps to the full allowance,
+                # not to 1.
                 "VALUES (:id, 'guard test', :pw, 'Русский', :role, :bal, :free, "
-                "        false, false, false, false, false, false, false, false, now())"
+                "        false, false, :spent, :spent, :spent, :spent, :spent, :spent, now())"
             ),
-            {"id": uid, "pw": hash_password("x"), "role": role, "bal": balance, "free": free_used},
+            {
+                "id": uid, "pw": hash_password("x"), "role": role, "bal": balance,
+                "free": free_used,
+                "spent": get_settings().FREE_GENERATIONS_PER_TYPE if free_used else 0,
+            },
         )
         await db.commit()
     return uid

@@ -18,6 +18,7 @@ import io as _io
 import httpx
 from pypdf import PdfReader
 from sqlalchemy import text
+from app.config import get_settings
 from app.database import async_session
 
 BASE = os.environ.get("DASTYOR_TEST_BASE", "http://127.0.0.1:8010")
@@ -132,6 +133,19 @@ async def main():
             check("tokensiz yuklab olish -> 401/403", r.status_code in (401, 403), f"{r.status_code}")
 
             print("\n7. Bepul slot tugadi — ikkinchisi pul so'rashi kerak")
+            # Spend the rest of the allowance directly in the database
+            # rather than through the API. It used to be one free
+            # konspekt, so a second /generate hit the paywall; the
+            # allowance is Settings.FREE_GENERATIONS_PER_TYPE now, and
+            # driving it to zero over the wire would mean nine more real
+            # AI calls and several more minutes for a check that is
+            # about the 402, not about generation.
+            async with async_session() as db:
+                await db.execute(
+                    text("UPDATE users SET free_konspekt_used = :n WHERE phone = :p"),
+                    {"n": get_settings().FREE_GENERATIONS_PER_TYPE, "p": PHONE},
+                )
+                await db.commit()
             r = await c.post("/api/materials/generate", headers=H, json={
                 "material_type": "konspekt", "topic": "Фотосинтез", "subject": "Биология",
                 "grade": "8 класс", "language": "Таджикский", "level": "Средний"})

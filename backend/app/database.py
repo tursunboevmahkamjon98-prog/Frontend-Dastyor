@@ -115,8 +115,34 @@ async def init_db():
         for _col in ("free_konspekt_used", "free_lektsiya_used", "free_test_used", "free_prezentatsiya_used",
                     "free_amaliy_used", "free_igra_used"):
             await conn.execute(text(
-                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {_col} BOOLEAN NOT NULL DEFAULT FALSE"
+                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {_col} INTEGER NOT NULL DEFAULT 0"
             ))
+            # These were BOOLEAN ("this type's one freebie is spent") and
+            # are counts now, so the allowance can be a setting instead of
+            # the column type (see models.py and limits._claim_free).
+            # Converted in place, TRUE becoming 1, so nobody gains or
+            # loses a free generation at the moment of the change.
+            #
+            # Guarded on the CURRENT type rather than run unconditionally:
+            # ALTER ... TYPE is not idempotent, and this runs on every
+            # single startup. Reading information_schema is what makes a
+            # second boot a no-op instead of an error that stops the app.
+            await conn.execute(text(f"""
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = '{_col}'
+                          AND data_type = 'boolean'
+                    ) THEN
+                        ALTER TABLE users ALTER COLUMN {_col} DROP DEFAULT;
+                        ALTER TABLE users ALTER COLUMN {_col} TYPE INTEGER
+                            USING (CASE WHEN {_col} THEN 1 ELSE 0 END);
+                        ALTER TABLE users ALTER COLUMN {_col} SET DEFAULT 0;
+                    END IF;
+                END $$;
+            """))
         # The single account-wide free generation (see app/limits.py).
         # Backfilled TRUE for anyone who had already spent ANY of the six
         # per-type free slots under the old rule — without that, the rule
@@ -126,11 +152,15 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS free_generation_used "
             "BOOLEAN NOT NULL DEFAULT FALSE"
         ))
+        # "> 0", not a bare column name: these six are INTEGER counters
+        # now (see the conversion above). Postgres will not accept an
+        # integer where it wants a boolean, so left as it was this
+        # statement raises at startup and the app never comes up.
         await conn.execute(text(
             "UPDATE users SET free_generation_used = TRUE "
             "WHERE free_generation_used = FALSE AND ("
-            " free_konspekt_used OR free_lektsiya_used OR free_test_used"
-            " OR free_prezentatsiya_used OR free_amaliy_used OR free_igra_used)"
+            " free_konspekt_used > 0 OR free_lektsiya_used > 0 OR free_test_used > 0"
+            " OR free_prezentatsiya_used > 0 OR free_amaliy_used > 0 OR free_igra_used > 0)"
         ))
         # ...and back the other way, because the rule is per-type again
         # (one free konspekt, lecture, test and presentation each — see
@@ -156,8 +186,11 @@ async def init_db():
             ("test", "free_test_used"),
             ("prezentatsiya", "free_prezentatsiya_used"),
         ):
+            # Counter semantics, same reason as above: mark one spent
+            # (= 1) only where none is recorded yet (= 0), rather than
+            # TRUE/FALSE against what is now an INTEGER column.
             await conn.execute(text(
-                f"UPDATE users SET {_col} = TRUE WHERE {_col} = FALSE AND id IN ("
+                f"UPDATE users SET {_col} = 1 WHERE {_col} = 0 AND id IN ("
                 " SELECT user_id FROM balance_transactions"
                 " WHERE kind = 'free' AND material_type = :mtype)"
             ), {"mtype": _type})
