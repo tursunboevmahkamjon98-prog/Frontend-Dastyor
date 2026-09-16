@@ -235,12 +235,15 @@ export default function Home() {
             {/* Direct APK download - the app isn't on Google Play (a
                 teacher-facing tool for one country doesn't clear Play's
                 review bar the same way a consumer app does), so this link
-                is the only install path. Points at the backend's own
-                /uploads mount (see backend/app/main.py's StaticFiles
-                mount) rather than a package registry - the APK is dropped
-                there by hand on the server, same as any other upload. */}
+                is the only install path. Lives in public/ (not the
+                backend's /uploads mount) on purpose: /uploads is a
+                gitignored runtime volume that only a hands-on server
+                visit can populate, which this deploy has no way to do
+                (git pull + a bot-driven `docker compose up --build`,
+                nothing else) - public/ ships INSIDE the image, so the
+                same deploy that updates the code updates the APK too. */}
             <a
-              href="/uploads/app/dastyor.apk"
+              href="/dastyor.apk"
               download
               className="mt-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-text-secondary underline decoration-border underline-offset-4 transition hover:text-primary"
             >
