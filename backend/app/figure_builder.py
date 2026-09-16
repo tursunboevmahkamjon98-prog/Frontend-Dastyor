@@ -1,26 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Subject-specific figures drawn from scratch with PIL.
-
-Everything else in the visuals pipeline is generic: a table works the same
-for history and chemistry, a process chain the same for biology and CS.
-This module is the opposite — it draws the thing a teacher would draw on
-the blackboard for THAT subject and no other: a cube with its hidden edges
-dashed for geometry, a parabola on real axes for algebra, a force diagram
-for physics, a Bohr shell model for chemistry.
-
-Two deliberate constraints:
-
-  * The AI picks a shape id from a CLOSED catalogue (see SHAPES). Letting
-    it describe a drawing freely would mean writing an interpreter for
-    whatever it invented; picking from a list means every shape that comes
-    back is one we can actually draw correctly.
-  * Everything is drawn in pure black on white, because these land on the
-    nakscha plan sheet, which is a black-and-white form.
-
-Vertex letters (A, B, C, D, A1...) are drawn by this module, not supplied
-by the model — they follow a fixed school convention and the model has no
-way of knowing where a vertex ended up on the canvas.
-"""
 import math
 import os
 import uuid
@@ -30,16 +7,10 @@ from app.fonts import font_path
 
 _FIGURES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "figures")
 
-# Per role via app/fonts.py — these were pinned to C:\Windows\Fonts,
-# which drew every figure's labels in PIL's fixed-size bitmap fallback
-# (illegible specks) anywhere but a Windows machine. See fonts.py.
 _FONT_REGULAR = font_path("sans")
 _FONT_ITALIC = font_path("sans_italic")
 _FONT_BOLD = font_path("sans_bold")
 
-# Drawn at SS times the final size and downscaled at the end: PIL has no
-# antialiasing on lines/polygons, and a jagged cube looks like a bug rather
-# than a diagram.
 SS = 3
 W, H = 620, 460
 
@@ -59,26 +30,17 @@ def _font(path, size):
 
 
 class Canvas:
-    """Thin drawing surface in FINAL-image coordinates — every method
-    multiplies by SS itself, so shape code can be written against the plain
-    620x460 box and stay readable."""
 
     def __init__(self, w: int = W, h: int = H):
-        # Per-shape size: a vertical GOST flowchart needs a tall page while
-        # a logic gate needs a wide one, and squeezing either into one
-        # fixed box made the text inside the boxes unreadably small.
         self.w, self.h = w, h
         self.img = Image.new("RGB", (w * SS, h * SS), "white")
         self.d = ImageDraw.Draw(self.img)
 
-    # ── primitives ──────────────────────────────────────────────────────
     def line(self, p, q, width=2, dashed=False, color=INK):
         if not dashed:
             self.d.line([p[0] * SS, p[1] * SS, q[0] * SS, q[1] * SS],
                         fill=color, width=int(width * SS))
             return
-        # Hidden edges are dashed — that is the whole convention that makes
-        # a flat drawing read as a solid.
         dx, dy = q[0] - p[0], q[1] - p[1]
         dist = math.hypot(dx, dy) or 1
         step = 7.0
@@ -136,7 +98,6 @@ class Canvas:
         self.d.ellipse([(x - r) * SS, (y - r) * SS, (x + r) * SS, (y + r) * SS], fill=color)
 
     def right_angle(self, corner, p1, p2, size=15):
-        """The little square that marks a 90 degree angle."""
         def unit(a, b):
             dx, dy = b[0] - a[0], b[1] - a[1]
             m = math.hypot(dx, dy) or 1
@@ -149,16 +110,12 @@ class Canvas:
         self.line(b, c, 1.4)
 
     def label_edge(self, p, q, text, off=17, italic=True, size=17):
-        """Puts a measurement beside an edge, pushed out along the edge's
-        own normal so it never sits on top of the line."""
         if not text:
             return
         mx, my = (p[0] + q[0]) / 2, (p[1] + q[1]) / 2
         dx, dy = q[0] - p[0], q[1] - p[1]
         m = math.hypot(dx, dy) or 1
         nx, ny = -dy / m, dx / m
-        # Always push away from the canvas centre, so labels land outside
-        # the figure rather than inside it.
         if (mx - self.w / 2) * nx + (my - self.h / 2) * ny < 0:
             nx, ny = -nx, -ny
         self.text(mx + nx * off, my + ny * off, text, size=size, italic=italic)
@@ -168,17 +125,8 @@ class Canvas:
         self.text(x + dx, y + dy, name, size=size, italic=True)
 
     def finish(self) -> bytes:
-        """Downscales to the final size and crops to the ink.
-
-        Every shape is laid out inside the same 620x460 box, so a wide
-        figure like an angle and a tall one like a cone each leave a
-        different band of blank paper behind. Embedded at a fixed width in
-        the PDF that blank band reads as a layout bug — a drawing floating
-        in the middle of a gap — so it is trimmed here rather than being
-        hand-tuned per shape."""
         import io
         out = self.img.resize((self.w, self.h), Image.LANCZOS)
-        # getbbox() finds non-black, so invert: we want non-WHITE.
         from PIL import ImageChops, ImageOps
         grey = ImageOps.invert(out.convert("L"))
         box = grey.point(lambda p: 255 if p > 12 else 0).getbbox()
@@ -192,8 +140,6 @@ class Canvas:
 
 
 def _v(values, i, default=""):
-    """values[i] if the model supplied it, else a default — the model is
-    told the order but routinely returns a short list."""
     try:
         s = values[i]
         return "" if s is None else str(s)
@@ -201,9 +147,6 @@ def _v(values, i, default=""):
         return default
 
 
-# ══ GEOMETRY: solids ════════════════════════════════════════════════════
-# Hidden edges are dashed and the back vertex is the one the convention
-# hides — that is what makes a flat drawing read as a solid body.
 
 def _cube(c, v, square=True):
     w = 200 if square else 215
@@ -212,7 +155,7 @@ def _cube(c, v, square=True):
     A = (160, 340); B = (A[0] + w, 340); C = (B[0] + dx, B[1] - dy); D = (A[0] + dx, A[1] - dy)
     A1 = (A[0], A[1] - h); B1 = (B[0], B[1] - h); C1 = (C[0], C[1] - h); D1 = (D[0], D[1] - h)
     c.poly([A1, B1, C1, D1], fill=FILL, width=0)
-    for p, q in ((A, D), (D, C), (D, D1)):          # behind the body
+    for p, q in ((A, D), (D, C), (D, D1)):
         c.line(p, q, dashed=True, color=GREY)
     for p, q in ((A, B), (B, C), (A, A1), (B, B1), (C, C1),
                  (A1, B1), (B1, C1), (C1, D1), (D1, A1)):
@@ -269,8 +212,8 @@ def _cylinder(c, v):
     cx, rx, ry = 310, 112, 34
     top, bot = 125, 335
     c.d.rectangle([(cx - rx) * SS, top * SS, (cx + rx) * SS, bot * SS], fill=FILL)
-    c.arc(cx, bot, rx, ry, 180, 360, dashed=True, color=GREY)   # far rim
-    c.arc(cx, bot, rx, ry, 0, 180)                              # near rim
+    c.arc(cx, bot, rx, ry, 180, 360, dashed=True, color=GREY)
+    c.arc(cx, bot, rx, ry, 0, 180)
     c.line((cx - rx, top), (cx - rx, bot)); c.line((cx + rx, top), (cx + rx, bot))
     c.ellipse(cx, top, rx, ry, fill="white")
     c.line((cx, top), (cx, bot), dashed=True, color=GREY)
@@ -310,7 +253,6 @@ def _sphere(c, v):
     c.label_edge((cx, cy), end, _v(v, 0), off=14)
 
 
-# ══ GEOMETRY: plane figures ═════════════════════════════════════════════
 
 def _quad(c, pts, names, v, diagonals=False, right=False):
     c.poly(pts, fill=FILL, width=0)
@@ -360,7 +302,6 @@ def _triangle(c, v, right=False):
     if right:
         c.right_angle(B, A, C, 18)
     else:
-        # the altitude from A, which is what most problems actually need
         foot = (A[0], B[1])
         c.line(A, foot, dashed=True, color=GREY)
         c.right_angle(foot, A, C, 13)
@@ -400,8 +341,6 @@ def _angle(c, v):
     c.text(r2[0] + 14, r2[1] - 6, "B", size=17, italic=True)
 
 
-# ══ ALGEBRA / MATH: real plotted axes ═══════════════════════════════════
-# A parabola every pupil has seen on a blackboard, not a table of values.
 
 _UNIT = 42
 _OX, _OY = 300, 230
@@ -410,7 +349,7 @@ _XMIN, _XMAX, _YMIN, _YMAX = 70, 550, 55, 405
 
 def _axes(c):
     x0, x1, y0, y1 = _XMIN, _XMAX, _YMIN, _YMAX
-    for i in range(-8, 9):                       # grid
+    for i in range(-8, 9):
         gx = _OX + i * _UNIT
         if x0 < gx < x1:
             c.line((gx, y0), (gx, y1), width=0.8, color=(226, 230, 236))
@@ -449,9 +388,6 @@ def _stroke(c, run):
 
 
 def _plot(c, fn, label):
-    """Samples fn across the axes and draws it, breaking the line wherever
-    the curve leaves the frame or the function is undefined — otherwise a
-    hyperbola gets a bogus vertical line joining its two branches."""
     _axes(c)
     run = []
     steps = 900
@@ -479,8 +415,6 @@ def _fmt(n):
 
 
 def _term(coef, suffix):
-    """' + 3x' / ' - x' — the sign has to be split out from the number so
-    the label reads like a textbook rather than 'y = 2x + -3'."""
     if not coef:
         return ""
     sign = "+" if coef > 0 else "−"
@@ -515,10 +449,6 @@ def _plot_sine(c, v):
 
 
 def _plot_exponential(c, v):
-    """y = k*a^x. Added because a live Алгебра konspekt on the exponential
-    function had no exponential in the catalogue to pick from, so the model
-    reached for "coordinate_plane" instead and the page came out with empty
-    axes under the caption "graph of y = 2^x"."""
     a, k = _num(v, 0, 2), _num(v, 1, 1)
     if a <= 0:
         a = 2.0
@@ -530,12 +460,11 @@ def _coordinate_plane(c, v):
     _axes(c)
 
 
-# ══ PHYSICS ═════════════════════════════════════════════════════════════
 
 def _force_diagram(c, v):
     bx, by, bw, bh = 250, 230, 130, 90
-    c.line((90, by + bh), (530, by + bh), width=2.4)          # ground
-    for gx in range(100, 530, 26):                            # hatching
+    c.line((90, by + bh), (530, by + bh), width=2.4)
+    for gx in range(100, 530, 26):
         c.line((gx, by + bh), (gx - 13, by + bh + 14), width=1.2, color=GREY)
     c.d.rectangle([bx * SS, by * SS, (bx + bw) * SS, (by + bh) * SS], fill=FILL,
                   outline=INK, width=int(2 * SS))
@@ -603,22 +532,18 @@ def _circuit(c, v):
     c.line((L, B), (R, B), width=2.4)
     c.line((L, T), (L, B), width=2.4)
     c.line((R, T), (R, B), width=2.4)
-    # source, bottom edge
     c.d.rectangle([292 * SS, (B - 24) * SS, 328 * SS, (B + 24) * SS], fill="white")
     c.line((300, B - 24), (300, B + 24), width=3.4)
     c.line((320, B - 13), (320, B + 13), width=2)
     c.text(310, B + 44, _v(v, 0) or "Источник", size=16)
-    # resistor, top edge
     c.d.rectangle([265 * SS, (T - 18) * SS, 355 * SS, (T + 18) * SS],
                   fill="white", outline=INK, width=int(2 * SS))
     c.text(310, T - 40, _v(v, 1) or "R", size=18, italic=True)
-    # lamp, right edge
     cy = (T + B) / 2
     c.ellipse(R, cy, 28, 28, fill="white")
     c.line((R - 20, cy - 20), (R + 20, cy + 20), width=1.8)
     c.line((R - 20, cy + 20), (R + 20, cy - 20), width=1.8)
     c.text(R - 48, cy, _v(v, 2) or "L", size=18, italic=True, anchor="rm")
-    # switch, left edge
     c.d.rectangle([(L - 7) * SS, (cy - 28) * SS, (L + 7) * SS, (cy + 28) * SS], fill="white")
     c.dot(L, cy - 28)
     c.dot(L, cy + 28)
@@ -626,7 +551,6 @@ def _circuit(c, v):
     c.text(L + 48, cy, _v(v, 3) or "K", size=18, italic=True)
 
 
-# ══ CHEMISTRY ═══════════════════════════════════════════════════════════
 
 def _atom_model(c, v):
     cx, cy = 310, 225
@@ -646,7 +570,6 @@ def _atom_model(c, v):
 
 
 _MOLECULES = {
-    # formula -> (central atom, [(label, angle_deg, bond_order)])
     "h2o": ("O", [("H", 145, 1), ("H", 35, 1)]),
     "co2": ("C", [("O", 180, 2), ("O", 0, 2)]),
     "ch4": ("C", [("H", 90, 1), ("H", 205, 1), ("H", 335, 1), ("H", 270, 1)]),
@@ -674,16 +597,8 @@ def _molecule(c, v):
     c.text(cx, cy, centre, size=26, bold=True)
 
 
-# ══ INFORMATICS ═════════════════════════════════════════════════════════
-# The drawings a CS teacher actually puts on the board: a GOST block
-# diagram, the von Neumann machine, network topologies, a logic gate, the
-# bit weights of a byte. These are not "diagrams of information" in the
-# generic sense visual_blocks already covers — they are the subject's own
-# notation, which is why they belong here and not there.
 
 def _wrap_in(c, text, font_size, max_w):
-    """Greedy wrap against the real drawn width — the box has to hold the
-    text, so measuring it beats guessing a character count."""
     from PIL import ImageFont
     f = _font(_FONT_REGULAR, int(font_size * SS))
     words, lines, cur = str(text).split(), [], ""
@@ -700,9 +615,6 @@ def _wrap_in(c, text, font_size, max_w):
 
 
 def _textbox(c, cx, cy, w, h, text, size=15, shape="rect", fill=FILL):
-    """One flowchart node. `shape` picks the GOST outline: rect for a
-    process, oval for start/end, para for input/output, diamond for a
-    decision."""
     x0, y0, x1, y1 = cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2
     if shape == "oval":
         c.d.rounded_rectangle([x0 * SS, y0 * SS, x1 * SS, y1 * SS], radius=int(h / 2 * SS),
@@ -723,17 +635,6 @@ def _textbox(c, cx, cy, w, h, text, size=15, shape="rect", fill=FILL):
 
 
 def _blok_sxema(c, v):
-    """A GOST algorithm block diagram built from the steps the model gave.
-
-    The first version was a FIXED skeleton — start, input, process,
-    decision, output, end — and the model's values were dropped into those
-    six boxes in order. A live generation broke it immediately: asked for
-    "find the larger of two numbers", the model returned start, input,
-    "a > b?", "a is larger", "b is larger", print, end. Seven steps with a
-    two-way branch, so every label landed one box off and the condition was
-    drawn as a process. Real algorithms differ in shape, so the shape is
-    read from the steps now, with each step tagged by kind.
-    """
     KINDS = {"start": ("oval", 170, 46), "end": ("oval", 170, 46),
              "in": ("para", 250, 54), "out": ("para", 250, 54),
              "do": ("rect", 250, 54), "if": ("diamond", 290, 110),
@@ -753,16 +654,7 @@ def _blok_sxema(c, v):
     if not nodes:
         nodes = [("start", "Оғоз"), ("in", "Маълумот ворид кун"),
                  ("do", "Ҳисоб кун"), ("out", "Натиҷа"), ("end", "Анҷом")]
-    # The model sometimes returns plain steps with no "kind:" prefix at
-    # all. Guessing beats refusing to draw: first is the start, last the
-    # end, anything ending in a question mark is a decision.
     if all(k is None for k, _ in nodes):
-        # Two live generations both came back like this: bare steps, and the
-        # branch answers as steps of their own —
-        #   ["Оғоз", "Ворид: a, b", "a > b ?", "Ҳа", "a калон аст", "Не", ...]
-        # Asking the model again for the "kind:text" form is the fragile
-        # move; reading the form it actually produces is not. A lone yes/no
-        # word is a LABEL for the step after it, not a box of its own.
         YES = {"ҳа", "ха", "да", "ҳa", "yes", "ha", "хa"}
         NO = {"не", "нет", "no", "нест", "yo'q", "йўқ", "yoq"}
         IN_WORDS = {"ворид", "вориди", "ввод", "введите", "input", "kirit", "кирит"}
@@ -783,9 +675,6 @@ def _blok_sxema(c, v):
             elif t.rstrip().endswith("?"):
                 guessed.append(("if", t))
             else:
-                # Input and output are a DIFFERENT box shape in GOST, and
-                # informatics pupils are marked on getting that right, so a
-                # step that plainly reads as one is drawn as one.
                 head = t.split()[0].strip(":.,").lower() if t.split() else ""
                 if head in IN_WORDS:
                     guessed.append(("in", t))
@@ -799,7 +688,7 @@ def _blok_sxema(c, v):
     nodes = [(k or "do", t) for k, t in nodes][:9]
 
     cx = 300
-    ends = []       # bottom edge(s) of whatever was drawn last
+    ends = []
 
     def connect(target_y, tx=cx):
         for px, py in ends:
@@ -823,9 +712,6 @@ def _blok_sxema(c, v):
         ends = [(cx, y + h)]
         y += h
 
-        # A decision followed by its two outcomes is drawn as a real fork,
-        # side by side, then merged back — drawn in a single column it read
-        # as "do A, then do B", which is the opposite of what it means.
         branches = []
         j = i + 1
         while j < len(nodes) and nodes[j][0] in ("yes", "no") and len(branches) < 2:
@@ -853,8 +739,6 @@ def _blok_sxema(c, v):
 
 
 def _computer_arch(c, v):
-    """Von Neumann machine — input and output on the outside, processor in
-    the middle, memory wired to it both ways."""
     cy = 250
     _textbox(c, 90, cy, 140, 70, _v(v, 0) or "Воридот")
     _textbox(c, 300, cy, 200, 130, "", shape="rect", fill=(255, 255, 255))
@@ -961,7 +845,6 @@ def _logic_gate(c, v):
 
 
 def _binary_table(c, v):
-    """Bit weights over the bits — how a byte's value is actually read."""
     try:
         n = int(str(_v(v, 0) or "0").strip())
     except Exception:
@@ -988,13 +871,6 @@ def _array_cells(c, v):
     cw = min(78, 520 / len(items))
     x0 = 300 - cw * len(items) / 2
     y = 200
-    # Confirmed live: a Информатика "dictionary"/object figure (values
-    # like "name: 'Player'", "is_alive: True", not short numbers) ran the
-    # neighbouring cells' text into each other — this box only ever drew
-    # at a fixed size=17 with no check against the cell's own width, which
-    # a short array element ("12", "45") never overflowed but a real
-    # key: value pair always did. Shrunk to fit (down to a floor, past
-    # which it's truncated with an ellipsis) instead of overflowing.
     cell_pad = 8
     for i, val in enumerate(items):
         x = x0 + i * cw
@@ -1045,7 +921,6 @@ def _client_server(c, v):
     c.text(300, cy + 46, _v(v, 3) or "Ҷавоб", size=14)
 
 
-# ══ registry ════════════════════════════════════════════════════════════
 
 SHAPES = {
     "cube": _cube, "cuboid": _cuboid, "pyramid": _pyramid, "prism": _prism,
@@ -1066,10 +941,6 @@ SHAPES = {
     "folder_tree": _folder_tree, "client_server": _client_server,
 }
 
-# Shapes that do not fit the default 620x460 box. A GOST flowchart runs
-# top-to-bottom through six nodes and a logic gate is a wide horizontal
-# run — squeezed into the standard box, the text inside the nodes had to
-# shrink until it was unreadable at print size.
 _CANVAS_SIZE = {
     "blok_sxema": (620, 900),
     "network_star": (620, 500),
@@ -1081,9 +952,6 @@ _CANVAS_SIZE = {
 
 
 def build_figure(shape: str, values: list | None = None) -> bytes | None:
-    """Draws one catalogue shape. Returns None for an unknown shape rather
-    than raising — the model occasionally invents a shape id, and a figure
-    it made up should quietly not appear, never break the konspekt."""
     fn = SHAPES.get((shape or "").strip().lower())
     if fn is None:
         return None
@@ -1093,8 +961,6 @@ def build_figure(shape: str, values: list | None = None) -> bytes | None:
 
 
 def save_figure(shape: str, values: list | None = None) -> str | None:
-    """Same contract as timeline_builder.save_timeline_image — a
-    web-servable /uploads/... path, or None on any failure."""
     try:
         png = build_figure(shape, values)
         if not png:

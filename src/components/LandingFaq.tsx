@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-// Nothing here talks about price, deliberately. The landing page makes no
-// claim about what anything costs — that lives in the app, where it can
-// change without leaving a stale figure on a public page. A "Сколько это
-// стоит?" entry was removed for the same reason, not overlooked.
+
+
+
+
 const ITEMS: { q: string; a: string }[] = [
   {
     q: "Как это работает?",

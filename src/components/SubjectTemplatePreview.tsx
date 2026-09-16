@@ -1,25 +1,8 @@
 import type { SubjectTemplate } from "@/lib/subject-templates";
 
-/* A real miniature of what the exporter produces for this subject.
- *
- * Everything here is driven by the SAME switches the PPTX builder reads
- * (template.header / card / marker / decor / cover), so the preview
- * cannot claim a look the export does not deliver.
- *
- * The body used to be a header and two bullet cards for every subject,
- * which was an honest picture of the old exporter and a misleading one of
- * this one: slides are no longer card grids. It now draws the subject's
- * own composition — axes and a curve for maths, a hub with satellites for
- * biology, a spine with dated cards for history — plus the small figure
- * the decks themselves use. Two previews therefore differ in SHAPE, not
- * only in colour, which is the entire point of the card.
- *
- * Inline SVG rather than fetched images: eighteen previews cost nothing,
- * stay crisp at any size, and work offline.
- */
 
-/** The flat silhouette the exporter draws (see app/slide_characters.py),
- *  at preview scale: head, torso, two arms, two legs, one prop. */
+
+
 function Figure({
   t, x, y, h, flip = false,
 }: { t: SubjectTemplate; x: number; y: number; h: number; flip?: boolean }) {
@@ -35,7 +18,7 @@ function Figure({
         width={0.115 * h} height={0.4 * h} rx={0.057 * h} fill={a} />
       <rect x={x + 0.075 * h - 0.057 * h} y={torsoTop + torsoH - 0.02 * h}
         width={0.115 * h} height={0.4 * h} rx={0.057 * h} fill={a} />
-      {/* far arm raised toward the content */}
+      {}
       <rect x={x + s * (torsoW / 2) - 0.042 * h} y={torsoTop - 0.04 * h}
         width={0.085 * h} height={0.3 * h} rx={0.042 * h} fill={a}
         transform={`rotate(${s * -118} ${x + s * (torsoW / 2)} ${torsoTop + 0.02 * h})`} />
@@ -49,15 +32,14 @@ function Figure({
   );
 }
 
-/** The body composition, one per subject — the same vocabulary the
- *  exporter's cover compositions use. */
+
 function Composition({ t }: { t: SubjectTemplate }) {
   const a = t.accent;
   const s = t.support;
   const line = { fill: "none", stroke: s, strokeWidth: 1 } as const;
 
   switch (t.cover) {
-    case "axis":            // mathematics, algebra
+    case "axis":            
       return (
         <g>
           <line x1={14} y1={44} x2={74} y2={44} stroke={s} strokeWidth={1} />
@@ -71,7 +53,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={100} y={38} h={22} />
         </g>
       );
-    case "construction":    // geometry
+    case "construction":    
       return (
         <g>
           <polygon points="20,54 56,54 38,20" {...line} stroke={a} strokeWidth={1.6} />
@@ -81,7 +63,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={100} y={36} h={22} />
         </g>
       );
-    case "trajectory":      // physics
+    case "trajectory":      
       return (
         <g>
           {Array.from({ length: 11 }, (_, i) => {
@@ -94,7 +76,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={100} y={36} h={22} />
         </g>
       );
-    case "molecule":        // chemistry
+    case "molecule":        
       return (
         <g>
           {[0, 1, 2].map((i) => (
@@ -106,7 +88,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={100} y={34} h={24} />
         </g>
       );
-    case "organic":         // biology, the hub-and-satellites composition
+    case "organic":         
       return (
         <g>
           <circle cx={46} cy={38} r={20} fill={s} />
@@ -120,7 +102,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={108} y={34} h={24} />
         </g>
       );
-    case "globe":           // geography
+    case "globe":           
       return (
         <g>
           <circle cx={40} cy={38} r={22} {...line} stroke={a} strokeWidth={1.4} />
@@ -133,7 +115,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={112} y={36} h={22} />
         </g>
       );
-    case "banner":          // history — the timeline spine
+    case "banner":          
       return (
         <g>
           <line x1={12} y1={38} x2={124} y2={38} stroke={a} strokeWidth={1.6} />
@@ -147,7 +129,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           ))}
         </g>
       );
-    case "terminal":        // informatics
+    case "terminal":        
       return (
         <g>
           <rect x={12} y={16} width={70} height={44} rx={4} {...line} stroke={a} />
@@ -162,8 +144,8 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={106} y={34} h={24} />
         </g>
       );
-    case "page":            // russian
-    case "frontispiece":    // literature
+    case "page":            
+    case "frontispiece":    
       return (
         <g>
           <rect x={16} y={14} width={54} height={48} {...line} stroke={a} />
@@ -178,7 +160,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={104} y={34} h={24} />
         </g>
       );
-    case "bubble":          // english
+    case "bubble":          
       return (
         <g>
           <rect x={14} y={18} width={50} height={24} rx={8} fill={s} />
@@ -188,7 +170,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={112} y={34} h={24} />
         </g>
       );
-    case "ornament":        // tajik
+    case "ornament":        
       return (
         <g>
           {[0, 30, 60].map((r) => (
@@ -202,7 +184,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           ))}
         </g>
       );
-    case "nodes":           // social studies
+    case "nodes":           
       return (
         <g>
           {[[24, 50], [44, 24], [68, 42], [96, 20], [88, 56]].map(([x, y], i, arr) =>
@@ -215,7 +197,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           ))}
         </g>
       );
-    case "cycle":           // ecology
+    case "cycle":           
       return (
         <g>
           <circle cx={44} cy={38} r={20} {...line} stroke={a} strokeWidth={1.6} />
@@ -226,7 +208,7 @@ function Composition({ t }: { t: SubjectTemplate }) {
           <Figure t={t} x={112} y={34} h={22} />
         </g>
       );
-    case "notebook":        // primary school
+    case "notebook":        
       return (
         <g>
           {[18, 28, 38, 48, 58].map((y) => (
@@ -272,7 +254,7 @@ export function SubjectTemplatePreview({
       className={`relative aspect-video w-full overflow-hidden rounded-lg border border-border-light ${className}`}
       style={{ background: t.bg }}
     >
-      {/* header — the same treatments the exporter draws */}
+      {}
       {banded && (
         <div className="absolute inset-x-0 top-0 h-[20%]" style={{ background: t.accent }} />
       )}
@@ -305,7 +287,7 @@ export function SubjectTemplatePreview({
           Заголовок слайда
         </div>
 
-        {/* the rule under the title, per template */}
+        {}
         {t.header === "rule" && <div className="mt-[2px] h-[2px] w-[14%]" style={{ background: t.accent }} />}
         {t.header === "index" && <div className="mt-[2px] h-[1.5px] w-[22%]" style={{ background: t.support }} />}
         {t.header === "lozenge" && <div className="mt-[2px] h-[3px] w-[16%] rounded-full" style={{ background: t.accent }} />}
@@ -337,13 +319,13 @@ export function SubjectTemplatePreview({
         )}
       </div>
 
-      {/* the subject's own composition, in the body of the slide */}
+      {}
       <svg viewBox="0 0 138 72" className="absolute inset-x-0 bottom-[7%] top-[32%] h-[61%] w-full"
         preserveAspectRatio="xMidYMid meet" aria-hidden>
         <Composition t={t} />
       </svg>
 
-      {/* footer progress rule, same as every exported slide */}
+      {}
       <div className="absolute inset-x-[7%] bottom-[5%] h-[1.5px]" style={{ background: `${t.ink}14` }}>
         <div className="h-full w-[35%]" style={{ background: t.accent }} />
       </div>

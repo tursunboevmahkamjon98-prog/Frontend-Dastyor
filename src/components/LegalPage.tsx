@@ -5,12 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { LegalDoc, legalDoc } from "@/lib/legal";
 import { useLocale } from "@/lib/i18n";
 
-/** Renders one legal document (terms or privacy).
- *
- * Both pages are the same shape — a heading, a date and numbered
- * sections — so they share this component rather than duplicating the
- * markup twice. The language follows the interface language the teacher
- * already chose. */
+
 export default function LegalPage({ docs }: { docs: Record<string, LegalDoc> }) {
   const { locale } = useLocale();
   const doc = legalDoc(docs, locale);

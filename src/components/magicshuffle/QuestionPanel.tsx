@@ -2,17 +2,10 @@
 
 import { ShuffleQuestion } from "./types";
 
-/** Kahoot-style per-letter tile colors, matching the main engine's own
- * OPTION_COLORS so answer buttons feel like the same product. */
+
 const LETTER_COLORS = ["bg-[#7c3aed]", "bg-[#16a34a]", "bg-[#2563eb]", "bg-[#ea580c]"];
 
-/** The reward panel that appears once a correctly-guessed box is opened.
- * Presentational only: it reports which answer was tapped and renders the
- * revealed state the parent hands back, so all scoring stays in the hook.
- *
- * Correct/incorrect is never signalled by color alone (accessibility): the
- * winning row also gets a ✓ and the wrongly-picked row a ✕, and the caption
- * underneath states the outcome in words. */
+
 export default function QuestionPanel({
   question,
   picked,
@@ -24,9 +17,9 @@ export default function QuestionPanel({
 }) {
   const revealed = picked !== null;
 
-  // No question text here on purpose: it's already on the card that just
-  // flew out of the box and is sitting above this panel. Repeating it would
-  // show the same sentence twice on one screen.
+  
+  
+  
   return (
     <div
       className="w-full max-w-lg rounded-3xl border border-white/20 bg-white/95 p-4 shadow-2xl backdrop-blur-sm sm:p-5"
@@ -58,8 +51,7 @@ export default function QuestionPanel({
                 {String.fromCharCode(65 + i)}
               </span>
               <span className="flex-1">{ans}</span>
-              {/* Shape, not just color — a colorblind pupil still sees which
-                  row was right and which one they chose. */}
+              {}
               {revealed && isCorrect && <span className="text-lg font-black text-emerald-600">✓</span>}
               {revealed && isPicked && !isCorrect && <span className="text-lg font-black text-red-600">✕</span>}
             </button>

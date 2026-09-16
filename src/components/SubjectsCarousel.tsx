@@ -4,9 +4,9 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SUBJECTS } from "@/lib/material-types";
 
-// Cycles through the same pastel category tokens the rest of the site
-// already uses (see globals.css) — SUBJECTS has more entries than colours,
-// so it just repeats, same as a real palette-based design system would.
+
+
+
 const BG_VARS = [
   "bg-note-bg text-note-icon",
   "bg-test-bg text-test-icon",
@@ -16,9 +16,7 @@ const BG_VARS = [
   "bg-igra-bg text-igra-icon",
 ];
 
-/** Landing-page "which subjects Dastyor covers" strip — a real, honest
- * list (lib/material-types.ts's SUBJECTS, the same list the create-material
- * wizard offers), not an invented per-subject lesson count. */
+
 export default function SubjectsCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
 

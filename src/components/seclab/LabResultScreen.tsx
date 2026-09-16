@@ -11,9 +11,7 @@ interface Stat {
   tint: string;
 }
 
-/** End of the experiment. Stats appear one after another rather than all at
- * once — the reveal is part of the reward, and a wall of numbers landing
- * simultaneously reads as a report rather than a result. */
+
 export default function LabResultScreen({
   score,
   correctCount,
@@ -27,9 +25,7 @@ export default function LabResultScreen({
   correctCount: number;
   wrongCount: number;
   roundsPlayed: number;
-  /** True when the run ended because the lives ran out rather than by
-   * finishing every question — the heading stays encouraging either way,
-   * but it shouldn't congratulate a run that didn't finish. */
+  
   outOfLives: boolean;
   onReplay: () => void;
   onExit: () => void;
@@ -41,8 +37,8 @@ export default function LabResultScreen({
     { icon: <FlaskConical className="h-4 w-4" />, label: "Таҷрибаҳои анҷомёфта", value: roundsPlayed, tint: "text-cyan-300" },
   ];
 
-  // Reveal one stat at a time. A single timer that advances an index, cleared
-  // on unmount so leaving mid-reveal can't tick on a dead component.
+  
+  
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (shown >= stats.length) return;
@@ -74,8 +70,8 @@ export default function LabResultScreen({
             key={s.label}
             className="rounded-2xl border border-white/15 bg-white/[0.07] px-3 py-3 shadow-lg backdrop-blur-md"
             style={{
-              // Not yet revealed → invisible and inert, so the grid keeps its
-              // shape instead of reflowing as each stat lands.
+              
+              
               opacity: i < shown ? 1 : 0,
               animation: i < shown ? "lab-stat-in 0.5s cubic-bezier(0.22,1,0.36,1)" : undefined,
             }}

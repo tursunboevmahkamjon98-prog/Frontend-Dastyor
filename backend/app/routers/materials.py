@@ -61,23 +61,9 @@ _MATERIAL_MODELS = {
     "igra": Game,
 }
 
-# The generation limit lives entirely in app/limits.py now — one free
-# material per ACCOUNT (not one per type, which is what the six
-# free_*_used flags below used to mean), then GENERATION_PRICE_DIRAMS for
-# every one after it, claimed with an atomic conditional UPDATE before
-# the AI call and refunded if the call fails. See that module's docstring
-# for why the old read-check-generate-then-deduct shape here was
-# defeatable by simply sending the same request twice at once.
-#
-# Re-exported under their old names because routers/curriculum.py imports
-# them from this module.
 GENERATION_PRICE_DIRAMS = limits.GENERATION_PRICE_DIRAMS
 _PILOT_FREE_FOR_ALL = limits.PILOT_FREE_FOR_ALL
 
-# The columns behind the per-type free tier. limits.FREE_SLOT_COLUMN is
-# what reserve()/refund()/quote() actually read and write today, and it
-# covers only the four types that have a free slot; this map is the wider
-# historical set, kept for database.py's init_db backfills.
 _FREE_USED_ATTR = {
     "konspekt": "free_konspekt_used",
     "lektsiya": "free_lektsiya_used",
@@ -89,50 +75,18 @@ _FREE_USED_ATTR = {
 
 
 async def enforce_generation_quota(user: User) -> None:
-    """Caps how many generations ONE ACCOUNT can start per hour.
-
-    Distinct from both of the other limits and not covered by either.
-    The balance in app/limits.py bounds what a teacher can spend, not
-    how fast — an account with a large credited balance can still open
-    a hundred generations in a minute and saturate the AI queue for
-    everyone else. rate_limit.py's per-IP cap can't see it either: the
-    same account across a phone, a laptop and a script is three
-    addresses, and one address behind CGNAT is many accounts.
-
-    Sized well above real teaching use (a lesson kit is 5 materials, a
-    curriculum month is ~25 days) so it only ever bites on scripted
-    traffic."""
     await enforce_user_quota(
         user.id, "generate", get_settings().MAX_GENERATIONS_PER_HOUR
     )
 
 
 async def enforce_ai_edit_quota(user: User) -> None:
-    """The same idea for the cheaper-but-still-AI endpoints — chat-edit,
-    per-item regeneration, quiz sets, game rerolls. These charge nothing
-    against the balance (they refine a material the teacher already paid
-    for rather than producing a new one), which means the balance is not
-    a limit on them at all and this is the only thing bounding how many
-    an account can run."""
     await enforce_user_quota(
         user.id, "ai_edit", get_settings().MAX_AI_EDITS_PER_HOUR
     )
 
 
 def require_game_access(user: User, material_type: str) -> None:
-    """The game section is not generally available yet.
-
-    Hiding the entry points in the web app and the APK is presentation,
-    not access control: the endpoints stay reachable with a bearer token
-    and curl, and a hidden button is one devtools inspection away from
-    being clicked anyway. This is the check that actually decides, and it
-    runs on every path that can create, reroll or record a game.
-
-    Gate is the admin role plus an explicit allow-list of account ids in
-    GAME_ACCESS_USER_IDS, so the feature can be opened to a named tester
-    without making them an administrator. 403 rather than 404: an
-    authenticated teacher should be told the feature isn't open to them,
-    not left guessing whether it exists."""
     if material_type != "igra":
         return
     if user.role == "admin":
@@ -144,7 +98,6 @@ def require_game_access(user: User, material_type: str) -> None:
     raise HTTPException(status_code=403, detail=get_message("game_locked", user.language))
 
 
-# ── Dashboard stats ──────────────────────────────────────────────────────────
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_stats(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -172,7 +125,6 @@ async def get_stats(user: User = Depends(get_current_user), db: AsyncSession = D
 
 
 
-# ── Search All Materials ─────────────────────────────────────────────────────
 
 @router.get("/search")
 async def search_materials(
@@ -207,7 +159,6 @@ async def search_materials(
     return results
 
 
-# ── Konspekts ───────────────────────────────────────────────────────────────
 
 @router.post("/konspekts", response_model=KonspektOut, status_code=201)
 async def create_konspekt(
@@ -274,11 +225,6 @@ async def update_konspekt(
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     updates = data.model_dump(exclude_unset=True)
-    # Snapshot the content as it was right before this change — the one
-    # step a teacher can undo (e.g. after a section regeneration they end
-    # up not liking) instead of the old content being gone the instant it
-    # gets overwritten. Only when content is actually changing, so a
-    # title/favorite-only update doesn't create a pointless checkpoint.
     if "content" in updates and updates["content"] != item.content:
         item.previous_content = item.content
     for k, v in updates.items():
@@ -293,8 +239,6 @@ async def undo_konspekt_content(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Restores `content` to what it was right before the last change —
-    single-level undo (see Konspekt.previous_content), not a full history."""
     result = await db.execute(
         select(Konspekt).where(Konspekt.id == item_id, Konspekt.owner_id == user.id)
     )
@@ -314,10 +258,6 @@ async def retry_konspekt_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retries the real-world photo/map the original generation asked for
-    but didn't get (see ai_service.retry_visual_assets's docstring) — the
-    only way to get one short of regenerating the whole konspekt, since
-    that fetch never re-runs on its own once the document is saved."""
     result = await db.execute(
         select(Konspekt).where(Konspekt.id == item_id, Konspekt.owner_id == user.id)
     )
@@ -340,12 +280,6 @@ async def replace_konspekt_lesson_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Swaps ONE lesson_images entry (index `data.index`) for a different
-    Commons result on the same query — unlike fetch-image above, this
-    fires even when the slot already has a picture; it's "I have one, I
-    want a DIFFERENT one," not "I have none." See
-    ai_service.retry_lesson_image's docstring for why this never touches
-    the shared LessonImageCache."""
     result = await db.execute(
         select(Konspekt).where(Konspekt.id == item_id, Konspekt.owner_id == user.id)
     )
@@ -369,14 +303,6 @@ async def upload_konspekt_lesson_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lets a teacher place their OWN photo/diagram into a konspekt
-    instead of only ever getting whatever Commons search returned — the
-    one thing neither fetch-image nor replace-image above can do, since
-    both only ever pick from Commons. Overwrites the lesson_images entry
-    at `index` if one exists there (keeping its position_after so the
-    picture stays anchored to the same section); appends a new entry
-    otherwise, capped at the usual 2-picture limit every other path here
-    already enforces."""
     result = await db.execute(
         select(Konspekt).where(Konspekt.id == item_id, Konspekt.owner_id == user.id)
     )
@@ -424,7 +350,6 @@ async def delete_konspekt(
     await db.delete(item)
 
 
-# ── Lectures (лекция — explains a topic; конспект manages a lesson) ─────────
 
 @router.post("/lectures", response_model=LectureOut, status_code=201)
 async def create_lecture(
@@ -522,8 +447,6 @@ async def retry_lecture_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lecture (лекция) counterpart of retry_konspekt_image — see that
-    endpoint's docstring."""
     result = await db.execute(
         select(Lecture).where(Lecture.id == item_id, Lecture.owner_id == user.id)
     )
@@ -546,8 +469,6 @@ async def replace_lecture_lesson_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lecture (лекция) counterpart of replace_konspekt_lesson_image — see
-    that endpoint's docstring."""
     result = await db.execute(
         select(Lecture).where(Lecture.id == item_id, Lecture.owner_id == user.id)
     )
@@ -571,8 +492,6 @@ async def upload_lecture_lesson_image(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lecture (лекция) counterpart of upload_konspekt_lesson_image — see
-    that endpoint's docstring."""
     result = await db.execute(
         select(Lecture).where(Lecture.id == item_id, Lecture.owner_id == user.id)
     )
@@ -620,7 +539,6 @@ async def delete_lecture(
     await db.delete(item)
 
 
-# ── Presentations ────────────────────────────────────────────────────────────
 
 @router.post("/presentations", response_model=PresentationOut, status_code=201)
 async def create_presentation(
@@ -705,7 +623,6 @@ async def delete_presentation(
     await db.delete(item)
 
 
-# ── Tests ────────────────────────────────────────────────────────────────────
 
 @router.post("/tests", response_model=TestOut, status_code=201)
 async def create_test(
@@ -792,7 +709,6 @@ async def delete_test(
     await db.delete(item)
 
 
-# ── Practical tasks ("💡 Амалӣ супоришҳо") ────────────────────────────────────
 
 @router.post("/practical-tasks", response_model=PracticalTaskOut, status_code=201)
 async def create_practical_task(
@@ -878,7 +794,6 @@ async def delete_practical_task(
     await db.delete(item)
 
 
-# ── Games ("🎮 Интерактивные игры") ───────────────────────────────────────────
 
 @router.post("/games", response_model=GameOut, status_code=201)
 async def create_game(
@@ -956,17 +871,6 @@ async def quiz_set(
     data: QuizSetRequest,
     user: User = Depends(get_current_user),
 ):
-    """Ad-hoc questions for the "Қуттиҳои сеҳрнок" game's AI mode — the
-    player picks subject/topic/difficulty/count and gets that many 4-option
-    questions, each with an explanation of why its answer is right.
-
-    Deliberately stateless: nothing is written to the database, because
-    these questions belong to one play session rather than to a saved
-    material. Like reroll-game (and for the same reason) it doesn't touch
-    balance/free-tier flags — it produces no material the user keeps."""
-    # The quiz set is the game section's live-play question source, so it
-    # is behind the same gate the rest of that feature is — otherwise the
-    # locked feature stays fully usable by calling this endpoint directly.
     require_game_access(user, "igra")
     await enforce_ai_edit_quota(user)
     try:
@@ -992,15 +896,6 @@ async def reroll_game(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """A fresh 12-round set on the exact same topic/subject/grade — for
-    "the same game, but a different kid's turn shouldn't see the same
-    questions again" rather than making the teacher build a whole new
-    material. Reuses the saved game's own title as the topic (see
-    _game_prompt's title field: "mentioning {topic}", so titles already
-    read as topic-ish) and overwrites game_json in place, same row —
-    unlike POST /generate this never touches balance/free-tier flags,
-    matching regenerate-item and chat-edit's "refining what's already
-    paid for is free" precedent."""
     result = await db.execute(
         select(Game).where(Game.id == item_id, Game.owner_id == user.id)
     )
@@ -1011,8 +906,6 @@ async def reroll_game(
     await enforce_ai_edit_quota(user)
     try:
         logger.info(f"Reroll game request: id={item_id} title={item.title} user={user.id}")
-        # The pool slot goes back while the model works — see released()
-        # in database.py for the outage this prevents.
         async with released(db):
             content = await generate_material(
                 material_type="igra",
@@ -1046,7 +939,6 @@ async def delete_game(
     await db.delete(item)
 
 
-# ── Game attempts (online play — see components/game/GameEngine.tsx) ────────
 
 @router.post("/games/{item_id}/attempts", response_model=GameAttemptOut, status_code=201)
 async def create_game_attempt(
@@ -1073,9 +965,6 @@ async def list_game_attempts(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Best scores first (not most-recent-first like TestAttempt's history
-    # list) — this backs the start screen's "Ваши лучшие результаты", a
-    # top-N-by-score list, not a chronological log.
     result = await db.execute(
         select(GameAttempt)
         .where(GameAttempt.game_id == item_id, GameAttempt.user_id == user.id)
@@ -1085,35 +974,13 @@ async def list_game_attempts(
     return [GameAttemptOut.model_validate(i) for i in result.scalars().all()]
 
 
-# ── AI Generate ──────────────────────────────────────────────────────────────
 
-# How many earlier konspekts on the same topic are described to the model
-# in full as "do not repeat these". Capped, because each digest costs
-# prompt space and by the fourth version the lesson shape and the
-# do-not-repeat rules together have already moved the new konspekt well
-# away from its predecessors.
 _PREVIOUS_DETAIL_LIMIT = 4
-# ...but the SHAPE/ANGLE of more of them is still read, cheaply: those two
-# strings are all _pick_variant needs to avoid reusing a lesson shape, and
-# there are eight shapes, so stopping at four would let the fifth konspekt
-# on a topic repeat the first one's shape for no reason.
 _PREVIOUS_VARIANTS_LIMIT = 10
 
 
 async def _previous_digests(db: AsyncSession, user: User, material_type: str,
                             topic: str, subject: str) -> list[dict]:
-    """What this teacher already has on this exact topic, digested for the
-    prompt (see ai_service.summarize_previous_konspekt).
-
-    This is what makes a second konspekt on one topic a different LESSON
-    rather than the same one reworded: without it the model cannot know
-    what it wrote last time, and every algebra lesson opens on 2x + 3 = 7.
-
-    Matched on title AND subject, case-insensitively, because that is how
-    a teacher regenerates a topic — same wizard, same words typed in.
-    Never raises: a konspekt that cannot look up its predecessors is still
-    a konspekt, just one that has to rely on the random lesson-shape pick
-    alone to differ from them."""
     if material_type not in ("konspekt", "lektsiya", "prezentatsiya"):
         return []
     model_cls = _MATERIAL_MODELS.get(material_type)
@@ -1139,9 +1006,6 @@ async def _previous_digests(db: AsyncSession, user: User, material_type: str,
             if not digest:
                 continue
             if len(digests) >= _PREVIOUS_DETAIL_LIMIT:
-                # Older than the detail window: keep only which lesson
-                # shape/angle it used, so those stay off the table
-                # without its examples filling up the prompt.
                 digest = {k: digest.get(k, "") for k in ("shape", "angle")}
             digests.append(digest)
         if digests:
@@ -1151,8 +1015,6 @@ async def _previous_digests(db: AsyncSession, user: User, material_type: str,
         logger.warning(f"Previous-variant lookup failed for topic={topic[:50]}: {e}")
         return []
 
-# Which JSON column each type's row keeps its generated body in — the one
-# per-type difference in an otherwise identical save path.
 _CONTENT_FIELD = {
     "konspekt": "content",
     "lektsiya": "content",
@@ -1172,32 +1034,13 @@ async def generate(
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
     require_game_access(user, data.material_type)
-    # Both of these deliberately run on their own short-lived sessions so
-    # their claims commit independently of this request. That means each
-    # one wants a SECOND pool connection while this request is already
-    # holding its own — and when a burst of requests all do that at once,
-    # every connection in the pool is held by a request waiting for a
-    # connection that can never come. Measured: 64 simultaneous
-    # generations deadlocked this way and 34 of them died after the full
-    # 30-second pool timeout; raising the pool from 30 to 60 barely
-    # moved the number, because a deadlock is not a capacity problem.
-    # Handing this request's connection back first means one connection
-    # per request at a time, and the burst merely queues.
     async with released(db):
         await enforce_generation_quota(user)
-        # Claimed BEFORE the AI call, atomically, and given back below if
-        # the generation fails — see app/limits.py. Doing it the other way
-        # round (check now, deduct after) is what let two simultaneous
-        # requests both pass the check and both generate on one charge.
         charge = await limits.reserve(user.id, [data.material_type], language=user.language)
     try:
-        # What this teacher already has on this topic, so a repeat request
-        # produces a different lesson rather than the same one reworded.
         previous_digests = await _previous_digests(
             db, user, data.material_type, data.topic, data.subject)
 
-        # The pool slot goes back while the model works — see released()
-        # in database.py for the outage this prevents.
         async with released(db):
             content = await generate_material(
                 material_type=data.material_type,
@@ -1235,16 +1078,10 @@ async def generate(
             "material_type": data.material_type,
             "content": content,
             "was_free": charge.free_count > 0,
-            # Read back from the database rather than off `user`: the
-            # reservation moved the balance on its own connection, so the
-            # ORM object still holds the pre-charge value.
             "balance_somoni": (await limits.current_balance(user.id)) / 100,
         }
 
     except Exception as e:
-        # Every failure path refunds — an AI timeout, a malformed
-        # response, a database error on save. The teacher asked for a
-        # material and did not get one; they must not have paid for it.
         await limits.refund(charge, reason=f"generate failed: {type(e).__name__}")
         if isinstance(e, HTTPException):
             raise
@@ -1252,20 +1089,12 @@ async def generate(
         raise HTTPException(status_code=500, detail=get_message("ai_busy", data.language))
 
 
-# ── Konspekt source upload ("book mode") ────────────────────────────────────
 
 @router.post("/upload-source")
 async def upload_source_endpoint(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    """Extracts text from a teacher-uploaded .pdf/.docx/.txt so it can be
-    used as the primary source for a "book mode" konspekt (see
-    source_text on /generate-konspekt-stream). Stateless — nothing is
-    written to disk or the database here; the caller holds onto the
-    returned text and resubmits it with the generation request, the same
-    way /curriculum/parse-docx's extracted text round-trips through the
-    frontend."""
     filename = file.filename or ""
     ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     allowed_ext = [e.strip() for e in settings.ALLOWED_SOURCE_EXT.split(",") if e.strip()]
@@ -1296,7 +1125,6 @@ async def upload_source_endpoint(
     return {"status": "ok", "text": text, "truncated": truncated, "filename": filename}
 
 
-# ── AI Generate (konspekt, streaming) ───────────────────────────────────────
 
 @router.post("/generate-konspekt-stream")
 async def generate_konspekt_stream_endpoint(
@@ -1304,47 +1132,19 @@ async def generate_konspekt_stream_endpoint(
     request: Request,
     user: User = Depends(get_current_user),
 ):
-    """SSE counterpart to /generate, konspekt-only: streams real AI token
-    output plus stage/field progress events (see
-    ai_service.generate_konspekt_stream for the event shapes), then
-    persists the finished konspekt exactly like /generate does — but only
-    once, on the terminal "complete" event, so a cancelled/failed
-    generation never leaves a half-written row behind.
-
-    Uses its own DB session (async_session()) instead of the usual
-    Depends(get_db) one: that request-scoped session gets torn down as
-    soon as this endpoint function returns the StreamingResponse object,
-    which happens well before the generator below has actually produced
-    anything — the save has to happen with a session that's still alive
-    partway through the stream.
-    """
     source_text = data.source_text if data.generation_mode == "source" else None
 
-    # Reserved before the stream even opens — an SSE response cannot
-    # carry a 402 once streaming has started, so a refusal has to raise
-    # here rather than inside event_stream(). Refunded on every path that
-    # doesn't end in a saved konspekt: client disconnect, AI error, save
-    # failure (see the generator's finally block below).
     await enforce_generation_quota(user)
     charge = await limits.reserve(user.id, ["konspekt"], language=user.language)
 
     try:
         async with async_session() as db:
-            # Read on a short-lived session before the stream opens — the
-            # request-scoped session is gone by the time event_stream()
-            # actually runs.
             previous_digests = await _previous_digests(db, user, "konspekt", data.topic, data.subject)
     except Exception:
         await limits.refund(charge, reason="konspekt stream setup failed")
         raise
 
     async def event_stream():
-        # Flipped to True only once a konspekt row is actually committed.
-        # Every other way out of this generator — client disconnect, an
-        # AI error event, a save failure, an exception thrown mid-stream
-        # — leaves it False and the finally block gives the charge back,
-        # so a reservation is never kept for a material the teacher
-        # didn't receive.
         saved = False
         try:
             async for event in generate_konspekt_stream(
@@ -1403,7 +1203,6 @@ async def generate_konspekt_stream_endpoint(
     )
 
 
-# ── AI Regenerate Single Item ─────────────────────────────────────────────
 
 @router.post("/regenerate-item")
 async def regenerate_item_endpoint(
@@ -1423,8 +1222,6 @@ async def regenerate_item_endpoint(
             f"idx={data.item_index} section={data.section} user={user.email}"
         )
 
-        # The pool slot goes back while the model works — see released()
-        # in database.py for the outage this prevents.
         async with released(db):
             item = await regenerate_item(
                 material_type=data.material_type,
@@ -1451,19 +1248,12 @@ async def chat_edit_endpoint(
     data: ChatEditRequest,
     user: User = Depends(get_current_user),
 ):
-    """Free-text edit ('add 5 more questions', 'make it shorter', ...)
-    applied to a whole material — see schemas.ChatEditRequest's docstring
-    for why this has no DB side effects of its own (the frontend saves
-    the returned content itself, through the same PUT endpoint the
-    regenerate-item flow already uses)."""
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
     require_game_access(user, data.material_type)
     await enforce_ai_edit_quota(user)
     try:
         logger.info(f"Chat-edit request: type={data.material_type} topic={data.topic} instruction={data.instruction[:80]!r} user={user.email}")
-        # The pool slot goes back while the model works — see released()
-        # in database.py for the outage this prevents.
         async with released(db):
             updated = await chat_edit_material(
                 material_type=data.material_type,
@@ -1483,11 +1273,7 @@ async def chat_edit_endpoint(
         raise HTTPException(status_code=500, detail=get_message("ai_busy", data.language))
 
 
-# ── AI Generate All ──────────────────────────────────────────────────────
 
-# Practical tasks belong here too: "everything at once" that quietly
-# skipped one of the wizard's own material types left teachers making
-# it separately every time, wondering why the button had not.
 _GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy"]
 
 
@@ -1497,23 +1283,6 @@ async def generate_all(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """One topic → all four material types at once, billed exactly like
-    generating each of the 4 separately would be: each type has its own
-    free slot (see limits.FREE_SLOT_COLUMN), so a brand-new account pays
-    nothing here and one that has already made a konspekt pays for that
-    one type only.
-
-    All four are reserved as ONE atomic unit up front (see
-    limits.reserve) — 402 if the balance can't cover the whole set, so a
-    partial balance can never let three of four "pass" a check against
-    the same unspent money. Whatever the AI then fails to produce is
-    refunded individually below, so a run where only two of four types
-    came back is charged for exactly two."""
-    # A subset when the teacher picked one, all five otherwise. Filtered
-    # against _GENERATE_ALL_TYPES rather than trusted: the list decides
-    # what gets billed and generated, so an unknown string here would
-    # reserve a slot for a type nothing can produce, and the refund path
-    # would then have to guess.
     if data.types:
         types_to_generate = [t for t in _GENERATE_ALL_TYPES if t in set(data.types)]
         if not types_to_generate:
@@ -1528,11 +1297,6 @@ async def generate_all(
     await enforce_generation_quota(user)
     charge = await limits.reserve(user.id, types_to_generate, language=user.language)
     try:
-        # logger, not print: a bare print() goes straight to the console
-        # with its own encoding, which on Windows (cp1251) cannot encode
-        # Tajik and raised UnicodeEncodeError mid-request — see
-        # app/logger.py. The logger's file handlers are UTF-8 and its
-        # console handler now writes UTF-8 too.
         logger.info(
             f"generate-all: topic={data.topic!r} subject={data.subject!r} "
             f"lang={data.language!r} level={data.level!r} grade={data.grade!r} "
@@ -1608,8 +1372,6 @@ async def generate_all(
             await db.flush()
             saved_ids["lektsiya"] = item.id
 
-        # PracticalTask stores its payload in tasks_json, not content —
-        # the one type here whose column is not called "content".
         if result.get("amaliy"):
             result["amaliy"]["title"] = data.topic
             item = PracticalTask(
@@ -1623,17 +1385,10 @@ async def generate_all(
             await db.flush()
             saved_ids["amaliy"] = item.id
 
-        # Give back the reservation for every type that did NOT produce
-        # and save a material — same "you only pay for what you got"
-        # discipline the pay-after-success ordering used to provide, now
-        # done as an explicit refund because the charge happens up front.
         failed = [t for t in types_to_generate if t not in saved_ids]
         if failed:
             await limits.refund(charge, failed, reason="generate-all: type produced nothing")
 
-        # Which of the SAVED types was the free one, for the frontend's
-        # "this one was free" badge. charge.items is in the same order as
-        # types_to_generate, so a saved type's entry is found by name.
         free_types = {i.material_type for i in charge.items if i.was_free}
 
         return {
@@ -1653,7 +1408,6 @@ async def generate_all(
         raise HTTPException(status_code=500, detail=get_message("ai_busy", data.language))
 
 
-# ── DOCX Download ──────────────────────────────────────────────────────────
 
 from pydantic import BaseModel
 
@@ -1664,12 +1418,6 @@ class DocxRequest(BaseModel):
 
 
 def _with_language(data: "DocxRequest") -> dict:
-    """The content with a language on it.
-
-    A konspekt carries its own (ai_service stamps it at generation), but
-    tests — and, until that stamping grew a matching "amaliy" branch,
-    every practical-tasks worksheet ever generated — stored before that
-    did not, and the export then defaulted every one of them to Russian."""
     if data.content.get("language"):
         return data.content
     return {**data.content, "language": data.language}
@@ -1680,11 +1428,6 @@ async def download_docx(
     user: User = Depends(get_current_user),
 ):
     try:
-        # Every build_* here is a plain sync function (python-docx/reportlab
-        # have no async API) — run off the event loop via to_thread so
-        # building one teacher's document doesn't stall every other
-        # concurrent request on this single-worker server for however
-        # long that takes.
         if data.material_type == 'konspekt':
             buf = await asyncio.to_thread(build_konspekt_docx, data.content, data.language)
             raw_name = f"konspekt_{data.content.get('title', 'lesson').replace(' ', '_')[:30]}"
@@ -1692,21 +1435,12 @@ async def download_docx(
             buf = await asyncio.to_thread(build_lecture_docx, data.content, data.language)
             raw_name = f"lektsiya_{data.content.get('title', 'lecture').replace(' ', '_')[:30]}"
         elif data.material_type == 'test':
-            # The sheet's own furniture — the name line, the instructions,
-            # the answer key's heading — is written in the test's
-            # language. Tests generated before that language was stored on
-            # the content itself fall back to the request's.
             buf = await asyncio.to_thread(build_test_docx, _with_language(data))
             raw_name = f"test_{data.content.get('title', 'test').replace(' ', '_')[:30]}"
         elif data.material_type == 'prezentatsiya':
             buf = await asyncio.to_thread(build_presentation_docx, data.content)
             raw_name = f"presentation_{data.content.get('title', 'slides').replace(' ', '_')[:30]}"
         elif data.material_type == 'amaliy':
-            # Every practical-tasks worksheet generated before "amaliy"
-            # was added to ai_service's language-stamping list (see there)
-            # has no "language" of its own — same backward-compat fallback
-            # as the test branch above, or these would keep printing a
-            # Russian header forever even after the root cause is fixed.
             buf = await asyncio.to_thread(build_practical_docx, _with_language(data))
             raw_name = f"amaliy_{data.content.get('title', 'tasks').replace(' ', '_')[:30]}"
         else:
@@ -1730,7 +1464,6 @@ async def download_docx(
         raise HTTPException(status_code=500, detail="DOCX xatolik: fayl yaratilmadi")
 
 
-# ── PPTX Download ─────────────────────────────────────────────────────────
 
 @router.post("/download-pptx")
 async def download_pptx(
@@ -1762,20 +1495,9 @@ async def download_pptx(
         raise HTTPException(status_code=500, detail="PPTX xatolik: fayl yaratilmadi")
 
 
-# ── PDF Download ───────────────────────────────────────────────────────────
 
 def _presentation_pdf(content: dict) -> io.BytesIO:
-    """A deck as PDF: the actual .pptx put through LibreOffice, falling
-    back to the hand-built A4 rendering when LibreOffice is unavailable or
-    chokes on the file.
-
-    Both paths are real: the fallback is what every deployment without
-    LibreOffice installed keeps using, so it must stay working rather than
-    become dead code nobody notices has rotted."""
     try:
-        # Cache lookup first: on a hit there is no .pptx to build and no
-        # LibreOffice to run, which is the whole point — the preview
-        # refetches on every screen open and the conversion is ~17s.
         key = pptx_pdf.cache_key_for(content)
         hit = pptx_pdf.cached(key)
         if hit is not None:
@@ -1784,9 +1506,7 @@ def _presentation_pdf(content: dict) -> io.BytesIO:
         converted = pptx_pdf.convert(pptx, key)
         if converted is not None:
             return converted
-    except Exception as e:  # noqa: BLE001
-        # A deck that cannot be built as pptx at all still has to produce
-        # something the teacher can open.
+    except Exception as e:
         logger.warning(f"pptx->pdf path failed, using the built PDF instead: {e}")
     return build_presentation_pdf(content)
 
@@ -1807,15 +1527,9 @@ async def download_pdf(
             buf = await asyncio.to_thread(build_test_pdf, _with_language(data))
             raw_name = f"test_{data.content.get('title', 'test').replace(' ', '_')[:30]}"
         elif data.material_type == 'prezentatsiya':
-            # The real .pptx, rendered by LibreOffice — so the preview the
-            # app shows is the deck itself rather than a second, A4-shaped
-            # rendering of the same content that could never quite match
-            # it. build_presentation_pdf stays as the fallback for a
-            # deployment without LibreOffice (see app/pptx_pdf.py).
             buf = await asyncio.to_thread(_presentation_pdf, data.content)
             raw_name = f"presentation_{data.content.get('title', 'slides').replace(' ', '_')[:30]}"
         elif data.material_type == 'amaliy':
-            # Same backward-compat fallback as download-docx above.
             buf = await asyncio.to_thread(build_practical_pdf, _with_language(data))
             raw_name = f"amaliy_{data.content.get('title', 'tasks').replace(' ', '_')[:30]}"
         else:
@@ -1839,7 +1553,6 @@ async def download_pdf(
         raise HTTPException(status_code=500, detail="PDF xatolik: fayl yaratilmadi")
 
 
-# ── TXT Download ─────────────────────────────────────────────────────────
 
 @router.post("/download-txt")
 async def download_txt(
@@ -1857,10 +1570,6 @@ async def download_txt(
             lines.append('')
 
         if data.material_type in ('konspekt', 'lektsiya'):
-            # Same field->label list for both — a лекция's content dict
-            # simply omits the lesson-management keys (competencies,
-            # objectives, lesson_program, ...), so this loop's `if val:`
-            # guard already skips them with no branch needed.
             for key, label in [
                 ('duration', 'Время'), ('competencies', 'Компетенции'),
                 ('objectives', 'Цели'), ('key_concepts', 'Понятия'),
@@ -1905,19 +1614,6 @@ async def download_txt(
                     lines.append(f'  ~{s["speaker_notes"]}')
 
         elif data.material_type == 'amaliy':
-            # Without this branch the export fell through with only the
-            # title line written — a practical-tasks .txt came out at 22
-            # bytes and looked like a broken download rather than a
-            # missing case.
-            #
-            # Section labels follow the worksheet's own language, the
-            # same table build_practical_pdf/_docx use — this used to
-            # print "Индивидуальные задания"/"Групповые задания" even on
-            # a worksheet written entirely in Tajik, because the labels
-            # here were plain hardcoded Russian strings rather than a
-            # lookup. `content.get('language')` covers a freshly
-            # generated worksheet (ai_service now stamps it); the
-            # `data.language` fallback covers one saved before that fix.
             _pui = _PRACTICAL_UI.get(content.get('language') or data.language,
                                      _PRACTICAL_UI['Русский'])
             desc = content.get('description', '')
@@ -1964,13 +1660,6 @@ async def download_txt(
         raise HTTPException(status_code=500, detail="TXT xatolik: fayl yaratilmadi")
 
 
-# ── ZIP Download (bundle) ───────────────────────────────────────────────────
-# Used right after POST /generate-all — the frontend already has all four
-# generated contents in memory at that point (no extra fetch needed), so
-# it just re-posts whichever of the four it got back here and gets one
-# .zip with each as its native export format (docx for konspekt/test/
-# lektsiya, pptx for prezentatsiya — same formats download-docx/
-# download-pptx already produce individually).
 
 import zipfile
 
@@ -1986,11 +1675,6 @@ class DownloadZipRequest(BaseModel):
 
 
 def _build_materials_zip(data: "DownloadZipRequest") -> io.BytesIO:
-    """Up to 5 documents built and zipped — the single biggest blocking
-    chunk of work in this router, so it's the one call site here that
-    gets its own helper instead of wrapping each build_* call in its own
-    to_thread (that would still leave a synchronous zipfile write between
-    them running on the event loop for no real benefit)."""
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if data.konspekt:
@@ -2035,16 +1719,6 @@ async def download_zip(
         raise HTTPException(status_code=500, detail="ZIP xatolik: fayl yaratilmadi")
 
 
-# ── Lesson Kit ────────────────────────────────────────────────────────────
-# "One subject + grade + topic -> every material for that exact lesson in
-# one place" (the 5-rka-inspired concept) — built with NO new database
-# table. generate() above already sets title=topic verbatim (see
-# `content["title"] = data.topic`), and _previous_digests already matches
-# rows by (owner_id, lower(title)==topic, lower(subject)==subject) for
-# the same reason — a lesson's identity IS its (subject, grade, topic)
-# tuple across the existing 5 tables, so grouping needs a query, not a
-# schema change. "igra" is excluded, same as LIBRARY_TYPES on the
-# frontend (a game is played in the moment, not a lesson document).
 _LESSON_TYPES = ["konspekt", "lektsiya", "prezentatsiya", "test", "amaliy"]
 
 lessons_router = APIRouter(prefix="/api/lessons", tags=["lessons"])
@@ -2052,10 +1726,6 @@ lessons_router = APIRouter(prefix="/api/lessons", tags=["lessons"])
 
 @lessons_router.get("")
 async def list_lessons(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Every distinct (subject, grade, topic) this teacher has at least one
-    material for, most-recently-touched first — reconstructed from the 5
-    existing tables, so every material ever created (before this feature
-    existed) already shows up as a lesson with no backfill needed."""
     try:
         selects = [
             select(
@@ -2092,9 +1762,6 @@ async def get_lesson_materials(
     subject: str, grade: str, topic: str,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    """Which of the 5 lesson-kit types already exist for this exact
-    (subject, grade, topic), and their ids — same case-insensitive
-    title/subject match _previous_digests already uses, plus grade."""
     out: dict[str, dict | None] = {}
     for t in _LESSON_TYPES:
         model_cls = _MATERIAL_MODELS[t]
@@ -2117,13 +1784,6 @@ async def generate_lesson_material(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generates one material for a Lesson Kit slot — the exact same
-    generation path as POST /materials/generate (same balance/free-slot
-    check, same generate_material() call, same save), the only difference
-    being which router calls it. Kept separate from /materials/generate
-    rather than reused directly so the two call sites can evolve
-    independently (e.g. lesson-kit-specific defaults later) without one
-    changing the other's contract."""
     if data.material_type not in _LESSON_TYPES:
         raise HTTPException(status_code=400, detail=f"Unknown lesson material type: {data.material_type}")
     require_game_access(user, data.material_type)
@@ -2133,8 +1793,6 @@ async def generate_lesson_material(
         previous_digests = await _previous_digests(
             db, user, data.material_type, data.topic, data.subject)
 
-        # The pool slot goes back while the model works — see released()
-        # in database.py for the outage this prevents.
         async with released(db):
             content = await generate_material(
                 material_type=data.material_type,

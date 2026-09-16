@@ -2,13 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Fades+lifts its children into place the first time they scroll into
- * view (landing-reveal keyframe in globals.css) — a plain IntersectionObserver
- * rather than a scroll library, since this is the only place on the whole
- * site that needs one. Disconnects after the first trigger: a landing page
- * section should tell its story once, not replay every time a visitor
- * scrolls back up past it. `delay` (ms) staggers siblings in a grid so they
- * don't all snap in on the same frame. */
+
 export default function Reveal({
   children,
   delay = 0,
@@ -24,9 +18,9 @@ export default function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Respect the OS-level reduced-motion preference by just showing the
-    // content immediately rather than skipping the observer entirely —
-    // the layout must still appear, only the animation is what's optional.
+    
+    
+    
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setShown(true);
       return;

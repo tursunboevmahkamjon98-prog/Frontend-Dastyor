@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Fires concurrent reservations at one account and checks that the
-database, not luck, decides how many succeed.
-
-This is the exact attack the old code lost to: N simultaneous /generate
-calls, one balance. Run against the real PostgreSQL, because the
-guarantee being tested (an UPDATE ... WHERE re-evaluating its condition
-after waiting on a row lock) is the database's, not Python's — an
-in-memory fake would pass while proving nothing.
-"""
 import asyncio
 import sys
 import uuid
@@ -29,17 +19,6 @@ def check(name, condition, detail=""):
 
 
 async def make_user(balance_dirams: int, free_used: bool) -> str:
-    """free_used=True means "this account has already spent its freebies",
-    so reserve() must fall through to the balance.
-
-    That has to be written to the PER-TYPE columns. This test used to send
-    it to free_generation_used alone and hardcode every per-type column to
-    false — the account-wide model that limits.FREE_SLOT_COLUMN replaced.
-    The result was an account that claimed to have used its free slot
-    while every slot was in fact untouched, so the five money assertions
-    ("charged 50", "refused with 402", ...) failed against correct code
-    and stayed red. free_generation_used is still set for the legacy
-    column's sake; nothing in limits.py reads it."""
     uid = str(uuid.uuid4())
     async with async_session() as db:
         await db.execute(
@@ -52,19 +31,6 @@ async def make_user(balance_dirams: int, free_used: bool) -> str:
                 "        false, false, :spent, :spent, :spent, "
                 "        :spent, :spent, :spent, now())"
             ),
-            # Two parameters, not one, since the columns no longer share a
-            # type: free_generation_used is still the legacy BOOLEAN,
-            # while the six per-type columns are INTEGER counters (see
-            # models.py). Binding one value to both made asyncpg refuse
-            # the statement outright — "inconsistent types deduced for
-            # parameter $3: boolean and integer" — which is the test
-            # being stale, not the schema being wrong.
-            #
-            # "free_used" means "this account has already spent its free
-            # allowance", so it maps to the FULL allowance, not to 1: a
-            # test that wants the paid path must leave no free
-            # generations behind, and with the allowance now at 10 a
-            # single 1 would leave nine.
             {
                 "id": uid,
                 "bal": balance_dirams,
@@ -84,9 +50,6 @@ async def cleanup(uid: str):
 
 
 async def state(uid: str, mtype: str = "konspekt"):
-    """Returns (balance, free-slot-used-for-[mtype], ledger rows). The
-    flag is read from that type's own column, because that is the one
-    _claim_free actually moves."""
     column = limits.FREE_SLOT_COLUMN[mtype]
     async with async_session() as db:
         row = (await db.execute(
@@ -106,15 +69,7 @@ async def try_reserve(uid, types):
         return e.status_code
 
 
-# ── 1. The free allowance is handed out exactly N times, under a stampede ─
 async def test_free_once():
-    # Derived from the setting rather than written in. The allowance used
-    # to be one-per-type and these numbers were literals (1 granted, 19
-    # refused); that made this a test of the VALUE, so raising the
-    # allowance turned a correct system red. What it is actually for is
-    # the guarantee underneath: concurrent claims can never overshoot,
-    # because the bound is re-checked inside the UPDATE's WHERE clause.
-    # Twice the allowance is fired at it so there are always real losers.
     free_n = get_settings().FREE_GENERATIONS_PER_TYPE
     attempts = free_n * 2
     print(f"\n1. {attempts} simultaneous reservations against a brand-new account (0 balance)")
@@ -138,7 +93,6 @@ async def test_free_once():
         await cleanup(uid)
 
 
-# ── 2. A balance is spent at most once per 50 dirams ─────────────────────
 async def test_balance_not_overspent():
     print("\n2. Thirty simultaneous reservations against a 150-diram balance (free already used)")
     uid = await make_user(150, True)
@@ -154,7 +108,6 @@ async def test_balance_not_overspent():
         await cleanup(uid)
 
 
-# ── 3. A multi-type request is all-or-nothing ────────────────────────────
 async def test_all_or_nothing():
     print("\n3. generate-all (4 types) against a balance that covers only 2")
     uid = await make_user(100, True)
@@ -168,7 +121,6 @@ async def test_all_or_nothing():
         await cleanup(uid)
 
 
-# ── 4. A failed generation is refunded ───────────────────────────────────
 async def test_refund():
     print("\n4. Reserve then refund (the AI-failed path)")
     uid = await make_user(200, True)
@@ -184,7 +136,6 @@ async def test_refund():
         await cleanup(uid)
 
 
-# ── 5. A failed FIRST generation gives the free slot back ────────────────
 async def test_refund_free_slot():
     print("\n5. The free material fails — the account keeps its free one")
     uid = await make_user(0, False)
@@ -196,10 +147,6 @@ async def test_refund_free_slot():
         balance, free_used, _ = await state(uid)
         check("free slot handed back — counter back to 0", free_used == 0, f"counter={free_used}")
         check("no phantom balance credited", balance == 0, f"balance={balance}")
-        # Re-reserve the SAME type. The old version asked for "test" here,
-        # which under per-type slots just claimed a different untouched
-        # freebie and would have passed even if the konspekt slot had
-        # never come back.
         again = await try_reserve(uid, ["konspekt"])
         check("the free material is available again",
               not isinstance(again, int) and again.free_count == 1)
@@ -207,7 +154,6 @@ async def test_refund_free_slot():
         await cleanup(uid)
 
 
-# ── 6. Partial refund of a multi-type charge ─────────────────────────────
 async def test_partial_refund():
     print("\n6. generate-all where 2 of 4 types fail")
     uid = await make_user(400, True)

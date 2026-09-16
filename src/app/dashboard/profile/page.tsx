@@ -31,11 +31,7 @@ export default function ProfilePage() {
         </span>
       </div>
 
-      {/* Balance — the profile is where a teacher looks for "how much do
-          I have left", so it shows the figure and leads straight to the
-          Dushanbe City top-up flow (/dashboard/billing). The number comes
-          from the auth context, i.e. the server's own figure, and is
-          re-read after a top-up completes there. */}
+      {}
       <Link
         href="/dashboard/billing"
         className="mb-6 flex items-center gap-4 rounded-2xl border border-border-light bg-surface p-4 transition hover:shadow-sm"
@@ -49,10 +45,7 @@ export default function ProfilePage() {
             {user.balance_somoni.toFixed(2)} {t("nav.somoni")}
           </p>
         </div>
-        {/* Was a "Пополнить баланс" button. Paid top-ups are not live
-            yet, so it promised an action that went nowhere — a teacher
-            who tapped it reached a page that could only tell them to
-            phone an administrator. Says when instead, until it is real. */}
+        {}
         <span className="shrink-0 rounded-xl bg-primary-50 px-4 py-2.5 text-xs font-semibold text-primary-dark">
           {t("billing.soon")}
         </span>
@@ -63,13 +56,7 @@ export default function ProfilePage() {
         <MenuRow icon={Languages} label={t("profile.language")} value={user.language} onClick={() => setOpenModal("language")} />
       </div>
 
-      {/* The "Связь" block (personal Telegram handle and e-mail) was
-          removed. It put one person's private contact details in front of
-          every teacher who signs up — fine while the pilot was a handful
-          of people who already knew him, not once the app is sold. The
-          details themselves still live in lib/contact-info (mobile:
-          ContactInfo) for the places that genuinely need a human, like
-          the top-up flow. */}
+      {}
       {user.role === "admin" && (
         <Link
           href="/admin"
@@ -94,9 +81,7 @@ export default function ProfilePage() {
         {t("profile.logout")}
       </button>
 
-      {/* The only place a signed-in teacher could reach these was the
-          registration form, before they had an account to have a
-          question about. They belong somewhere reachable afterwards. */}
+      {}
       <p className="mt-6 text-center text-xs text-text-tertiary">
         <Link href="/terms" className="underline hover:text-primary">
           {t("register.terms")}
@@ -115,14 +100,7 @@ export default function ProfilePage() {
   );
 }
 
-/** Circular avatar with a camera button to upload/replace and, when one is
- * set, a small trash button to remove it — backend (POST/DELETE
- * /auth/avatar) and the api.ts client were already wired up, this was the
- * only missing piece. Falls back to the user's initials when no
- * avatar_url is set. avatar_url is normally root-relative (our own
- * uploads, served under API_ORIGIN) — the `startsWith("http")` branch
- * only still matters for accounts created back when Google login (since
- * removed) could set a full external Google profile-picture URL here. */
+
 function AvatarUploader({
   user,
   onSaved,
@@ -145,7 +123,7 @@ function AvatarUploader({
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file next time
+    e.target.value = ""; 
     if (!file) return;
     setError(null);
     setBusy(true);
@@ -177,9 +155,9 @@ function AvatarUploader({
       <div className="relative h-24 w-24">
         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary-50 text-2xl font-bold text-primary-dark">
           {src ? (
-            // eslint-disable-next-line @next/next/no-img-element -- avatar
-            // can be an arbitrary external Google URL, not a static asset
-            // next/image's optimizer can be pre-configured for.
+            
+            
+            
             <img src={src} alt="" className="h-full w-full object-cover" />
           ) : (
             initials || "?"
@@ -320,10 +298,10 @@ function LanguageModal({
   onSaved: (u: import("@/lib/api").UserOut) => void;
 }) {
   const t = useT();
-  // One language setting, not two. Picking a language here used to change
-  // only what materials were GENERATED in, while the dashboard around it
-  // stayed Russian — so a Tajik teacher had a Tajik konspekt inside a
-  // Russian interface. The choice now drives both.
+  
+  
+  
+  
   const { setLocale } = useLocale();
   const [saving, setSaving] = useState<string | null>(null);
 

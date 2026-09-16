@@ -8,12 +8,6 @@ from docx.oxml.ns import qn
 from app.subject_theme import get_subject_accent_rgb
 from app.konspekt_templates import get_template
 
-# Despite the group_work rule telling it not to (see ai_service.py's
-# _konspekt_prompt), the model sometimes still prefixes its own "Group N:"/
-# "Гурӯҳи N:" label onto the task text — without this strip, that collides
-# with the "Group N. " label _add_konspekt_body/_add_lesson_content already
-# prepend from the array position, rendering as "Group 1. Group 1: ..."
-# (confirmed live). Covers all 4 UI languages' label words.
 _GROUP_LABEL_RE = re.compile(
     r"^\s*(?:Группа|Гурӯҳи?|Group|Guruh)\s*\d+\s*[:.\-—]\s*", re.IGNORECASE
 )
@@ -71,15 +65,6 @@ def _add_colored_paragraph(doc, text, font_size, color_rgb, bold=False, align=WD
 
 
 def _add_bullet_runs(p, text, accent_rgb):
-    """Splits a "Term: explanation" bullet (key_concepts/key_terms/tools/
-    etc. — see ai_service.py's _konspekt_prompt, which asks for exactly
-    this "Label: detail" shape) into two runs so the term itself stands
-    out in accent-colored bold from its plain explanation, instead of one
-    uniform run a teacher has to read in full just to find the label.
-    Only splits on a colon within the first ~60 characters — a colon
-    further in is almost certainly mid-sentence punctuation (a ratio, a
-    time, a quoted list), not a term/definition boundary, and shouldn't
-    be bolded as if it were one."""
     colon_idx = text.find(':')
     if 0 < colon_idx <= 60:
         term, rest = text[:colon_idx + 1], text[colon_idx + 1:]
@@ -115,16 +100,12 @@ def _add_section_number(doc, index, color_rgb):
     run.bold = True
     run.font.name = 'Calibri'
     run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-    hex_str = str(color_rgb)  # e.g. '3B82F6'
+    hex_str = str(color_rgb)
     _set_paragraph_shading(p, hex_str)
     return p
 
 
 def _add_formula_card(doc, formula: str, explanation: str, color_rgb: RGBColor):
-    """A shaded, centered 'card' for a single formula instead of dumping it
-    into a regular paragraph — bigger font, a distinct math-friendly
-    typeface, and a colored rule under it, so formulas actually stand out
-    as reference material instead of blending into the surrounding prose."""
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(3)
@@ -154,11 +135,6 @@ def _add_formula_card(doc, formula: str, explanation: str, color_rgb: RGBColor):
 
 
 def _add_code_card(doc, code: str, language: str, explanation: str, accent_rgb: RGBColor):
-    """A dark, monospaced 'code editor' card for one ai_service.py
-    "code_blocks" entry — Consolas on a dark slate background (reads as an
-    actual code editor, not a paragraph that happens to be code) with a
-    small language badge line above it in the subject's accent color, and
-    the plain-language explanation below in normal prose styling."""
     badge = doc.add_paragraph()
     badge.paragraph_format.space_before = Pt(6)
     badge.paragraph_format.space_after = Pt(0)
@@ -198,11 +174,6 @@ def _add_code_card(doc, code: str, language: str, explanation: str, accent_rgb: 
 
 
 def _add_illustration(doc, image_path: str, caption: str, attribution: str, width_inches: float = 5.0):
-    """Embeds a real photo (Wikipedia topic image) or map (OpenStreetMap,
-    via app/map_builder.py), centered, with a caption and a small
-    attribution line underneath. python-docx auto-scales height to the
-    image's real aspect ratio when only width is given, so this works for
-    both the fixed-ratio OSM map and the variable-ratio Wikipedia photos."""
     import os
     full_path = os.path.join(os.path.dirname(__file__), "..", image_path.lstrip("/"))
     if not os.path.exists(full_path):
@@ -234,14 +205,6 @@ def _add_illustration(doc, image_path: str, caption: str, attribution: str, widt
 
 
 def _add_lesson_image_block(doc, image: dict, label: str, accent_rgb: RGBColor):
-    """One Commons teaching illustration set into the running text — the
-    docx counterpart of export_builder._pdf_lesson_image_block.
-
-    Written at the point the body renderer has reached, which is the
-    section this picture was anchored to (image["position_after"]), so it
-    lands inside the explanation it illustrates. Under it goes the one
-    sentence telling the pupil what to look for, which is what makes the
-    figure part of the teaching rather than decoration."""
     import os
     full_path = os.path.join(os.path.dirname(__file__), "..", image.get("path", "").lstrip("/"))
     if not image.get("path") or not os.path.exists(full_path):
@@ -274,18 +237,11 @@ def _add_lesson_image_block(doc, image: dict, label: str, accent_rgb: RGBColor):
 
 
 def _clear_cell(cell):
-    """python-docx cells always start with one empty paragraph; clearing
-    .text leaves that paragraph in place (rather than removing it), which
-    is what every helper below builds on top of."""
     cell.text = ''
     return cell.paragraphs[0]
 
 
 def _fill_concept_card(outer_cell, card: dict, accent_rgb: RGBColor):
-    """Renders one reference card (colored header + a small truth-table/
-    formula + a short note) into a table cell — the same 'header bar over a
-    light body' look used throughout this file, just packed into a grid
-    cell instead of running the full page width."""
     _clear_cell(outer_cell)
     inner = outer_cell.add_table(rows=2, cols=1)
     inner.autofit = True
@@ -316,10 +272,6 @@ def _fill_concept_card(outer_cell, card: dict, accent_rgb: RGBColor):
 
     body_cell = inner.cell(1, 0)
     _set_cell_shading(body_cell, 'F8FAFC')
-    # A cell always starts with one empty paragraph — collapse it to a
-    # near-zero-height hairline (tiny font, no spacing) instead of leaving
-    # it at the default line height, which was showing as a visible blank
-    # gap above the table/formula in every card.
     bp = _clear_cell(body_cell)
     bp.paragraph_format.space_before = Pt(0)
     bp.paragraph_format.space_after = Pt(0)
@@ -369,9 +321,6 @@ def _fill_concept_card(outer_cell, card: dict, accent_rgb: RGBColor):
 
 
 def _add_important_note(doc, text: str, accent_rgb: RGBColor):
-    """A single 'pay attention' callout — a left-accent-bordered, tinted
-    box, visually distinct from a regular bullet so it reads as a genuine
-    warning/highlight rather than just another list item."""
     p = doc.add_paragraph()
     _set_paragraph_shading(p, 'FEF2F2')
     p.paragraph_format.space_before = Pt(4)
@@ -392,12 +341,6 @@ def _add_important_note(doc, text: str, accent_rgb: RGBColor):
 
 
 def _add_quick_check(doc, items: list, accent_rgb: RGBColor, answer_label: str):
-    """Renders ai_service.py's "quick_check" list — short comprehension
-    Q&A a teacher can fire off right after teaching the section, styled
-    the same tinted-callout-box family as _add_important_note (a soft
-    green tint here instead of red, since this isn't a warning) so it
-    reads as a distinct "teacher tool" box rather than another bullet
-    list."""
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -447,24 +390,6 @@ def _add_quick_check(doc, items: list, accent_rgb: RGBColor, answer_label: str):
 
 
 def _add_worked_examples(doc, items: list, accent_rgb: RGBColor, solution_label: str):
-    """Renders ai_service.py's "worked_examples" list (Математика/Алгебра/
-    Геометрия only — see _WORKED_EXAMPLE_SUBJECTS) — actual solved 'misol'
-    problems demonstrating the topic's technique, each as its own card: a
-    solid accent-colored square carrying the problem number, and beside it
-    the problem statement over its step-by-step solution on a light tint.
-
-    The number lives only in the badge — an inline "Пример N." label beside
-    it as well just restated what the badge already says, and the section
-    heading above the list already names these as examples.
-
-    A 2-column table per example rather than the stacked shaded paragraphs
-    this used first: with 8-12 examples in a row, plain tinted paragraphs
-    ran together into one long blue slab where it took effort to see where
-    one problem ended and the next began — the number badge gives every
-    example a hard visual anchor to scan by. The row is also marked
-    cantSplit so a problem never lands at the bottom of a page with its
-    solution stranded at the top of the next one.
-    """
     tint = _light_tint_hex(accent_rgb, amount=0.93)
     for i, item in enumerate(items):
         if not isinstance(item, dict):
@@ -478,8 +403,6 @@ def _add_worked_examples(doc, items: list, accent_rgb: RGBColor, solution_label:
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.autofit = False
         row = table.rows[0]
-        # Keep one example whole on a single page — the whole point of the
-        # card is that the problem and its solution read as one unit.
         trPr = row._tr.get_or_add_trPr()
         trPr.append(trPr.makeelement(qn('w:cantSplit'), {}))
 
@@ -530,8 +453,6 @@ def _add_worked_examples(doc, items: list, accent_rgb: RGBColor, solution_label:
         else:
             pp.paragraph_format.space_after = Pt(6)
 
-        # Thin breathing room between cards — without it the tinted bodies
-        # of consecutive examples touch and read as one block again.
         gap = doc.add_paragraph()
         gap.paragraph_format.space_before = Pt(0)
         gap.paragraph_format.space_after = Pt(0)
@@ -540,26 +461,13 @@ def _add_worked_examples(doc, items: list, accent_rgb: RGBColor, solution_label:
 
 
 def _add_visual_block(doc, block: dict, accent_rgb: RGBColor, L: dict):
-    """Renders one AI-chosen structured visual block (table/timeline/
-    flowchart/process/comparison/concept_map) — see ai_service.py's
-    _konspekt_prompt "visual_blocks" rule for the per-type `data` shape.
-    An unrecognized/malformed block is skipped rather than raising, since a
-    cosmetic extra shouldn't be able to break the whole export."""
     btype = block.get('type')
     data = block.get('data') or {}
-    # A small italic caption, not a bold accent-colored heading — this
-    # block sits right inside the section it illustrates (see
-    # position_after), so it should read as an illustration of that
-    # explanation, not as its own separate titled chapter.
     title = block.get('title') or ''
     if title:
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(6)
         p.paragraph_format.space_after = Pt(3)
-        # Keeps this caption glued to whatever comes right after it across
-        # a page break — otherwise Word can strand the caption alone at
-        # the bottom of a page with its actual table/image pushed entirely
-        # onto the next one.
         p.paragraph_format.keep_with_next = True
         run = p.add_run(title)
         run.italic = True
@@ -604,10 +512,6 @@ def _add_visual_block(doc, block: dict, accent_rgb: RGBColor, L: dict):
             doc.add_paragraph()
 
         elif btype == 'timeline':
-            # Dated notes, not the generated card-and-node strip — same
-            # decision as the process block above, and the saved `image`
-            # is ignored for the same reason: konspekts made before the
-            # change should print as notes too.
             for ev in (data.get('events') or []):
                 p = doc.add_paragraph()
                 p.paragraph_format.space_after = Pt(3)
@@ -627,15 +531,6 @@ def _add_visual_block(doc, block: dict, accent_rgb: RGBColor, L: dict):
                     run2.font.name = 'Calibri'
 
         elif btype in ('flowchart', 'process'):
-            # Conspect notes, matching the PDF and the slides: a numbered
-            # heading with its explanation underneath. The generated strip
-            # of coloured cards and arrows that used to be pasted in here
-            # (timeline_builder.build_process_image) is gone from every
-            # export — it was a picture a teacher could not edit, its
-            # cards overflowed as soon as the steps held real sentences,
-            # and its palette belonged to nothing else on the page. The
-            # pre-saved `image` is deliberately ignored so konspekts
-            # generated before this change also print as notes.
             for i, step in enumerate(data.get('steps') or []):
                 title_p = doc.add_paragraph()
                 title_p.paragraph_format.space_before = Pt(5)
@@ -661,9 +556,6 @@ def _add_visual_block(doc, block: dict, accent_rgb: RGBColor, L: dict):
                     run2.font.name = 'Calibri'
 
         elif btype == 'concept_map':
-            # The relations written out, not drawn as a ring of nodes —
-            # an uneditable picture whose labels collided once the
-            # concepts had real names.
             nodes = {n.get('id'): n.get('label', n.get('id', '')) for n in (data.get('nodes') or [])}
             for edge in (data.get('edges') or []):
                 p = doc.add_paragraph(style='List Bullet')
@@ -676,15 +568,10 @@ def _add_visual_block(doc, block: dict, accent_rgb: RGBColor, L: dict):
                 run.font.size = Pt(10.5)
                 run.font.name = 'Calibri'
     except Exception:
-        # A malformed visual_blocks entry from the model shouldn't ever
-        # break the rest of the export — worst case, that one block is
-        # silently skipped.
         return
 
 
 def _add_concept_card_grid(doc, cards: list, accent_rgb: RGBColor, cols: int = 2):
-    """Lays cards out 2-per-row (like the reference methodological guide's
-    card grid) instead of one long vertical list."""
     if not cards:
         return
     n_rows = (len(cards) + cols - 1) // cols
@@ -697,9 +584,6 @@ def _add_concept_card_grid(doc, cards: list, accent_rgb: RGBColor, cols: int = 2
             _fill_concept_card(cell, cards[idx], accent_rgb)
         else:
             _clear_cell(cell)
-    # An odd card count left the last row's final cell empty — a lopsided
-    # half-width card next to a blank gap. Merge it into the card before it
-    # so the last card spans the full row width instead.
     if cols == 2 and len(cards) % cols:
         outer.cell(n_rows - 1, 0).merge(outer.cell(n_rows - 1, 1))
     doc.add_paragraph()
@@ -759,16 +643,12 @@ _DOCX_LABELS['Английский'] = _DOCX_LABELS['English']
 
 
 def _header_numbered(doc, num, label, color, font_name):
-    """"klassik" — today's existing look, unchanged."""
     p = _add_colored_paragraph(doc, f'{num}. {label}', 12, color, bold=True)
     p.paragraph_format.space_before = Pt(8)
     return p
 
 
 def _header_underline(doc, num, label, color, font_name):
-    """"zamonaviy" — bold caps with a colored rule under it, no number
-    badge (the sidebar panel already carries the "reference" sections, so
-    a formal outline number reads less naturally here)."""
     p = _add_colored_paragraph(doc, label.upper(), 12, RGBColor(0x1F, 0x29, 0x37), bold=True)
     p.paragraph_format.space_before = Pt(10)
     _add_bottom_border(p, str(color))
@@ -776,8 +656,6 @@ def _header_underline(doc, num, label, color, font_name):
 
 
 def _header_smallcaps(doc, num, label, color, font_name):
-    """"minimal" — small, muted-accent label over a thin gray rule; no
-    fill anywhere, reads as restrained reference typography."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(10)
     p.paragraph_format.space_after = Pt(2)
@@ -791,9 +669,6 @@ def _header_smallcaps(doc, num, label, color, font_name):
 
 
 def _header_serif(doc, num, label, color, font_name):
-    """"rasmiy" — serif numbered heading over a muted rule, no colored
-    fill — reads as an academic/report document rather than a bright web
-    export."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(10)
     run = p.add_run(f'{num}. {label}')
@@ -807,9 +682,6 @@ def _header_serif(doc, num, label, color, font_name):
 
 
 def _header_bar(doc, num, label, color, font_name):
-    """"rangli" — a full-width colored bar with white text, instead of a
-    left-accent line — the boldest of the 5 header treatments, matching
-    this template's livelier identity."""
     p = doc.add_paragraph()
     _set_paragraph_shading(p, str(color))
     p.paragraph_format.space_before = Pt(10)
@@ -832,9 +704,6 @@ _SECTION_RENDERERS = {
 
 
 def _light_tint_hex(rgb: RGBColor, amount: float = 0.88) -> str:
-    """RGBColor -> a light tinted-toward-white hex string, for "rangli"'s
-    soft-colored bullet backgrounds — `amount` is how far toward white
-    (0 = the color itself, 1 = pure white)."""
     r, g, b = rgb[0], rgb[1], rgb[2]
     tr = int(r + (255 - r) * amount)
     tg = int(g + (255 - g) * amount)
@@ -843,11 +712,6 @@ def _light_tint_hex(rgb: RGBColor, amount: float = 0.88) -> str:
 
 
 def _add_sidebar_panel(doc, content: dict, sections: tuple, accent_rgb: RGBColor, L: dict):
-    """"zamonaviy" template only — a standalone tinted reference panel
-    (a single-cell bordered table, so it reads as one distinct block) for
-    the given section keys, e.g. key_concepts/key_terms/tools, rendered
-    once right after the title/duration instead of those sections
-    appearing inline in normal reading order later."""
     rows_present = [(key, content.get(key)) for key in sections if content.get(key)]
     if not rows_present:
         return
@@ -887,44 +751,13 @@ _LECTURE_SUMMARY_LABEL_DOCX['Английский'] = _LECTURE_SUMMARY_LABEL_DOC
 
 
 def _add_konspekt_body(doc, content: dict, L: dict):
-    """Renders the full section-by-section body of a konspekt (everything
-    after the title/subtitle) into an EXISTING Document — shared by
-    build_konspekt_docx (a lone document) and build_curriculum_docx (many of
-    these appended into one combined multi-day document), so a curriculum
-    download gets the exact same colored/numbered/formula-card styling as a
-    single konspekt download instead of the old flat black-and-white look.
-
-    ACCENT is per-SUBJECT (see app/subject_theme.py) — one fixed color for
-    the whole document, same as before, just no longer always blue — so a
-    Biology konspekt and a Physics konspekt are visually distinguishable
-    at a glance. Deliberately still only ONE color throughout a single
-    document (never a different color per section — that was tried
-    before and reverted as "rainbow/childish" per teacher feedback, see
-    export_builder.py's _add_konspekt_body_pdf docstring).
-
-    The document's overall LAYOUT (section header style, font, whether
-    key_concepts/key_terms/tools sit in a sidebar panel or inline, soft
-    bullet tints) is picked per-konspekt via "template" (see
-    app/konspekt_templates.py) — a teacher-facing wizard choice, unrelated
-    to subject. Content placement/order is identical across every
-    template; only the visual treatment changes."""
     ACCENT = RGBColor(*get_subject_accent_rgb(content.get("subject")))
     DARK = RGBColor(0x1F, 0x29, 0x37)
     SECONDARY = RGBColor(0x6B, 0x72, 0x80)
-    # "zamonaviy" fallback when content carries no template at all — see
-    # export_builder.py's _add_konspekt_body_pdf for why `or` is safe here
-    # (curriculum's per-day konspekts always set a real explicit value).
     tmpl = get_template(content.get("template") or "zamonaviy")
     header_font = 'Cambria' if tmpl.font_family == 'serif' else 'Calibri'
     header_renderer = _SECTION_RENDERERS.get(tmpl.header_style, _header_numbered)
 
-    # Sequential "1. Компетенции", "2. Цели урока"... numbering on every
-    # section header — reads as a real numbered methodological document
-    # instead of a loose list of headings (matches the numbered badges the
-    # PDF export already has). Numbering counts every section regardless
-    # of template, even though some header styles (underline/bar) don't
-    # display the number — keeps the sequence consistent if a future
-    # style wants it back.
     _sec_num = [0]
 
     def _section(label, color=ACCENT):
@@ -932,9 +765,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         return header_renderer(doc, _sec_num[0], label, color, header_font)
 
     def _bullet(text):
-        """"rangli" gives every bullet a soft accent-tinted background
-        instead of the plain-white default — every other template just
-        delegates straight to the existing _add_bullet."""
         if not tmpl.alt_row_tint:
             _add_bullet(doc, text, ACCENT)
             return
@@ -950,25 +780,11 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             run.font.name = 'Calibri'
             run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
 
-    # Group visual_blocks by their own "position_after" (see ai_service.py's
-    # _konspekt_prompt) so each renders right after the section it's
-    # actually anchored to, spread through the document the way the AI
-    # intended, instead of every one of them landing in the same single
-    # spot after main_content regardless of what it's about — a table
-    # about real_life_examples showing up sandwiched between unrelated
-    # main_content paragraphs read as randomly dropped in, and having ALL
-    # 3-4 blocks land back-to-back in one place also just looked like a
-    # pile, not illustrations woven through the lesson.
     _visuals_by_position: dict[str, list] = {}
     for _block in (content.get('visual_blocks') or []):
         if isinstance(_block, dict):
             _visuals_by_position.setdefault(_block.get('position_after') or '', []).append(_block)
 
-    # The Commons teaching illustrations, filed under the section each one
-    # explains (ai_service._place_lesson_images picked the anchor while
-    # the section was being written). Same contract as the PDF export: the
-    # picture prints inside the explanation it illustrates, not at the top
-    # of the document.
     _lesson_by_anchor: dict[str, list] = {}
     for _img in (content.get('lesson_images') or []):
         if isinstance(_img, dict) and _img.get('path'):
@@ -984,10 +800,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             _add_visual_block(doc, block, ACCENT, L)
         _render_figures(position_key)
 
-    # Subject figures (figure_builder drawings — a labelled cube, a plotted
-    # parabola, a Bohr shell model) are spread over the section anchors
-    # instead of stacking in one place, matching the PDF's behaviour so the
-    # two exports of the same konspekt don't disagree about layout.
     _figures = [f for f in (content.get('figures') or [])
                 if isinstance(f, dict) and f.get('image')]
     _figure_anchors = ['key_concepts', 'main_content', 'real_life_examples', 'consolidation']
@@ -997,11 +809,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
 
     def _render_figures(position_key):
         for fig in _figures_by_anchor.pop(position_key, []):
-            # 3.6in, not the photo helper's 4.8: these are line drawings on
-            # white, and at full text width they read as mostly empty page.
-            # Same box fit as the PDF (see _pdf_subject_figure): the
-            # drawings are cropped to their ink, so a fixed width alone
-            # makes the tall ones tower over the page.
             width = 3.6
             try:
                 import os
@@ -1020,11 +827,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
     if duration:
         _add_colored_paragraph(doc, f'{L["duration"]}: {duration}', 11, ACCENT, bold=True)
 
-    # "zamonaviy" only: key_concepts/key_terms/tools pulled into a
-    # standalone tinted reference panel right after the title/duration,
-    # instead of appearing inline in normal reading order — the panel
-    # renders here, and each of those sections is skipped later at its
-    # usual inline position (guarded by `key not in tmpl.sidebar_sections`).
     if tmpl.sidebar_sections:
         _add_sidebar_panel(doc, content, tmpl.sidebar_sections, ACCENT, L)
 
@@ -1034,11 +836,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         for c in competencies:
             _bullet(c)
 
-    # A лекция opens on the standard lecture form — its aim, then the
-    # plan it follows. A konspekt carries neither key, so both are simply
-    # skipped there.
-    # A лекция follows the standard lecture form; a konspekt does not
-    # have these keys at all, so nothing about it changes.
     is_lecture = bool(content.get('lecture_plan') or content.get('objective'))
     if is_lecture:
         L = dict(L)
@@ -1069,11 +866,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             _bullet(k)
     _render_visuals('key_concepts')
 
-    # formulas/concept_cards/map render right where they're most relevant
-    # (next to key_concepts / real_life_examples) with NO numbered section
-    # heading of their own — a heading like "4. Расмхо" made them read as
-    # their own separate chapter instead of an illustration embedded in the
-    # surrounding explanation, which is what the teacher actually wants.
     formulas = content.get('formulas', [])
     if formulas:
         for f in formulas:
@@ -1092,10 +884,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         for t in key_terms:
             _bullet(t)
 
-    # Real, syntax-styled code snippets (Информатика/programming topics
-    # only — see ai_service.py's _CODE_SUBJECTS) — no numbered section
-    # heading of its own, same reasoning as formulas/concept_cards above:
-    # it reads as an illustration embedded in the surrounding explanation.
     code_blocks = content.get('code_blocks') or []
     for cb in code_blocks:
         if isinstance(cb, dict) and cb.get('code'):
@@ -1111,8 +899,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
                 _add_bullet_runs(p, r, ACCENT)
         _render_visuals('real_life_examples')
 
-    # In a konspekt the examples introduce the material; in a лекция they
-    # illustrate a body that has to come first, so they move below it.
     if not is_lecture:
         _render_real_life()
 
@@ -1122,12 +908,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         caption = ', '.join(locations) if locations else ''
         _add_illustration(doc, map_image, caption, '© OpenStreetMap contributors', width_inches=4.8)
 
-    # Real Wikipedia photo/logo for a concrete real-world subject the AI
-    # named (real_image_query) — a background-removed animal/plant cutout
-    # or a brand/software logo, trimmed to its own content already (see
-    # image_builder.py's _trim_transparent), so a modest fixed width here
-    # is enough to keep it compact instead of stretching it into empty
-    # canvas space.
     real_image = content.get('real_image')
     if isinstance(real_image, dict) and real_image.get('path'):
         _add_illustration(doc, real_image['path'], real_image.get('caption', ''), 'Wikipedia', width_inches=2.3)
@@ -1183,19 +963,11 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
         run.font.name = 'Calibri'
         run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-    # AI-chosen structured visuals (table/timeline/flowchart/process/
-    # comparison/concept_map) anchored to main_content specifically — the
-    # rest are spread across their own sections above/below via
-    # _render_visuals at each matching section instead of all landing here.
     _render_visuals('main_content')
 
     if is_lecture:
         _render_real_life()
 
-    # Solved "misol" practice problems (Математика/Алгебра/Геометрия only —
-    # see ai_service.py's _WORKED_EXAMPLE_SUBJECTS) right after main_content,
-    # the natural "now apply what was just explained" spot, before the
-    # pair/group-work activities that build on these same worked examples.
     worked_examples = content.get('worked_examples') or []
     if worked_examples:
         _section(L['worked_examples'])
@@ -1229,11 +1001,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
     for _left in list(_figures_by_anchor):
         _render_figures(_left)
 
-    # "Кори гурӯҳӣ" (group work) — 3 tasks, each rendered as "Group N: task"
-    # matching the real Tajik curriculum "Нақшаи тавзеҳотӣ" lesson-plan
-    # format this section is modeled on. The "Group N" label is built here
-    # from L['group'] + position, never asked of the model (see the
-    # group_work rule in ai_service.py's _konspekt_prompt).
     group_work = content.get('group_work') or []
     if group_work:
         _section(L['group_work'])
@@ -1254,10 +1021,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             run.font.name = 'Calibri'
             run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
 
-    # Any block whose position_after didn't match one of the 8 recognized
-    # keys above (a malformed AI response, or a legacy value) still
-    # renders instead of silently vanishing — right before quick_check,
-    # the same "end of the lesson body" spot this always used before.
     for _leftover_key in list(_visuals_by_position):
         _render_visuals(_leftover_key)
     for _leftover_key in list(_lesson_by_anchor):
@@ -1327,8 +1090,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
         run.font.name = 'Calibri'
         run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
 
-    # The sources close the document, where a lecture's bibliography
-    # belongs. Konspekts have no "references" key, so nothing changes.
     references = [r for r in (content.get('references') or []) if str(r).strip()]
     if references:
         _section(L.get('references', 'Литература'))
@@ -1336,14 +1097,6 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             _bullet(f"{i}. {ref}")
 
 
-# ══ nakscha plan sheet ══════════════════════════════════════════════════
-# Word counterpart of export_builder._pdf_plan_body. This existed only in
-# the PDF, so a teacher who opened the .docx — which is the copy they
-# actually edit, to fill in the date and their own name — got the old
-# generic layout with none of the plan sheet, the cover or the highlights.
-#
-# The palette is the PDF's, byte for byte (see _PLAN_BG and friends there);
-# the same konspekt printed from either file has to look like one document.
 
 _PLAN_BG_DOCX = "EAF3FB"
 _PLAN_BAR_DOCX = "8FBEDC"
@@ -1355,9 +1108,6 @@ _PLAN_WIDTH = Cm(17.2)
 
 
 def _add_thin_border(paragraph, color_hex: str):
-    """A hairline rule for the handwriting blanks — _add_bottom_border uses
-    sz 12, which prints as a heavy bar when it is meant to be a writing
-    line."""
     pPr = paragraph._element.get_or_add_pPr()
     pBdr = pPr.makeelement(qn('w:pBdr'), {})
     bottom = pBdr.makeelement(qn('w:bottom'), {
@@ -1378,9 +1128,6 @@ def _plan_run(p, text, size=11, bold=False, italic=False, color=None, mark=False
     if color is not None:
         run.font.color.rgb = color
     if mark:
-        # Run-level shading is what gives the answer its highlighted look;
-        # Word's own w:highlight only offers a fixed palette of harsh
-        # colours, none of which is this blue.
         rPr = run._element.get_or_add_rPr()
         rPr.append(rPr.makeelement(qn('w:shd'), {
             qn('w:val'): 'clear', qn('w:color'): 'auto',
@@ -1393,14 +1140,6 @@ _MATH_SPAN_DOCX = re.compile(r"\$([^$\n]{1,400}?)\$")
 
 
 def _normalize_math(text) -> str:
-    """A power written outside the dollars ("S = a^2") or as the character
-    itself ("x²") rewritten into a $...$ span, so it is set as a real Word
-    equation with a raised exponent rather than typed on the baseline at
-    full size.
-
-    ai_service does this at generation time; repeated here because
-    konspekts saved before that pass existed are still exported. The
-    rewrite is idempotent."""
     try:
         from app.math_render import normalize_math
         return normalize_math(text)
@@ -1409,8 +1148,6 @@ def _normalize_math(text) -> str:
 
 
 def _plain_to_latex(text) -> str:
-    """The "formula" field's plain notation (a^2, √x, x₁) read as LaTeX,
-    for the entries where the model gave no "latex"."""
     try:
         from app.math_render import plain_to_latex
         return plain_to_latex(text)
@@ -1419,11 +1156,6 @@ def _plain_to_latex(text) -> str:
 
 
 def _plan_math_run(p, latex: str) -> bool:
-    """Appends one formula to a paragraph as a real Word equation.
-
-    Returns False if the formula could not be built, so the caller can
-    fall back to plain text — a konspekt must still open in Word even if
-    one expression is malformed."""
     from app.math_render import omml_element
     el = omml_element(latex)
     if el is None:
@@ -1434,14 +1166,6 @@ def _plan_math_run(p, latex: str) -> bool:
 
 def _plan_text_math(p, text, size=11, bold=False, italic=False, color=None,
                     mark_text=False):
-    """Writes a mixed run of prose and $...$ mathematics into a paragraph.
-
-    The prose becomes ordinary runs; each formula becomes an OMML
-    equation, which in Word is a real equation object — clickable and
-    editable in the equation editor, not a picture. `mark_text` shades the
-    prose part, used for the highlighted answer; the equation itself is
-    left unshaded because shading belongs to WordprocessingML runs and an
-    OMML run is a different thing."""
     raw = _normalize_math(text)
     pos = 0
     for m in _MATH_SPAN_DOCX.finditer(raw):
@@ -1456,27 +1180,11 @@ def _plan_text_math(p, text, size=11, bold=False, italic=False, color=None,
         _plan_run(p, rest if pos else raw, size, bold, italic, color, mark=mark_text)
 
 
-# ── powers in the ordinary (non-plan) templates ─────────────────────────
-# _plan_text_math above sets mathematics as a real Word equation, but only
-# the nakscha template goes through it. The other five write the konspekt
-# with plain runs from four dozen call sites, and a power reached the page
-# exactly as the model typed it — "S = a^2", with the 2 sitting on the
-# baseline at full size, and the dollar signs still in the sentence.
-#
-# Rather than teach every one of those call sites about mathematics, the
-# finished document is walked once here: any run whose text still contains
-# a $...$ span is replaced by runs that carry the same formatting, with
-# the exponent set as a true superscript (w:vertAlign) in the surrounding
-# font. A formula that flowing runs cannot express — a stacked fraction, a
-# radical — becomes a real OMML equation instead, exactly as in the plan
-# template.
 
 _MONO_FONTS = {"Consolas", "Courier New", "Cascadia Mono"}
 
 
 def _run_is_code(r) -> bool:
-    """True for a run inside a code card. "^" is xor in C and Python and a
-    snippet is printed verbatim, so it must never be read as a power."""
     fonts = r.findall(qn('w:rPr') + '/' + qn('w:rFonts'))
     for f in fonts:
         if f.get(qn('w:ascii')) in _MONO_FONTS:
@@ -1485,12 +1193,6 @@ def _run_is_code(r) -> bool:
 
 
 def _clone_run(r, text: str, script: str = ""):
-    """A copy of run `r` carrying `text`, optionally raised or lowered.
-
-    The run's own rPr is copied, so the superscript keeps the font, size,
-    colour and shading of the text it belongs to — Word draws a
-    vertAlign'd run at about 65% of that size, which is the school
-    textbook's proportion for an exponent."""
     import copy
     new = copy.deepcopy(r)
     for child in list(new):
@@ -1503,9 +1205,6 @@ def _clone_run(r, text: str, script: str = ""):
             new.insert(0, rPr)
         for old in rPr.findall(qn('w:vertAlign')):
             rPr.remove(old)
-        # OOXML spells these out in full; Word silently ignores a
-        # w:vertAlign it does not recognise and sets the run on the
-        # baseline, which is the very thing this pass exists to fix.
         val = 'superscript' if script == 'sup' else 'subscript'
         rPr.append(rPr.makeelement(qn('w:vertAlign'), {qn('w:val'): val}))
     t = new.makeelement(qn('w:t'), {qn('xml:space'): 'preserve'})
@@ -1515,8 +1214,6 @@ def _clone_run(r, text: str, script: str = ""):
 
 
 def _math_replacement_nodes(r, text: str):
-    """The runs (and equations) that replace one run whose text carries
-    mathematics, or None if there is nothing to change."""
     from app.math_render import script_segments, omml_element
     normalized = _normalize_math(text)
     if "$" not in normalized:
@@ -1540,8 +1237,6 @@ def _math_replacement_nodes(r, text: str):
                 nodes.append(el)
                 changed = True
             else:
-                # Unrenderable: print the expression without the dollars
-                # rather than leaving "$...$" in the sentence.
                 nodes.append(_clone_run(r, latex))
         pos = m.end()
     rest = normalized[pos:]
@@ -1551,8 +1246,6 @@ def _math_replacement_nodes(r, text: str):
 
 
 def _typeset_math_runs(doc) -> None:
-    """Rewrites every power in the finished document as a real raised
-    exponent. Never raises: a formula must not be able to fail an export."""
     try:
         runs = [r for r in doc.element.body.iter(qn('w:r'))]
     except Exception:
@@ -1575,7 +1268,7 @@ def _typeset_math_runs(doc) -> None:
                 parent.insert(index + offset, node)
             parent.remove(r)
         except Exception:
-            continue        # this one run keeps its plain text
+            continue
 
 
 def _set_cell_left_bar(cell, color_hex: str, size: str = "18"):
@@ -1590,16 +1283,6 @@ def _set_cell_left_bar(cell, color_hex: str, size: str = "18"):
 
 
 def _plan_box(doc, fill_hex: str, keep_together: bool = True):
-    """A one-cell table used as a coloured box — Word has no other way to
-    put a background behind a run of paragraphs. Returns the cell to write
-    into, already emptied of the default paragraph.
-
-    cantSplit is set explicitly. Word's default is the opposite: a table
-    row IS allowed to break across pages, which split an example card so
-    that the problem sat at the foot of one page and its solution at the
-    top of the next — exactly what putting each example in its own card
-    was meant to prevent. A key-concepts panel can legitimately be longer
-    than a page, so that one passes keep_together=False."""
     t = doc.add_table(rows=1, cols=1)
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.autofit = False
@@ -1622,9 +1305,6 @@ def _plan_cell_para(cell, space_after=2):
 
 
 def _plan_heading(doc, text):
-    """Blue ink over a hairline rule — the PDF's heading(), and for the
-    same reason: a filled band on each of fifteen sections made the sheet
-    striped and drowned the panels that are meant to stand out."""
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(9)
     p.paragraph_format.space_after = Pt(3)
@@ -1634,7 +1314,6 @@ def _plan_heading(doc, text):
 
 
 def _plan_feature_heading(doc, text, badge=None):
-    """The filled heading for the worked-examples section."""
     t = doc.add_table(rows=1, cols=2 if badge else 1)
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.autofit = False
@@ -1664,17 +1343,10 @@ def _plan_bullets(cell_or_doc, items, in_cell=False):
         p.paragraph_format.left_indent = Cm(0.7)
         p.paragraph_format.first_line_indent = Cm(-0.35)
         _plan_run(p, "•  ")
-        # The model writes $...$ wherever it needs a formula — in the key
-        # concepts, the lesson steps, a real-life example — not only in the
-        # worked examples. Anything not routed through here printed the
-        # dollar signs on the page as literal text.
         _plan_text_math(p, item)
 
 
 def _plan_example_card(doc, label, problem, solution, solution_label):
-    """One example in its own light card — see the PDF's matching helper.
-    Word keeps a table row together on a page by default, so the problem
-    and its solution cannot be split apart by a page break either."""
     cell = _plan_box(doc, _PLAN_EX_BG_DOCX)
     p = _plan_cell_para(cell, 2)
     _plan_run(p, label + " ", bold=True, color=_PLAN_INK_DOCX)
@@ -1687,26 +1359,17 @@ def _plan_example_card(doc, label, problem, solution, solution_label):
         _plan_text_math(p2, head, size=10.5)
         if marked:
             _plan_text_math(p2, marked, size=10.5, bold=True, mark_text=True)
-    # A spacer paragraph is required, not cosmetic: two tables with nothing
-    # between them are merged into one table by Word. Kept tiny so the
-    # cards sit as close together as they do in the PDF.
     gap = doc.add_paragraph()
     gap.paragraph_format.space_before = Pt(0)
     gap.paragraph_format.space_after = Pt(0)
     gap.add_run().font.size = Pt(4)
 
 
-# Kept in step with export_builder._ANSWER_WORDS — "Натиҷа" is as common
-# as "Ҷавоб" in the model's solutions.
 _ANSWER_WORDS_DOCX = ("ҷавоб", "җавоб", "жавоб", "javob", "ответ", "answer",
                       "натиҷа", "натича", "натижа", "natija", "результат", "result")
 
 
 def _split_answer(text: str):
-    """Splits a solution into the working and the final answer, so only the
-    answer carries the marker. Same rule as the PDF: match on the answer
-    WORD, because solutions are written in four languages and end in no
-    consistent punctuation."""
     low = text.lower()
     cut = max((low.rfind(w) for w in _ANSWER_WORDS_DOCX), default=-1)
     if cut < 0:
@@ -1715,16 +1378,6 @@ def _split_answer(text: str):
 
 
 def _plan_labels(L: dict, language: str) -> dict:
-    """The plan sheet's own labels come from the PDF's dictionary.
-
-    _DOCX_LABELS has no plan_* keys at all, so every .get(..., default) in
-    this renderer fell through to its Tajik default — a RUSSIAN plan sheet
-    printed "Сана / Синф / Мактаб / Соли таҳсили" in Tajik. It also calls a
-    worked example "Намуна" where the PDF calls it "Мисоли", so the two
-    exports of one konspekt disagreed on the word.
-
-    Reading them from one place is the fix; it also means the two cannot
-    drift apart again."""
     from app.export_builder import _PDF_KONSPEKT_LABELS
     pdf = _PDF_KONSPEKT_LABELS.get(language) or _PDF_KONSPEKT_LABELS["Русский"]
     merged = dict(L)
@@ -1736,15 +1389,6 @@ def _plan_labels(L: dict, language: str) -> dict:
 
 
 def _plan_visual_docx(doc, block: dict, L: dict):
-    """Tables and step lists for the plan sheet.
-
-    _add_visual_block is the right renderer everywhere else, but it paints
-    a solid navy header and alternating pink rows — beside the plan
-    sheet's soft blue that read as a different document pasted in, and it
-    did not match the same konspekt's PDF at all. This mirrors
-    export_builder's minimal branch: a tinted header, hairline rules, and
-    process/timeline as plain lists rather than the drawn cards (the
-    drawn version is the one the teacher rejected for this sheet)."""
     btype = block.get("type")
     data = block.get("data") or {}
 
@@ -1780,7 +1424,6 @@ def _plan_visual_docx(doc, block: dict, L: dict):
                 c = t.cell(i, j)
                 _clear_cell(c)
                 _plan_text_math(_plan_cell_para(c, 1), val, size=9.5)
-        # Hairlines only — no grid, no fills.
         tblPr = t._tbl.tblPr
         borders = tblPr.makeelement(qn('w:tblBorders'), {})
         for edge in ("top", "bottom", "insideH"):
@@ -1839,7 +1482,6 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
     subject = str(content.get("subject") or "")
     language = str(content.get("language") or "Русский")
 
-    # ── masthead ────────────────────────────────────────────────────────
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     p.paragraph_format.space_after = Pt(2)
@@ -1847,12 +1489,6 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
 
     fill = doc.add_table(rows=1, cols=3)
     fill.autofit = False
-    # Always the bare number behind THIS document's own "Синф"/"Class"
-    # label — see export_builder._bare_grade's doc comment: the create
-    # form always sends "N класс" in Russian regardless of the chosen
-    # language, so using the grade string as-is whenever it happened to
-    # already contain *a* grade-word used to print the Russian word next
-    # to an otherwise fully translated label.
     grade_text = f'{L.get("plan_class", "Синф")} {_bare_grade(grade) or grade or "________"}'
     for i, (txt, width) in enumerate((
         (f'{L.get("plan_date", "Сана")} ____________', Cm(6.0)),
@@ -1877,7 +1513,6 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
     p.paragraph_format.space_after = Pt(10)
     _plan_run(p, str(content.get("title") or "").upper(), size=16, bold=True)
 
-    # ── heavy items, each a closure that writes itself in ───────────────
     heavy = []
 
     formulas = content.get("formulas") or []
@@ -1888,16 +1523,10 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
             for f in formulas:
                 latex = f.get("latex") if isinstance(f, dict) else None
                 plain = f.get("formula", "") if isinstance(f, dict) else str(f)
-                # No "latex" from the model: read the plain field as
-                # mathematics rather than falling straight through to
-                # bulleted text, where "S = a^2" would print with the 2
-                # sitting on the baseline.
                 if not latex and plain:
                     latex = _plain_to_latex(plain)
                 p = _plan_cell_para(cell, 1)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                # Set as a real Word equation, centred on its own line, the
-                # way a textbook prints a formula before explaining it.
                 if not (latex and _plan_math_run(p, latex)):
                     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
                     p.paragraph_format.left_indent = Cm(0.5)
@@ -1951,13 +1580,11 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
                 _add_illustration(doc, f["image"], f.get("caption", ""), "", width_inches=width)
             heavy.append(_fig)
 
-    # Each illustration waits for the section whose text it explains.
     lesson_by_anchor: dict = {}
     for image in (content.get("lesson_images") or []):
         if isinstance(image, dict) and image.get("path"):
             lesson_by_anchor.setdefault(image.get("position_after") or "main_content", []).append(image)
 
-    # ── sections ────────────────────────────────────────────────────────
     PLAN_ORDER = [
         ("competencies", "fill"), ("warmup", "fill"), ("objectives", "bullets"),
         ("key_concepts", "bullets"), ("key_terms", "bullets"), ("tools", "runin"),
@@ -1973,8 +1600,6 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
     slots = printable[1:]
     drop_after: dict = {}
     if slots and heavy:
-        # Even fractional spacing, the PDF's rule — item i of n lands at
-        # (i+1)/(n+1) through the sections, so nothing bunches at either end.
         for i, item in enumerate(heavy):
             pos = round((i + 1) * len(slots) / (len(heavy) + 1))
             drop_after.setdefault(slots[max(0, min(pos, len(slots) - 1))], []).append(item)
@@ -1987,9 +1612,6 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
             if value:
                 _plan_bullets(doc, value)
             else:
-                # Thin, closely spaced ruled blanks — the printed sheet
-                # leaves lines to write on, not underscored headings. The
-                # default border weight came out as a heavy black bar.
                 for _ in range(2):
                     blank = doc.add_paragraph()
                     blank.paragraph_format.space_before = Pt(0)
@@ -2018,15 +1640,11 @@ def _add_plan_body_docx(doc, content: dict, L: dict):
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             _plan_run(p, f"{label}. ", bold=True, italic=True, color=_PLAN_INK_DOCX)
             _plan_text_math(p, _plan_flatten_docx(value))
-        # The Commons illustration anchored to this section prints under
-        # its text, before the dealt-out heavy items — same contract as
-        # the PDF's _pdf_plan_body.
         for image in lesson_by_anchor.pop(key, []):
             _add_lesson_image_block(doc, image, L.get("illustration", "Тасвир"), _PLAN_INK_DOCX)
         for item in drop_after.pop(key, []):
             item()
 
-    # More heavy items than printable sections — still render them.
     for images in lesson_by_anchor.values():
         for image in images:
             _add_lesson_image_block(doc, image, L.get("illustration", "Тасвир"), _PLAN_INK_DOCX)
@@ -2054,13 +1672,7 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
     title = content.get('title', 'Конспект урока')
     subtitle = content.get('subtitle', '')
 
-    # The Wikimedia Commons teaching illustrations are NOT placed here:
-    # each carries the section it explains and is written by the body
-    # renderer at that point (see _add_konspekt_body's _render_lesson_images
-    # and _add_plan_body_docx), the same contract as the PDF export.
 
-    # The nakscha template is a different document, not a restyling of this
-    # one — see _add_plan_body_docx.
     if get_template(content.get('template') or 'zamonaviy').plan_layout:
         for section in doc.sections:
             section.top_margin = Cm(1.4)
@@ -2077,12 +1689,6 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
             fd, tmp = tempfile.mkstemp(suffix='.png')
             with _os.fdopen(fd, 'wb') as fh:
                 fh.write(png)
-            # Sized by HEIGHT and broken from inside the picture's own
-            # paragraph. Sizing by width made the image 24.3cm tall, which
-            # left no room on page 1 for the separate paragraph that
-            # add_page_break() creates — that paragraph slid onto page 2
-            # and its break pushed the body to page 3, so the document
-            # opened with a blank page between the cover and the sheet.
             from docx.enum.text import WD_BREAK
             doc.add_picture(tmp, height=Cm(23.5))
             pic = doc.paragraphs[-1]
@@ -2091,10 +1697,7 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
             pic.add_run().add_break(WD_BREAK.PAGE)
             _os.unlink(tmp)
         except Exception:
-            pass  # a cover that fails to build must not cost the document
-        # The illustrations are placed by _add_plan_body_docx itself, each
-        # under the section it explains — not here, where they would sit
-        # ahead of the sheet's own content regardless of what they show.
+            pass
         _add_plan_body_docx(doc, content, _plan_labels(L, language))
         buf = io.BytesIO()
         _typeset_math_runs(doc)
@@ -2102,9 +1705,6 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
         buf.seek(0)
         return buf
 
-    # The decorative cover page is PDF-only by design (see
-    # export_builder.py's build_konspekt_pdf) — the docx export just uses
-    # normal margins throughout.
     for section in doc.sections:
         section.top_margin = Cm(1.1)
         section.bottom_margin = Cm(1.1)
@@ -2145,22 +1745,6 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
 
 
 def build_lecture_docx(content: dict, language: str = 'Русский') -> io.BytesIO:
-    """The лекция as an editable .docx, in the same shape as its PDF.
-
-    It used to be build_konspekt_docx with a guard: a lecture and a lesson
-    plan came out of Word as literally the same document. Now it follows
-    lecture_builder's structure — the form header, numbered sections, the
-    glossary as definitions, inline "Важно"/"Пример" notes, self-check,
-    conclusions — because this is the file a teacher edits before class,
-    and it has to match what they previewed.
-
-    Deliberately ONE Word layout for all four designs rather than four:
-    the differences between them are typographic composition (a split
-    cover, a ghost numeral, a reversed band), and Word is not the place to
-    reproduce those — a teacher opening the .docx wants to edit the text,
-    and gets the concise working format for that. The PDF is the one that
-    carries the design.
-    """
     from app.lecture_builder import _words, _split_definition, _split_main_content, _queue_callouts
     from app.subject_theme import get_subject_accent_rgb
 
@@ -2203,7 +1787,6 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         run.font.name = 'Calibri'
         return pr
 
-    # ── the header block, in place of a cover ───────────────────────────
     para('  '.join(w['tag']), size=8, bold=True, color=ACCENT, after=1,
          align=WD_ALIGN_PARAGRAPH.CENTER)
     para(str(content.get('title') or ''), size=15, bold=True, after=1,
@@ -2212,10 +1795,6 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         para(str(content['subtitle']), size=10, color=MUTED, after=6,
              align=WD_ALIGN_PARAGRAPH.CENTER)
 
-    # Same fix as lecture_builder's: the create form always sends the
-    # Russian "8 класс" whatever language the material is in, so testing
-    # "does it already contain letters?" was true every time and a Tajik
-    # lecture printed "8 класс" beside otherwise-translated labels.
     from app.export_builder import _format_grade
     grade = str(content.get('grade') or '')
     if grade:
@@ -2255,7 +1834,6 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         _add_bottom_border(pr, accent_hex)
 
     def note(label, text, colour=ACCENT):
-        """An inline remark: the label and the sentence on one line."""
         pr = doc.add_paragraph()
         pr.paragraph_format.left_indent = Cm(0.5)
         pr.paragraph_format.space_before = Pt(3)
@@ -2271,7 +1849,6 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         run.font.color.rgb = INK
         run.font.name = 'Calibri'
 
-    # ── objective ───────────────────────────────────────────────────────
     objective = str(content.get('objective') or '').strip()
     if objective:
         heading(w['objective'])
@@ -2322,7 +1899,6 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         heading(w['terms'])
         definitions(terms)
 
-    # ── the lecture itself ──────────────────────────────────────────────
     parts = _split_main_content(content.get('main_content'))
     images = list(content.get('lesson_images') or [])
     visuals = list(content.get('visual_blocks') or [])
@@ -2479,9 +2055,6 @@ def _mono_divider(doc):
 
 
 def _add_lesson_content(doc, content: dict, L: dict):
-    """Renders one day's konspekt content in the same minimal, colorless
-    style as the rest of build_curriculum_docx — a monochrome counterpart
-    to build_konspekt_docx's colorful section-by-section layout."""
     duration = content.get('duration', '')
     if duration:
         _mono_para(doc, f'{L["duration"]}: {duration}', italic=True)
@@ -2535,8 +2108,6 @@ def _add_exam_content(doc, content: dict, R: dict):
         run.font.color.rgb = RGBColor(0x11, 0x11, 0x11)
         run.bold = True
         run.font.name = 'Calibri'
-        # Only the minority of questions the model marked as genuinely
-        # needing one (_TEST_IMAGE_RULE, ai_service.py) carry an "image".
         img = q.get('image') if isinstance(q.get('image'), dict) else None
         if img and img.get('path'):
             _add_illustration(doc, img.get('path', ''), '', img.get('credit', ''), width_inches=2.6)
@@ -2563,10 +2134,6 @@ def _add_exam_content(doc, content: dict, R: dict):
 
 
 def build_konspekt_docx_mono(content: dict, language: str = 'Русский') -> io.BytesIO:
-    """One curriculum day's konspekt as its own file, in the same dense,
-    colorless 'printed page' style as build_curriculum_docx (black/grey
-    text only, no colored section boxes) — used for the per-day zip export
-    instead of build_konspekt_docx's bright multi-color layout."""
     doc = Document()
     L = _DOCX_LABELS.get(language, _DOCX_LABELS['Русский'])
 
@@ -2574,10 +2141,6 @@ def build_konspekt_docx_mono(content: dict, language: str = 'Русский') ->
     style.font.name = 'Calibri'
     style.font.size = Pt(11)
     style._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-    # python-docx's default template bakes ~1.08x line spacing + 8pt
-    # space-after into "Normal" — override so every paragraph that doesn't
-    # set its own spacing (title, subtitle) is still dense, not just the
-    # ones going through the _mono_* helpers below.
     style.paragraph_format.line_spacing = 1.0
     style.paragraph_format.space_before = Pt(0)
     style.paragraph_format.space_after = Pt(2)
@@ -2622,9 +2185,6 @@ def build_konspekt_docx_mono(content: dict, language: str = 'Русский') ->
 
 
 def build_test_docx_mono(content: dict, language: str = 'Русский') -> io.BytesIO:
-    """One curriculum exam day's test as its own file, same dense colorless
-    style as build_konspekt_docx_mono — used for the per-day zip export
-    instead of build_test_docx's colored answer/explanation highlight boxes."""
     doc = Document()
     R = _ROADMAP_LABELS.get(language, _ROADMAP_LABELS['Русский'])
 
@@ -2664,14 +2224,6 @@ def build_test_docx_mono(content: dict, language: str = 'Русский') -> io.
 
 
 def build_test_docx(content: dict) -> io.BytesIO:
-    """The test as a .docx: a clean student sheet, then the teacher's key.
-
-    Same document shape as build_test_pdf, and for the same reason — the
-    old version printed the correct option highlighted green under every
-    question, so the file could be marked from but never handed out. The
-    Word version matters more than the PDF here, because this is the one
-    a teacher edits before printing.
-    """
     from app.export_builder import _test_ui
 
     doc = Document()
@@ -2690,8 +2242,6 @@ def build_test_docx(content: dict) -> io.BytesIO:
     GREY = RGBColor(0x6B, 0x72, 0x80)
     language = str(content.get('language') or 'Русский')
     ui = _test_ui(language)
-    # The accent follows the subject, like every other export — the test
-    # used to be hardcoded green whatever it was a test in.
     try:
         from app.export_builder import get_subject_accent_rgb
         ar, ag, ab = get_subject_accent_rgb(content.get('subject', ''))
@@ -2717,8 +2267,6 @@ def build_test_docx(content: dict) -> io.BytesIO:
         run.font.color.rgb = GREY
         run.font.name = 'Calibri'
 
-    # The line the student fills in. Written as underscores rather than a
-    # borderless table so it survives the teacher editing the file.
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(10)
     run = p.add_run(f'{ui["name"]} ________________________________     '
@@ -2765,14 +2313,11 @@ def build_test_docx(content: dict) -> io.BytesIO:
             run.italic = True
             run.font.name = 'Calibri'
 
-        # Only the minority of questions the model marked as genuinely
-        # needing one (_TEST_IMAGE_RULE, ai_service.py) carry an "image".
         img = q.get('image') if isinstance(q.get('image'), dict) else None
         if img and img.get('path'):
             _add_illustration(doc, img.get('path', ''), '', img.get('credit', ''), width_inches=2.6)
 
         if q_type == 'open_ended':
-            # Room to actually write the answer in.
             for _ in range(3):
                 line = doc.add_paragraph()
                 line.paragraph_format.left_indent = Cm(1)
@@ -2804,7 +2349,6 @@ def build_test_docx(content: dict) -> io.BytesIO:
     run.font.color.rgb = GREY
     run.font.name = 'Calibri'
 
-    # ── the key, on its own page ────────────────────────────────────────
     if questions:
         doc.add_page_break()
         p = doc.add_paragraph()
@@ -2825,8 +2369,6 @@ def build_test_docx(content: dict) -> io.BytesIO:
 
         table = doc.add_table(rows=1, cols=3)
         table.style = 'Table Grid'
-        # Fixed widths, or Word gives the "№" column a third of the page
-        # and squeezes the explanations into a ribbon.
         table.autofit = False
         col_widths = (Cm(1.2), Cm(3.8), Cm(11.0))
         accent_hex = '%02X%02X%02X' % (ACCENT[0], ACCENT[1], ACCENT[2])
@@ -2840,9 +2382,6 @@ def build_test_docx(content: dict) -> io.BytesIO:
             run.font.size = Pt(10)
             run.font.name = 'Calibri'
             run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-            # The CELL is filled, not the paragraph inside it: shading a
-            # paragraph leaves the cell's own padding white, so the header
-            # printed as coloured patches with gaps between them.
             _set_cell_shading(cell, accent_hex)
 
         for i, q in enumerate(questions):
@@ -2914,9 +2453,6 @@ _PRACTICAL_DOCX_UI = {
 
 
 def build_practical_docx(content: dict) -> io.BytesIO:
-    """The practical-tasks worksheet as a .docx a teacher can edit before
-    printing — same individual/group split as build_practical_pdf, no
-    answer key (grading is against each task's own "expected_outcome")."""
     doc = Document()
     style = doc.styles['Normal']
     style.font.name = 'Calibri'
@@ -3096,7 +2632,6 @@ def build_presentation_docx(content: dict) -> io.BytesIO:
         bullets = slide.get('bullet_points', [])
         notes = slide.get('speaker_notes', '')
 
-        # Slide number badge
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(16)
         p.paragraph_format.space_after = Pt(4)
@@ -3107,7 +2642,6 @@ def build_presentation_docx(content: dict) -> io.BytesIO:
         run.font.name = 'Calibri'
         _set_paragraph_shading(p, '374151')
 
-        # Slide title
         p = doc.add_paragraph()
         p.paragraph_format.space_after = Pt(8)
         run = p.add_run(slide_title)

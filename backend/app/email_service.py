@@ -10,9 +10,6 @@ settings = get_settings()
 
 
 def _get_logo_base64() -> str:
-    # Self-contained copy under app/static/ — the sibling Flutter-app backend
-    # reaches across into teach_ai/assets/ for this; this project doesn't
-    # depend on that repo at all, so the logo lives locally instead.
     path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
     if os.path.isfile(path):
         with open(path, "rb") as f:

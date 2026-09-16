@@ -19,9 +19,9 @@ export default function AdminUsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // listUsers takes an AdminListUsersParams object, not a bare
-      // search string — passing the string compiled to an error that
-      // failed `next build`.
+      
+      
+      
       setUsers(await adminApi.listUsers(query ? { q: query } : {}));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось загрузить");
@@ -31,7 +31,7 @@ export default function AdminUsersPage() {
   }, [query]);
 
   useEffect(() => {
-    const t = setTimeout(load, 250); // debounce search
+    const t = setTimeout(load, 250); 
     return () => clearTimeout(t);
   }, [load]);
 
@@ -49,10 +49,10 @@ export default function AdminUsersPage() {
     }
   }
 
-  // Free tier: 1 konspekt/test/presentation/lecture per account (see
-  // backend's _check_free_limit) — no payment gateway wired up yet, so
-  // this toggle is the only way to grant is_premium today, done by hand
-  // once a teacher has paid some other way.
+  
+  
+  
+  
   async function togglePremium(u: AdminUserOut) {
     setBusyId(u.id);
     setError(null);
@@ -84,11 +84,11 @@ export default function AdminUsersPage() {
   }
 
   async function remove(u: AdminUserOut) {
-    // Irreversible and cascades to every material the account owns (see
-    // backend/app/routers/admin.py) — worth a native confirm() here even
-    // though the rest of the app moved to the undo-toast pattern, since
-    // there's no equivalent "undo" story for an admin nuking someone
-    // else's whole account.
+    
+    
+    
+    
+    
     if (!confirm(`Удалить аккаунт «${u.phone ?? u.email}» и все его материалы (${u.konspekt_count + u.test_count + u.presentation_count} шт.)? Это необратимо.`)) return;
     setBusyId(u.id);
     setError(null);
@@ -185,11 +185,7 @@ export default function AdminUsersPage() {
                     )}
                   </div>
 
-                  {/* Straight to what this account has actually made.
-                      The admin materials list could already be searched
-                      by hand, but "which of these rows are hers" is not
-                      a search — it is a filter, and it belongs on the
-                      row that raises the question. */}
+                  {}
                   <Link
                     href={`/admin/materials?user=${u.id}`}
                     title={`Материалы: ${u.full_name}`}

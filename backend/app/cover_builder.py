@@ -1,19 +1,3 @@
-"""Generates a decorative cover page for konspekt PDF exports — a purely
-graphic/typographic design (no emoji, no photo — teacher explicitly asked
-for the cover to stay abstract rather than an emoji/picture, after trying
-both), the lesson title, a grade badge, and fill-in-the-blank fields
-(name/class/school), matching the look of a professionally printed
-methodological guide. Rendered once as a PNG (via PIL) and dropped in as a
-genuine full-bleed first page — PDF only, by design (see export_builder.py's
-build_konspekt_pdf); the docx export does not get one.
-
-Which of the 5 designs below gets used is picked per-konspekt via
-`template_id` (see app/konspekt_templates.py) — a teacher-facing wizard
-choice, a DIFFERENT axis from subject. This is deliberately NOT
-per-subject variation (that was tried before and reverted — the teacher
-asked for one uniform look per document, matching a fixed reference —
-each of these 5 designs stays that same "one fixed look", just 5 different
-fixed looks to choose from instead of 1)."""
 
 import io
 import os
@@ -22,16 +6,6 @@ from datetime import date
 from PIL import Image, ImageDraw, ImageFont
 from app.fonts import font_path
 
-# Resolved per role by app/fonts.py rather than pinned to
-# C:\Windows\Fonts, which is what made every cover off a Windows machine
-# render as illegible specks (PIL's default bitmap fallback ignores the
-# requested size) — see that module's docstring.
-#
-# Serif is used by the "minimal"/"rasmiy" styles. Whatever backs it must
-# have the Tajik-specific Cyrillic letters ӯ/ҳ/ҷ/ӣ: Georgia was tried
-# here originally and renders tofu for "Омӯзгор"/"Соли таҳсилӣ", which
-# silently broke every Tajik-language cover. Times New Roman (Windows)
-# and DejaVu/Liberation Serif (Linux) all have full coverage.
 _FONT_REGULAR = font_path("sans")
 _FONT_BOLD = font_path("sans_bold")
 _FONT_SERIF = font_path("serif")
@@ -40,17 +14,6 @@ _FONT_SERIF_BOLD = font_path("serif_bold")
 _DARK = (0x11, 0x2A, 0x5E)
 _LIGHT = (0x2E, 0x63, 0xC7)
 
-# Per-subject cover illustration — deliberately a small, explicit dict
-# rather than a generic "any subject" mechanism: only add a subject here
-# once an actual image has been sourced/cleaned for it, not as a
-# placeholder. Two modes:
-#  - "cutout": background already removed (real transparency) — pasted
-#    directly, floating on the white cover, no border.
-#  - "framed": a real photo that keeps its own background (a lab photo,
-#    an old map, a bokeh library shot) — these look wrong cut out (messy
-#    edges, or the background IS the point, e.g. the dark studio shot for
-#    Физика/Биология), so they're drawn inside a bordered rounded-rect
-#    card instead, like a framed photograph on the page.
 _ILLUS_DIR = os.path.join(os.path.dirname(__file__), "static", "subject_illustrations")
 _SUBJECT_ILLUSTRATIONS = {
     "Информатика": ("cutout", os.path.join(_ILLUS_DIR, "informatika_pc.png")),
@@ -75,10 +38,6 @@ _LABELS = {
     "Таджикский": {"name": "Номи хонанда", "class": "Синф", "school": "Мактаб", "subject": "Фан", "year_prefix": "Соли таҳсилӣ", "teacher": "Омӯзгор", "tag": "НАҚШАИ ТАВЗЕҲОТӢ"},
     "English": {"name": "Student Name", "class": "Grade", "school": "School", "subject": "Subject", "year_prefix": "Academic Year", "teacher": "Teacher", "tag": "LESSON PLAN"},
 }
-# Wording specific to the "nakscha" cover — it is not a title plus fields
-# like the other five, it is three running sentences ("for grade 10",
-# "in the subject X", "for academic year Y"), so it needs the connecting
-# words too, not just nouns.
 _NAKSCHA_LABELS = {
     "Таджикский": {"grade": "барои синфи", "duration": "Давомнокии дарс: 1 соат",
                    "subject": "аз фанни", "year": "барои соли таҳсили",
@@ -94,7 +53,7 @@ _NAKSCHA_LABELS["Английский"] = _NAKSCHA_LABELS["English"]
 
 _LABELS["Английский"] = _LABELS["English"]
 
-_W, _H = 1240, 1754  # A4 at ~150dpi
+_W, _H = 1240, 1754
 
 
 def _academic_year() -> str:
@@ -127,24 +86,12 @@ def _wrap_text(draw, text, font, max_width):
 
 
 def _grade_number(grade: str) -> str:
-    """"8 класс" -> "8" — the CIRCULAR grade badges (klassik, rangli) size
-    their font for a short number; the full phrase overflowed the circle
-    and got clipped at the edges. A round badge reads as a number icon
-    anyway, not a sentence, so trimming to the leading digits (falling
-    back to the original string if there aren't any) is the fix, not a
-    bigger circle."""
     m = re.match(r'\s*(\d+)', str(grade))
     return m.group(1) if m else str(grade)
 
 
 def _draw_ornamental_border(draw, W, H, margin=44, step=26,
                              colors=((0xC9, 0x9A, 0x2E), (0x1F, 0x29, 0x37))):
-    """Repeating diamond motif band around the page edge, alternating two
-    colors — the specific ornamental-border look a real official Tajik
-    curriculum document ("Нақшаи тавзеҳотӣ") uses, which is what "rasmiy"
-    (Official) is meant to evoke; a plain double-rule frame read as
-    generic instead. Diamonds are drawn edge-to-edge so the 4 corners
-    naturally line up without extra corner-piece logic."""
     size = step * 0.42
 
     def diamond(cx, cy, fill):
@@ -173,7 +120,6 @@ def _watermark(draw, color=(255, 255, 255, 200)):
     draw.text((100, _H - 50), "Dastyor — AI-помощник для учителей", font=wm_font, fill=color)
 
 
-# ── "klassik" — the original design, unchanged ──────────────────────────
 
 def _build_cover_klassik(subject: str, title: str, grade: str, language: str) -> bytes:
     W, H = _W, _H
@@ -183,7 +129,6 @@ def _build_cover_klassik(subject: str, title: str, grade: str, language: str) ->
     img = Image.new("RGB", (W, H), dark)
     draw = ImageDraw.Draw(img)
 
-    # Diagonal gradient background (top-left dark -> bottom-right light).
     for y in range(H):
         t = y / H
         r = int(dark[0] + (light[0] - dark[0]) * t)
@@ -191,9 +136,6 @@ def _build_cover_klassik(subject: str, title: str, grade: str, language: str) ->
         b = int(dark[2] + (light[2] - dark[2]) * t)
         draw.line([(0, y), (W, y)], fill=(r, g, b))
 
-    # Purely abstract/geometric decoration — a cluster of large, layered
-    # translucent rings (not filled disks) anchored top-right, plus a thin
-    # diagonal line accent bottom-left.
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     odraw = ImageDraw.Draw(overlay)
     ring_cx, ring_cy = W - 120, 260
@@ -256,39 +198,19 @@ def _build_cover_klassik(subject: str, title: str, grade: str, language: str) ->
     return buf.getvalue()
 
 
-# ── "zamonaviy" (Modern) — off-center title, bold flat shapes ───────────
 
 _MODERN_INK = (0x1E, 0x29, 0x37)
-_MODERN_ACCENT = (0x3B, 0x82, 0xF6)  # same blue family as the presentation redesign
+_MODERN_ACCENT = (0x3B, 0x82, 0xF6)
 _MODERN_MUTED = (0x64, 0x74, 0x8B)
 _MODERN_HAIRLINE = (0xE2, 0xE8, 0xF0)
 
 
 def _tint(color: tuple, amount: float = 0.9) -> tuple:
-    """Blend `color` toward white by `amount` (0 = unchanged, 1 = white) —
-    used for the cover's soft background blobs below."""
     r, g, b = color
     return (int(r + (255 - r) * amount), int(g + (255 - g) * amount), int(b + (255 - b) * amount))
 
 
 def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, doc_type_label: str | None = None) -> bytes:
-    """White background, bold dark title, thin blue rule, small accent
-    corner badge — the konspekt cover redone to match the presentation
-    export's redesigned look (see build_presentation_pptx's cover slide),
-    after direct feedback that a konspekt exported next to a presentation
-    on the same topic should read as the same product. Was a dark-navy +
-    coral/teal design before; every other one of the 5 covers is
-    untouched, still available for curriculum's own separate template
-    picker.
-
-    Two soft accent-tinted circles (top-right, bottom-left) were added
-    later — a teacher found the plain white page "too empty"/plain, but
-    an earlier attempt at fixing that with an ornamental pattern border
-    was rejected outright as too busy/heavy ("juda hunuk"). Soft flat-
-    tinted blobs are the middle ground: they fill the dead space and add
-    depth without any hard edges/pattern repetition to read as "busy" —
-    the same "gradient hero + soft shapes" language the mobile app's own
-    login screen already uses, so the cover reads as the same product."""
     W, H = _W, _H
     L = _LABELS.get(language, _LABELS["Русский"])
     img = Image.new("RGB", (W, H), (255, 255, 255))
@@ -297,15 +219,11 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
     draw.ellipse([W - 520, -260, W + 260, 480], fill=_tint(_MODERN_ACCENT, 0.90))
     draw.ellipse([-320, H - 640, 340, H + 260], fill=_tint(_MODERN_ACCENT, 0.94))
 
-    # Thin rule + small-caps label, top-left — same "ПРЕЗЕНТАЦИЯ" kicker
-    # idiom the pptx cover uses, just labeled for a konspekt instead.
     label_font = _font(_FONT_BOLD, 20)
     draw.rectangle([100, 118, 160, 122], fill=_MODERN_ACCENT)
     label_text = doc_type_label or {"Русский": "КОНСПЕКТ", "Таджикский": "КОНСПЕКТ", "English": "LESSON NOTES"}.get(language, "КОНСПЕКТ")
     draw.text((180, 104), label_text, font=label_font, fill=_MODERN_ACCENT)
 
-    # Small accent badge, top-right — grade number + academic year,
-    # mirroring the pptx cover's "N СЛАЙДОВ / Dastyor" corner card.
     badge_w, badge_h = 230, 150
     badge_x0, badge_y0 = W - badge_w - 100, 80
     draw.rounded_rectangle([badge_x0, badge_y0, badge_x0 + badge_w, badge_y0 + badge_h], radius=18, fill=_MODERN_ACCENT)
@@ -333,10 +251,6 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
     ty += 16
     draw.rectangle([100, ty, 190, ty + 8], fill=_MODERN_ACCENT)
 
-    # Subject illustration, centered in the empty space between the title
-    # rule and the name/class/school fields — only for subjects with an
-    # actual supplied image (see _SUBJECT_ILLUSTRATIONS); every other
-    # subject's cover is unchanged.
     entry = _SUBJECT_ILLUSTRATIONS.get(subject)
     if entry and os.path.exists(entry[1]):
         mode, illus_path = entry
@@ -352,23 +266,14 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
                 illus = illus.resize((tw, th), Image.LANCZOS)
                 px = (W - tw) // 2
                 py = area_top + pad + (max_h - th) // 2
-                # A white card behind the illustration, always (used to be
-                # "framed" photos only) — now that the page has soft
-                # colored background blobs, an image floating directly on
-                # top of the tint read as messy; a plain white card
-                # underneath keeps it crisp either way, cutout or framed.
                 draw.rounded_rectangle(
                     [px - pad, py - pad, px + tw + pad, py + th + pad],
                     radius=20, fill=(255, 255, 255), outline=_MODERN_HAIRLINE, width=2,
                 )
                 img.paste(illus, (px, py), illus)
         except Exception:
-            pass  # a missing/corrupt illustration file should never break the cover
+            pass
 
-    # No "student name" fill-in line — this cover is one printed sheet a
-    # teacher photocopies for a whole class, not a per-student handout, so
-    # a blank name field on it never made sense (direct feedback: "Номи
-    # хонанда... buni olib tashla").
     field_font = _font(_FONT_REGULAR, 26)
     fy = H - 460
     for label in (L["class"], L["school"]):
@@ -384,7 +289,6 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
     return buf.getvalue()
 
 
-# ── "minimal" — plain background, centered serif title, one thin rule ───
 
 _MINIMAL_BG = (0xFA, 0xFA, 0xF9)
 _MINIMAL_INK = (0x1F, 0x29, 0x37)
@@ -438,12 +342,11 @@ def _build_cover_minimal(subject: str, title: str, grade: str, language: str) ->
     return buf.getvalue()
 
 
-# ── "rasmiy" (Formal/Academic) — centered, institutional, thin frame ────
 
 _FORMAL_BG = (0xFF, 0xFF, 0xFF)
 _FORMAL_INK = (0x1F, 0x29, 0x37)
 _FORMAL_MUTED = (0x47, 0x55, 0x69)
-_FORMAL_ACCENT = (0x8A, 0x26, 0x35)  # muted maroon
+_FORMAL_ACCENT = (0x8A, 0x26, 0x35)
 
 
 def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> bytes:
@@ -452,12 +355,6 @@ def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> 
     img = Image.new("RGB", (W, H), _FORMAL_BG)
     draw = ImageDraw.Draw(img)
 
-    # Ornamental diamond-motif border (see _draw_ornamental_border) — real
-    # official Tajik curriculum documents ("Нақшаи тавзеҳотӣ") use exactly
-    # this kind of repeating pattern band; a plain double-rule frame read
-    # as generic rather than "official" (confirmed against a real printed
-    # reference). A thin plain rule just inside it keeps the page content
-    # visually separated from the pattern itself.
     margin = 60
     _draw_ornamental_border(draw, W, H, margin=margin)
     inner = margin + 22
@@ -484,11 +381,6 @@ def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> 
     ty += 20
     draw.line([(W / 2 - 90, ty), (W / 2 + 90, ty)], fill=_FORMAL_ACCENT, width=2)
 
-    # Subject illustration, centered in the empty space between the title
-    # rule and the teacher/class/school fields — same asset/scaling logic
-    # as _build_cover_zamonaviy (see that function's matching comment);
-    # a teacher directly asked for this template to include a picture too,
-    # matching a real official document's own cover having one.
     entry = _SUBJECT_ILLUSTRATIONS.get(subject)
     if entry and os.path.exists(entry[1]):
         mode, illus_path = entry
@@ -511,12 +403,8 @@ def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> 
                     )
                 img.paste(illus, (px, py), illus)
         except Exception:
-            pass  # a missing/corrupt illustration file should never break the cover
+            pass
 
-    # "Teacher" first and most prominent — matches the real reference
-    # document's own sole blank field (this is the teacher's own lesson
-    # plan, not a student handout); class/school kept below it since
-    # they're still genuinely useful on a printed cover.
     field_font = _font(_FONT_SERIF, 26)
     fy = H - 460
     for label in (L["teacher"], L["class"], L["school"]):
@@ -541,30 +429,12 @@ def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> 
     return buf.getvalue()
 
 
-# ── "nakscha" — 1:1 with the printed Нақшаи тавзеҳотӣ binder cover ─────
-#
-# Rebuilt from a photograph of the real document a teacher supplied. Every
-# choice here is copied from that sheet rather than designed: the red/blue
-# split (heading red, the "which subject, which year, which teacher" block
-# blue), the two-line heading, the bracketed term line, the handwriting
-# rule after "Омӯзгор", and the subject picture sitting in the lower third.
-# It is deliberately NOT consistent with the other five covers — matching
-# the original is the whole point.
 
 _NAK_RED = (0xC4, 0x1E, 0x1E)
 _NAK_BLUE = (0x1C, 0x3F, 0x94)
 _NAK_GOLD = (0xC9, 0x8A, 0x2E)
 
 
-# A few faint marks in the outer margins, chosen per subject. The brief
-# asked for decoration that belongs in a school textbook rather than
-# ornament for its own sake: these are the symbols the subject itself
-# uses, set very light and kept out in the margins where no text runs, so
-# they read as a watermark of what the folder is about.
-# Every glyph here is checked against the cover's own font (Times New
-# Roman Bold) — the obvious picks for several subjects (△ ∠ ≅ for
-# geometry, ✿ for biology, ★ ❖ for history) are simply not in it and drew
-# as empty boxes, which is worse than no decoration at all.
 _COVER_MOTIFS = {
     "Математика": "+−×÷=",
     "Алгебра": "xy√π=",
@@ -581,11 +451,10 @@ _COVER_MOTIFS = {
     "Таджикский язык": "Аа·Ҳҳ",
     "Таджикская литература": "«»·§",
 }
-_NAK_MOTIF_INK = (0xE8, 0xD6, 0xB0)      # pale gold, barely there
+_NAK_MOTIF_INK = (0xE8, 0xD6, 0xB0)
 
 
 def _nakscha_motifs(draw, W, H, subject: str):
-    """Scatters the subject's own symbols down both margins, faintly."""
     glyphs = _COVER_MOTIFS.get(subject) or "•◦·"
     font = _font(_FONT_SERIF_BOLD, 44)
     spots = [(78, 470), (W - 116, 620), (78, 900), (W - 116, 1050),
@@ -595,25 +464,6 @@ def _nakscha_motifs(draw, W, H, subject: str):
 
 
 def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) -> bytes:
-    """The Нақшаи тавзеҳотӣ cover, redrawn as a modern textbook title page.
-
-    What changed from the 1:1 copy of the photographed original, and why:
-
-      * the double gold ornamental border is gone. It was the loudest
-        thing on the page and dated the sheet by about forty years; a
-        teacher asked for the page to read as a current textbook instead.
-        Two hairlines — one under the top meta row, one above the foot —
-        do the framing job without boxing the page in;
-      * the text block starts lower. With the border removed the old
-        y=330 heading left the top looking unfinished; the block now sits
-        in the upper-middle of the page with air above it;
-      * the bracketed term line ("нимсолаи 1") is replaced by the lesson
-        duration in the top meta row. One konspekt is one lesson of one
-        hour, so a half-year marker was simply the wrong unit;
-      * the decoration is a short accent rule under the heading, three
-        dots under the class line, and the subject's own symbols set very
-        pale in the margins.
-    """
     W, H = _W, _H
     L = _LABELS.get(language, _LABELS["Таджикский"])
     N = _NAKSCHA_LABELS.get(language, _NAKSCHA_LABELS["Таджикский"])
@@ -626,18 +476,6 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
     def centered(text, font, y, fill):
         draw.text(((W - draw.textlength(text, font=font)) / 2, y), text, font=font, fill=fill)
 
-    # ── top meta row: what year, and how long the lesson runs ──────────
-    #
-    # Two strings pinned to opposite margins, so the only thing keeping
-    # them apart is whether they happen to be narrow enough. At a fixed
-    # 34pt they were not: the size was chosen against Segoe UI on a
-    # Windows dev machine, and the server resolves a different face (see
-    # app/fonts.py — DejaVu/Liberation, both wider), which ran
-    # "Соли таҳсилӣ 2026-2027" straight through "Давомнокии дарс: 1 соат".
-    #
-    # Fixed by measuring instead of assuming. The size steps down only as
-    # far as it must to leave a real gap, so on a font where 34 already
-    # fits nothing changes at all.
     meta_ink = (0x6B, 0x72, 0x80)
     year_text = f'{L["year_prefix"]} {_academic_year()}'
     duration = N["duration"]
@@ -654,20 +492,13 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
               duration, font=meta_font, fill=_NAK_BLUE)
     draw.line([(margin, 182), (W - margin, 182)], fill=hair, width=2)
 
-    # No scattered subject glyphs. Set faintly down both margins they did
-    # not read as decoration — "0", "1", "{", "}" adrift near the edges of
-    # an official form look like a rendering fault, and a teacher handing
-    # the sheet in cannot tell the difference.
 
-    # ── heading, one word per line, sitting lower than it used to ──────
     head_font = _font(_FONT_SERIF_BOLD, 96)
     y = 430
     for word in L["tag"].split():
         centered(word, head_font, y, _NAK_RED)
         y += 108
 
-    # Short accent rule under the heading — the one piece of ornament the
-    # page keeps, and it earns its place by anchoring the title block.
     y += 22
     draw.line([((W - 240) / 2, y), ((W + 240) / 2, y)], fill=_NAK_GOLD, width=5)
     y += 46
@@ -675,8 +506,6 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
     centered(f'{N["grade"]} {_grade_number(grade)}', _font(_FONT_SERIF_BOLD, 62), y, _NAK_RED)
     y += 92
 
-    # Three dots instead of the old bracketed term line: it separates the
-    # red title block from the blue detail block without adding a word.
     dot_r, gap = 5, 26
     cx = W / 2
     for k in (-1, 0, 1):
@@ -684,15 +513,6 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
                      fill=_NAK_GOLD)
     y += 56
 
-    # `subject` is always the Russian internal key (see
-    # export_builder._display_subject's doc comment for why) — most
-    # subjects are the same loanword in Tajik, but a few (Информатика,
-    # the language/literature/history names) are not, and printing them
-    # untranslated on an otherwise fully-Tajik/English cover reads as a
-    # mistake. Local import: cover_builder has no other dependency on
-    # export_builder, and export_builder already imports the other
-    # direction (see _academic_year usages above), so importing back here
-    # at module scope would be circular.
     from app.export_builder import _display_subject
     subj_font = _font(_FONT_SERIF_BOLD, 44)
     for line in _wrap_text(draw, f'{N["subject"]} {_display_subject(subject, language).lower()}', subj_font, W - 400)[:2]:
@@ -701,10 +521,6 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
     centered(f'{N["year"]} {_academic_year()}', subj_font, y, _NAK_BLUE)
     y += 78
 
-    # The lesson's own topic. It was missing entirely: the cover said
-    # which class and which subject, and never which LESSON — a plan
-    # sheet handed in without its topic is not a plan sheet, and it is
-    # the first thing anyone reads.
     topic = str(title or "").strip()
     if topic:
         draw.line([((W - 300) / 2, y - 22), ((W + 300) / 2, y - 22)],
@@ -718,8 +534,6 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
             y += 68
         y += 26
 
-    # "Омӯзгор ______" — a rule to write on, exactly as the teacher on the
-    # original filled it in by hand.
     teach_font = _font(_FONT_SERIF_BOLD, 44)
     label = N["teacher"]
     lw = draw.textlength(label + " ", font=teach_font)
@@ -729,15 +543,12 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
     draw.line([(x0 + lw, y + 54), (x0 + lw + rule_w, y + 54)], fill=_NAK_BLUE, width=3)
     y += 96
 
-    # ── foot hairline, closing the page without enclosing it ───────────
     foot_y = H - 150
     draw.line([(margin, foot_y), (W - margin, foot_y)], fill=hair, width=2)
     diamond = 9
     draw.polygon([(W / 2, foot_y - diamond), (W / 2 + diamond, foot_y),
                   (W / 2, foot_y + diamond), (W / 2 - diamond, foot_y)], fill=_NAK_GOLD)
 
-    # Subject picture between the teacher rule and the foot line — same
-    # asset set and fit logic as the other covers use.
     entry = _SUBJECT_ILLUSTRATIONS.get(subject)
     if entry and os.path.exists(entry[1]):
         try:
@@ -751,16 +562,15 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
                 illus = illus.resize((tw, th), Image.LANCZOS)
                 img.paste(illus, ((W - tw) // 2, top), illus)
         except Exception:
-            pass  # a missing/corrupt illustration must never break the cover
+            pass
 
     buf = io.BytesIO()
     img.save(buf, "PNG")
     return buf.getvalue()
 
 
-# ── "rangli" (Colorful/Playful) — bold color blocks, big grade numeral ──
 
-_PLAYFUL_BLOCKS = [(0xF5, 0x9E, 0x0B), (0x10, 0xB9, 0x81), (0xEC, 0x48, 0x99)]  # amber, green, pink
+_PLAYFUL_BLOCKS = [(0xF5, 0x9E, 0x0B), (0x10, 0xB9, 0x81), (0xEC, 0x48, 0x99)]
 _PLAYFUL_INK = (0x1F, 0x29, 0x37)
 
 
@@ -770,9 +580,6 @@ def _build_cover_rangli(subject: str, title: str, grade: str, language: str) -> 
     img = Image.new("RGB", (W, H), (255, 255, 255))
     draw = ImageDraw.Draw(img)
 
-    # Three bold flat color blocks — a thick top bar split into three
-    # equal color segments, plus one corner triangle bottom-left — the
-    # liveliest of the 5 covers, aimed at younger grades.
     bar_h = 90
     seg_w = W / 3
     for i, color in enumerate(_PLAYFUL_BLOCKS):
@@ -819,13 +626,6 @@ def _build_cover_rangli(subject: str, title: str, grade: str, language: str) -> 
     return buf.getvalue()
 
 
-# The "playful" cover's own pastel set — a different palette from
-# _PLAYFUL_BLOCKS' vivid amber/green/pink (that one is "rangli"'s loud
-# flat-color-block look), matching instead the soft blue/green/lavender/
-# pink/yellow rotation the presentation's own "playful" pptx theme uses
-# (see export_builder.py's _PLAYFUL_PALETTE) — the same deck built from
-# the same reference photo, so a teacher's konspekt and presentation on
-# the same lesson read as one visual family.
 _NOTEBOOK_PALETTE = [(0xBF, 0xDB, 0xFE), (0xBB, 0xF7, 0xD0), (0xDD, 0xD6, 0xFE),
                      (0xFB, 0xCF, 0xE8), (0xFD, 0xE6, 0x8A)]
 _NOTEBOOK_DARK = [(0x1D, 0x4E, 0xD8), (0x15, 0x80, 0x3D), (0x6D, 0x28, 0xD9),
@@ -834,11 +634,6 @@ _NOTEBOOK_PAPER = (0xFF, 0xFD, 0xF7)
 
 
 def _notebook_background(draw, W, H) -> None:
-    """Faint ruled lines + a spiral-hole left margin — the same "real
-    notebook paper" texture as the presentation's pptx cover/slides (see
-    export_builder.py's _pptx_notebook_lines/_pptx_spiral_margin),
-    reimplemented here in PIL's coordinate system (pixels, not inches) so
-    the konspekt cover carries the identical visual identity."""
     for y in range(70, H - 40, 46):
         draw.line([(0, y), (W, y)], fill=(0xEE, 0xE4, 0xC8), width=2)
     hole_x = 38
@@ -848,16 +643,6 @@ def _notebook_background(draw, W, H) -> None:
 
 
 def _sticker_cluster(img, x: int, y: int) -> None:
-    """A small tilted "sticker" cluster — a stack of books and a heart —
-    built from plain PIL polygons/ellipses at a slight, alternating skew,
-    echoing the two Canva-sticker reference photos sent directly (a real
-    hand-drawn illustration asset isn't achievable here — no image-
-    generation capability, and fetching a matching public clipart image
-    proved too unreliable over this environment's network to depend on;
-    see export_builder.py's _pptx_sticker_decorations, which documents
-    the same tradeoff for the presentation's own cover). Takes the real
-    Image (not just its Draw wrapper) since each tilted book is composed
-    on its own small canvas and pasted in, which needs the Image itself."""
     book_w, book_h = 210, 46
     for i, color in enumerate(_NOTEBOOK_PALETTE[:3]):
         skew = (-6, 3, -3)[i]
@@ -896,13 +681,6 @@ def _build_cover_playful(subject: str, title: str, grade: str, language: str) ->
                             fill=_NOTEBOOK_PALETTE[0], outline=_NOTEBOOK_DARK[0], width=2)
     draw.text((left_x + 24, 148), subj_text, font=subj_font, fill=_NOTEBOOK_DARK[0])
 
-    # Deliberately _FONT_BOLD (Segoe UI), not Comic Sans MS Bold as first
-    # tried here — confirmed live: Comic Sans has no glyphs for Tajik-
-    # specific Cyrillic letters (ҳ/ӯ/ҷ/ӣ), rendering them as tofu boxes in
-    # the title. Same failure mode already documented above for Georgia
-    # (see _FONT_SERIF's comment) — Segoe UI Bold is the one proven-safe
-    # bold face for Tajik in this whole file, so the "playful" title stays
-    # legible over being maximally handwritten.
     title_font = _font(_FONT_BOLD, 56)
     lines = _wrap_text(draw, title, title_font, W - left_x - 220)[:5]
     ty = 260
@@ -958,17 +736,6 @@ def build_cover_image(
     image_path: str | None = None, show_subject_icon: bool = False,
     template_id: str | None = None, doc_type_label: str | None = None,
 ) -> bytes:
-    """image_path/show_subject_icon are accepted-but-unused — kept so
-    existing call sites don't need to change; every one of the 5 designs
-    below is deliberately abstract/typographic only, no photo and no
-    emoji icon (same constraint that applied to the original single
-    design). `template_id` picks which of the 5 (see
-    app/konspekt_templates.py) — an unrecognized/missing id falls back to
-    "klassik", the original design, so old call sites/data are unaffected.
-    `doc_type_label` overrides the "КОНСПЕКТ" kicker text — only
-    "zamonaviy" (the one template konspekt/lecture actually use now)
-    accepts it, so build_lecture_pdf can get a "ЛЕКЦИЯ" cover from this
-    exact same cover without touching the other 4 (still curriculum's)."""
     builder = _COVER_BUILDERS.get(template_id, _build_cover_klassik)
     if builder is _build_cover_zamonaviy:
         return builder(subject, title, grade, language, doc_type_label=doc_type_label)

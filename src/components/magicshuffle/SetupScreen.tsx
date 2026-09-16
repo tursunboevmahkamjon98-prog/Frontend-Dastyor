@@ -20,8 +20,7 @@ const SUBJECTS = [
 
 const GRADES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
-/** Value is what the backend prompt expects (see ai_service's level_map);
- * label is what the child reads. */
+
 const LEVELS = [
   { value: "Лёгкий", label: "Осон" },
   { value: "Средний", label: "Миёна" },
@@ -30,16 +29,7 @@ const LEVELS = [
 
 const ROUND_CHOICES = [5, 8, 10];
 
-/** The screen before the game. Every question in this game is written by the
- * AI — the player only chooses what it should write about. There is no
- * hand-entry path on purpose: each question has to arrive with four options,
- * a marked correct answer AND an explanation of why it's correct, and the
- * generator is what guarantees all four parts are present for every one.
- *
- * The whole set is generated HERE, before the first box is ever shown, and
- * handed to the game as a finished list. Nothing is generated later — by the
- * time a player opens a box, the question inside it has existed since before
- * the shuffle started. */
+
 export default function SetupScreen({
   defaultSubject,
   defaultTopic,
@@ -71,14 +61,14 @@ export default function SetupScreen({
         subject,
         grade,
         level,
-        // Must be a key of the backend's LANGUAGE_NAMES map (ai_service.py),
-        // not the Tajik endonym: an unrecognised value silently falls back
-        // to English, which is exactly how this game first shipped its
-        // questions in the wrong language.
+        
+        
+        
+        
         language: "Таджикский",
-        // One question per box, per round — asking for exactly what the run
-        // will consume means every round gets three fresh questions and no
-        // round has to reuse another's.
+        
+        
+        
         count: rounds * BOX_COUNT,
       });
       const mapped: ShuffleQuestion[] = res.questions.map((q) => ({

@@ -27,27 +27,27 @@ export default function MaterialsPage() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  // Subject/grade narrow the current tab's results further — options are
-  // derived from what's actually loaded (not the full static SUBJECTS/
-  // CLASSES lists) so a teacher never sees a dropdown entry that would
-  // just empty the list.
+  
+  
+  
+  
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
 
-  // Delete-with-undo: clicking the trash icon hides the item immediately
-  // and starts a 5s window (shown as a toast) before the DELETE actually
-  // fires — replaces the old blocking confirm() dialog, which stopped a
-  // wrong click but gave no way to recover from a right one. Multiple
-  // deletes within the window batch into one toast and one timer (used by
-  // both the single-item button below and bulk delete).
+  
+  
+  
+  
+  
+  
   const [pendingItems, setPendingItems] = useState<Item[]>([]);
   const pendingRef = useRef<Item[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hiddenIds = useMemo(() => new Set(pendingItems.map((i) => `${i.type}:${i.id}`)), [pendingItems]);
 
-  // Bulk selection — a t("materials.select") mode that swaps each row's link/favorite/
-  // delete controls for a checkbox, so a teacher can clear out a batch of
-  // materials in one go instead of one confirm() per item.
+  
+  
+  
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -66,12 +66,12 @@ export default function MaterialsPage() {
     setSelectedIds(new Set());
   }
 
-  // Switching tabs changes which items exist on screen — leaving a
-  // selection from the previous tab active would let t("common.delete2") silently
-  // act on rows that are no longer visible.
+  
+  
+  
   useEffect(() => {
     exitSelectMode();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on tab switch
+    
   }, [tab]);
 
   const load = useCallback(async () => {
@@ -97,13 +97,13 @@ export default function MaterialsPage() {
   }, [tab, query]);
 
   useEffect(() => {
-    const t = setTimeout(load, 250); // debounce search
+    const t = setTimeout(load, 250); 
     return () => clearTimeout(t);
   }, [load]);
 
-  // A subject/grade picked before switching tabs (or before a search
-  // narrows the results) can stop existing in the new option list — reset
-  // it instead of silently filtering everything down to nothing.
+  
+  
+  
   useEffect(() => {
     if (subjectFilter !== "all" && !items.some((i) => i.subject === subjectFilter)) {
       setSubjectFilter("all");
@@ -111,7 +111,7 @@ export default function MaterialsPage() {
     if (gradeFilter !== "all" && !items.some((i) => i.grade === gradeFilter)) {
       setGradeFilter("all");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-check when the loaded data itself changes
+    
   }, [items]);
 
   async function toggleFavorite(item: Item) {
@@ -119,12 +119,12 @@ export default function MaterialsPage() {
     await materialsApi.update(item.type, item.id, { is_favorite: !item.is_favorite }).catch(() => load());
   }
 
-  // Clones a presentation into a brand-new, independently-editable row
-  // (see materialsApi.duplicate) — scoped to presentations for now: the
-  // brief's "My Presentations" duplicate feature, not a blanket
-  // duplicate-anything button. Prepended to the list (rather than a full
-  // reload) so it shows up immediately without waiting on the sort order
-  // from a fresh fetch.
+  
+  
+  
+  
+  
+  
   const [duplicatingKey, setDuplicatingKey] = useState<string | null>(null);
   async function duplicate(item: Item) {
     const key = `${item.type}:${item.id}`;
@@ -133,7 +133,7 @@ export default function MaterialsPage() {
       const copy = await materialsApi.duplicate(item.type, item.id);
       setItems((prev) => [{ ...copy, type: item.type }, ...prev]);
     } catch {
-      // silent — same failure-visibility tradeoff as the other row actions here
+      
     } finally {
       setDuplicatingKey(null);
     }
@@ -170,9 +170,9 @@ export default function MaterialsPage() {
     setPendingItems([]);
   }
 
-  // If the tab is closed/navigated away mid-undo-window, honor the
-  // deletion instead of silently dropping it (or trying to setState on an
-  // unmounted component) — fire the API calls now, no UI update needed.
+  
+  
+  
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -239,9 +239,7 @@ export default function MaterialsPage() {
         <TabChip active={tab === "all"} onClick={() => setTab("all")}>
           {t("materials.all")}
         </TabChip>
-        {/* `type`, not `t` — the map variable used to shadow the
-            translation function, which is why these chips were the one
-            thing on the page still naming the types in Russian. */}
+        {}
         {LIBRARY_TYPES.map((type) => (
           <TabChip key={type} active={tab === type} onClick={() => setTab(type)}>
             {t(MATERIAL_TYPE_LABEL_KEY[type])}

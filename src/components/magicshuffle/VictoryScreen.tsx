@@ -11,9 +11,7 @@ function formatDuration(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** End-of-run scene: the clown celebrating, the numbers that actually
- * happened, and the two ways out. Everything shown here is computed from
- * the real run — no placeholder or padded figures. */
+
 export default function VictoryScreen({
   score,
   correctAnswers,
@@ -28,27 +26,22 @@ export default function VictoryScreen({
 }: {
   score: number;
   correctAnswers: number;
-  /** How many questions were actually answered — the denominator for
-   * accuracy. Equals the rounds played, since every box now holds a real
-   * question and so every round ends in an answer. */
+  
   questionsAnswered: number;
-  /** Rounds this run was set up for — chosen by the player, not a constant. */
+  
   totalRounds: number;
   maxStreak: number;
   elapsedSeconds: number;
-  /** True when the run ended early because lives ran out, rather than by
-   * completing all 10 rounds — the heading softens accordingly instead of
-   * congratulating a run that didn't finish. */
+  
   outOfLives: boolean;
   onReplay: () => void;
-  /** Back to the setup form for a different subject/topic — a fresh AI set
-   * rather than replaying the same questions. */
+  
   onNewTopic: () => void;
   onExit: () => void;
 }) {
-  // Accuracy is over questions actually answered, not all ten rounds: a
-  // round whose question stayed hidden in another box was never a question
-  // the player got wrong, so counting it against them would be misleading.
+  
+  
+  
   const accuracy = questionsAnswered > 0 ? Math.round((correctAnswers / questionsAnswered) * 100) : 0;
   const stars = starsFor(correctAnswers, totalRounds);
   const celebrating = !outOfLives || correctAnswers > 0;
@@ -65,7 +58,7 @@ export default function VictoryScreen({
         {outOfLives && correctAnswers === 0 ? "Кӯшиши хуб!" : "Табрик мекунем!"}
       </h1>
 
-      {/* Earned stars, landing one after another. */}
+      {}
       <div className="relative mt-3 flex gap-1.5">
         {Array.from({ length: 5 }, (_, i) => (
           <span

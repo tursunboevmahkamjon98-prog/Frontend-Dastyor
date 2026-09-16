@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Proves the startup asset check fires on the failure it exists for,
-instead of only agreeing that a healthy machine is healthy.
-
-Run from backend/ with PYTHONPATH=. — no server needed."""
 import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -37,7 +32,6 @@ real_getfont = pdfmetrics.getFont
 
 
 class _FakeFace:
-    # Basic Cyrillic only — looks perfect in Russian, tofu in Tajik.
     charToGlyph = {ord(c): i + 1 for i, c in enumerate(
         "абвгдеёжзийклмнопрстуфхцчшщъыьэюя")}
 

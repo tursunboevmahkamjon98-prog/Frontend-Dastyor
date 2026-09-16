@@ -3,11 +3,7 @@
 import { Play } from "lucide-react";
 import { BOX_THEME } from "./MagicBox";
 
-/** The Games-section entry for "Қуттиҳои сеҳрнок". The thumbnail is built
- * from the game's own parts — the real classroom art, the real clown, and
- * three miniature versions of the actual box gradients — so the card is a
- * genuine preview rather than unrelated stock art that promises something
- * the game doesn't look like. */
+
 export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
   return (
     <button
@@ -15,9 +11,9 @@ export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
       onClick={onPlay}
       className="group w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-surface text-left shadow-lg transition hover:-translate-y-1 hover:shadow-2xl active:translate-y-0"
     >
-      {/* --- Thumbnail --- */}
+      {}
       <div className="relative h-40 w-full overflow-hidden bg-[#1b0f3a]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static art asset, not a Next/Image candidate */}
+        {}
         <img
           src="/game-backgrounds/classroom.png"
           alt=""
@@ -25,7 +21,7 @@ export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#2e1065]/50 via-[#4c1d95]/40 to-[#1b0f3a]/80" />
 
-        {/* Question marks floating in the corners */}
+        {}
         <span className="absolute left-3 top-3 text-lg font-black text-amber-200/80" style={{ animation: "mbox-float 3s ease-in-out infinite" }}>
           ?
         </span>
@@ -36,8 +32,8 @@ export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
           ✦
         </span>
 
-        {/* Clown */}
-        {/* eslint-disable-next-line @next/next/no-img-element -- static art asset, not a Next/Image candidate */}
+        {}
+        {}
         <img
           src="/game-backgrounds/jester.png"
           alt=""
@@ -45,7 +41,7 @@ export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
           style={{ animation: "mascot-bob 2.8s ease-in-out infinite" }}
         />
 
-        {/* Three mini boxes, using the game's real gradients */}
+        {}
         <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-end gap-3">
           {[0, 1, 2].map((i) => (
             <span key={i} className="relative" style={{ animation: `mbox-float 3s ease-in-out ${i * 0.35}s infinite` }}>
@@ -61,7 +57,7 @@ export default function MagicShuffleCard({ onPlay }: { onPlay: () => void }) {
         </div>
       </div>
 
-      {/* --- Card body --- */}
+      {}
       <div className="p-4">
         <span className="inline-flex rounded-full bg-igra-bg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-igra-icon">
           Маориф

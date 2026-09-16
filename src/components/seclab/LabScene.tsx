@@ -1,9 +1,6 @@
 "use client";
 
-/** Fixed decorative positions — hardcoded rather than randomised per render
- * so the ambience never re-randomises on a state change (which reads as
- * flickering), and so there is no per-frame JS at all: a handful of spans on
- * staggered CSS animations is the whole effect. */
+
 const MOTES = [
   { left: "12%", delay: 0, dur: 9, mx: 20 },
   { left: "27%", delay: 2.6, dur: 11, mx: -14 },
@@ -19,25 +16,15 @@ const SMOKE = [
   { left: "78%", delay: 5.5, dur: 8.5 },
 ];
 
-/** Shelf jars behind the bench — pure background dressing. */
+
 const SHELF_JARS = ["#38bdf8", "#a855f7", "#34d399", "#fb923c", "#f472b6", "#facc15"];
 
-/** The laboratory the whole game plays inside: a deep, lit room with a
- * back wall of shelves, hanging lamps, a workbench slab in front, drifting
- * vapour and dust in the light.
- *
- * Built entirely from gradients and positioned elements rather than a flat
- * illustration, so it composes with the interactive glassware on top of it
- * and can react to the game (see `flare`, which brightens the lamps on a
- * successful reaction). Depth comes from three stacked planes — back wall,
- * mid shelves, foreground bench — each darker/blurrier the further back it
- * sits. */
+
 export default function LabScene({
   children,
-  /** Momentarily brightens the lamps — used when a reaction succeeds. */
+  
   flare = false,
-  /** Camera state: pushes in at the start of a round, pulls back for the
-   * closing experiment. */
+  
   camera = "idle",
 }: {
   children: React.ReactNode;
@@ -53,7 +40,7 @@ export default function LabScene({
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#070c1a]">
-      {/* ---- Plane 1: back wall ---- */}
+      {}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -61,7 +48,7 @@ export default function LabScene({
             "radial-gradient(120% 80% at 50% 0%, #1e3a5f 0%, #12203c 42%, #0a1226 72%, #070c1a 100%)",
         }}
       />
-      {/* Faint tiling to read as a tiled lab wall */}
+      {}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
@@ -71,13 +58,13 @@ export default function LabScene({
         }}
       />
 
-      {/* ---- Overhead lamps ---- */}
+      {}
       {[28, 50, 72].map((left, i) => (
         <div key={left} className="pointer-events-none absolute top-0" style={{ left: `${left}%` }}>
-          {/* cable + housing */}
+          {}
           <div className="mx-auto h-10 w-px bg-white/25" />
           <div className="mx-auto h-2.5 w-16 rounded-b-lg bg-gradient-to-b from-slate-300 to-slate-500 shadow-lg" />
-          {/* cone of light */}
+          {}
           <div
             className="mx-auto h-64 w-40 -translate-y-0.5"
             style={{
@@ -91,7 +78,7 @@ export default function LabScene({
         </div>
       ))}
 
-      {/* ---- Plane 2: shelves of jars, slightly blurred = further away ---- */}
+      {}
       <div className="pointer-events-none absolute inset-x-0 top-[16%] flex flex-col gap-10 opacity-70 blur-[1.5px]">
         {[0, 1].map((row) => (
           <div key={row} className="relative mx-auto w-[78%]">
@@ -100,7 +87,7 @@ export default function LabScene({
                 const h = 26 + ((i * 7 + row * 11) % 18);
                 return (
                   <span key={i} className="relative block w-6 rounded-t-md rounded-b-sm bg-white/10" style={{ height: h + 14 }}>
-                    {/* liquid inside */}
+                    {}
                     <span
                       className="absolute inset-x-0 bottom-0 rounded-b-sm"
                       style={{ height: h * 0.6, background: c, opacity: 0.55 }}
@@ -115,7 +102,7 @@ export default function LabScene({
         ))}
       </div>
 
-      {/* ---- Vapour drifting up from behind the bench ---- */}
+      {}
       {SMOKE.map((s, i) => (
         <span
           key={i}
@@ -125,7 +112,7 @@ export default function LabScene({
         />
       ))}
 
-      {/* ---- Dust motes in the lamp light ---- */}
+      {}
       {MOTES.map((m, i) => (
         <span
           key={i}
@@ -139,7 +126,7 @@ export default function LabScene({
         />
       ))}
 
-      {/* ---- The scene's contents, under the camera transform ---- */}
+      {}
       <div
         className="relative z-10 flex h-full w-full flex-1 flex-col"
         style={{ animation: cameraAnim, transformOrigin: "50% 70%" }}
@@ -147,11 +134,11 @@ export default function LabScene({
         {children}
       </div>
 
-      {/* ---- Plane 3: the workbench slab, foreground ---- */}
+      {}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[22%]">
-        {/* worktop edge */}
+        {}
         <div className="h-3 w-full bg-gradient-to-b from-slate-300 to-slate-500 shadow-[0_-6px_18px_rgba(0,0,0,0.5)]" />
-        {/* cabinet front */}
+        {}
         <div className="h-full w-full bg-gradient-to-b from-[#1b2b45] to-[#0c1526]">
           <div className="mx-auto flex h-full w-[86%] items-start justify-around pt-3">
             {[0, 1, 2, 3].map((i) => (
@@ -163,7 +150,7 @@ export default function LabScene({
         </div>
       </div>
 
-      {/* Vignette — pulls the eye to the centre of the bench. */}
+      {}
       <div
         className="pointer-events-none absolute inset-0 z-20"
         style={{ background: "radial-gradient(90% 70% at 50% 55%, transparent 50%, rgba(0,0,0,0.55) 100%)" }}

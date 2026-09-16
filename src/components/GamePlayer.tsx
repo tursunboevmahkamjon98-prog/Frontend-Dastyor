@@ -11,48 +11,47 @@ import type { Round, GameTemplate } from "./game/types";
 import MagicShuffleCard from "./magicshuffle/MagicShuffleCard";
 import MagicShuffleGame from "./magicshuffle/MagicShuffleGame";
 
-// A chunky geometric display face for the game-mode wordmarks below — the
-// site's own body font (Geist, see app/layout.tsx) is a normal-weight UI
-// sans, nothing in it reads as a "game logo" no matter how it's colored.
-// Needs its own cyrillic subset (not just latin): every label here
-// ("Классика", "Гонка", ...) is Cyrillic, and most bold display faces
-// (Baloo 2, Fredoka, Bangers, ...) simply don't ship Cyrillic glyphs at
-// all — Unbounded does.
+
+
+
+
+
+
+
 const gameFont = Unbounded({ weight: "800", subsets: ["cyrillic"] });
 
-// No image/illustration and no card/glow behind the text (per explicit
-// product ask, after a few rounds of trying both) — the "game logo" look
-// comes entirely from typography: a heavy display font, a dark comic-style
-// outline (-webkit-text-stroke), an offset drop shadow, a gradient fill,
-// and small sharp-edged decorations (never blurred — a blur reads as a
-// shadow, which is exactly what got rejected on the race tile). Each
-// template gets its own themed decoration below rather than sharing one
-// generic treatment, same as RaceLogo's speed-lines/flag.
+
+
+
+
+
+
+
+
 const GALLERY_ORDER: GameTemplate[] = ["classic", "race", "goldrush", "battle", "classroom"];
 
-// Bigger, chunkier outline + a layered (not blurred) double drop-shadow —
-// two solid offset copies read as an extruded/3D logo edge, a blurred one
-// would read as the "shadow" already rejected on the race tile.
+
+
+
 const OUTLINE =
   "[-webkit-text-stroke:2.5px_#1e1b2e] [filter:drop-shadow(2px_2px_0_#1e1b2e)_drop-shadow(5px_5px_0_rgba(0,0,0,0.35))]";
-// Fluid rather than a fixed text-3xl: at 360px the 30px version plus its
-// out-of-box decorations (see RaceLogo's speed lines and flag ribbon,
-// which are positioned OUTSIDE the wordmark's own box) made the row wider
-// than the viewport, which is what put a horizontal scrollbar on the
-// whole material page.
+
+
+
+
+
 const WORDMARK = `${gameFont.className} relative inline-block bg-clip-text text-[clamp(1.35rem,7vw,1.875rem)] uppercase leading-none text-transparent ${OUTLINE}`;
 
-// Idle twinkle/shimmer for decorations (sparkles, coins, speed lines) —
-// reuses the Random Wheel's existing "lit bulb" keyframe (opacity+scale
-// pulse, see globals.css) rather than inventing a new one. Kept off the
-// wordmark text itself (only on the small decoration elements) so it never
-// fights the tile button's own hover scale/rotate transform.
+
+
+
+
+
 function twinkle(delay: number): CSSProperties {
   return { animation: `wheel-bulb-twinkle 1.6s ease-in-out ${delay}s infinite` };
 }
 
-/** RACING — forward skew, speed lines instead of a blurred flame glow, a
- * checkered-flag ribbon underneath. */
+
 function RaceLogo({ label }: { label: string }) {
   return (
     <span className="relative inline-block px-4 py-1">
@@ -75,8 +74,7 @@ function RaceLogo({ label }: { label: string }) {
   );
 }
 
-/** A small 4-point sparkle — plain CSS (two overlapping rotated bars, no
- * blur), reused by Classic and Goldrush below for their "glint" accents. */
+
 function Sparkle({ className, delay = 0 }: { className?: string; delay?: number }) {
   return (
     <span className={`pointer-events-none absolute ${className}`} style={twinkle(delay)} aria-hidden>
@@ -85,8 +83,7 @@ function Sparkle({ className, delay = 0 }: { className?: string; delay?: number 
   );
 }
 
-/** КЛАССИКА — violet-to-fuchsia gradient with three twinkling sparkle
- * glints, like a shining star badge rather than a flat fill. */
+
 function ClassicLogo({ label }: { label: string }) {
   return (
     <span className="relative inline-block px-3 py-1">
@@ -98,8 +95,7 @@ function ClassicLogo({ label }: { label: string }) {
   );
 }
 
-/** ЗОЛОТАЯ ЛИХОРАДКА — amber-to-brown gradient with small twinkling gold
- * coin dots scattered around it instead of a glow. */
+
 function GoldrushLogo({ label }: { label: string }) {
   return (
     <span className="relative inline-block px-3 py-1">
@@ -112,8 +108,7 @@ function GoldrushLogo({ label }: { label: string }) {
   );
 }
 
-/** БИТВА — dark red gradient with a sharp-edged (unblurred), gently
- * pulsing impact burst behind it, standing in for a clash-of-swords spark. */
+
 function BattleLogo({ label }: { label: string }) {
   return (
     <span className="relative inline-block px-3 py-1">
@@ -131,8 +126,7 @@ function BattleLogo({ label }: { label: string }) {
   );
 }
 
-/** УРОК — green-to-emerald gradient with a dashed chalk-underline instead
- * of a solid accent bar, plus a small twinkling "chalk dust" glint. */
+
 function ClassroomLogo({ label }: { label: string }) {
   return (
     <span className="relative inline-block px-3 py-1">
@@ -159,25 +153,7 @@ const GALLERY_ROTATE: Record<GameTemplate, string> = {
   classroom: "-rotate-2",
 };
 
-/** Entry point for the "Igra" material — mounted by the material viewer
- * (dashboard/materials/[type]/[id]) same as any other type's body renderer,
- * but a game earns none of the PDF/print treatment the others get (see that
- * page's downloadFormats comment) so this is the entire view for that type.
- *
- * Two states: an inline "cover" card sitting in the page's normal layout
- * (so the material page around it — header, favorite/share — still reads
- * as a page), and, once launched, a fixed full-viewport overlay housing the
- * actual start/solo/duel/result state machine (GameEngine) — "a real game
- * screen," not a widget embedded in the site chrome, per product ask.
- * Closing the overlay drops back to the cover rather than navigating away,
- * so "Играть снова" round-trips without ever leaving this page.
- *
- * `content` is kept as local state (seeded from the prop) rather than read
- * straight from it, because a reroll (see `regenerate` below) replaces it
- * in place — a second pupil playing the same lesson's game gets a fresh
- * 12 rounds instead of the exact questions the first pupil just saw,
- * without the teacher having to leave this page and create a whole new
- * material for it. */
+
 export default function GamePlayer({
   content: initialContent,
   materialId,
@@ -208,7 +184,7 @@ export default function GamePlayer({
       try {
         setContent(JSON.parse(raw));
       } catch {
-        // leave the old rounds in place if the response somehow isn't valid JSON
+        
       }
     } finally {
       setRegenerating(false);
@@ -244,12 +220,12 @@ export default function GamePlayer({
             <button
               key={tpl}
               onClick={() => pick(tpl)}
-              // Only scale on hover, never de-rotate — resetting rotate-N
-              // to rotate-0 on :hover shifts the whole tile several pixels
-              // right as the mouse arrives, which can carry the pointer
-              // off the tile before the click actually lands (real bug:
-              // a click that visually landed on the tile registered on
-              // whatever was newly underneath it instead).
+              
+              
+              
+              
+              
+              
               className={`origin-center scale-100 transition-transform duration-150 hover:scale-105 active:scale-95 ${GALLERY_ROTATE[tpl]}`}
             >
               <Logo label={meta.label} />
@@ -258,11 +234,7 @@ export default function GamePlayer({
         })}
       </div>
 
-      {/* A separate game, not another template skin — its loop is
-          watch-the-shuffle → pick a box → answer, which shares no phase
-          structure with the engine's straight question runs above. Always
-          offered: it can source questions from this material, from the
-          teacher typing them, or from the AI (see SetupScreen). */}
+      {}
       <div className="mb-8 flex justify-center">
         <MagicShuffleCard onPlay={() => setLaunchedShuffle(true)} />
       </div>

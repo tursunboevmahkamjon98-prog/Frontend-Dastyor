@@ -4,10 +4,7 @@ import { useEffect, useRef } from "react";
 import { ArrowRight, Lightbulb } from "lucide-react";
 import { LabQuestion, OPTION_LETTERS } from "./types";
 
-/** Shown after a wrong answer. Deliberately a three-part card rather than one
- * line of text: the player sees what THEY chose, what was right, and the AI's
- * reason why — that last part is the whole teaching moment, and dropping it
- * would make a wrong answer just a penalty. */
+
 export default function ExplanationCard({
   question,
   picked,
@@ -17,8 +14,8 @@ export default function ExplanationCard({
   picked: number | null;
   onContinue: () => void;
 }) {
-  // Focus the continue button so a keyboard player can press Enter, and so
-  // nothing auto-advances past someone still reading.
+  
+  
   const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     btnRef.current?.focus();
@@ -33,7 +30,7 @@ export default function ExplanationCard({
         className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/20 bg-gradient-to-b from-[#16233f]/95 to-[#0c1526]/95 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
         style={{ animation: "lab-panel-in 0.5s cubic-bezier(0.22,1,0.36,1)" }}
       >
-        {/* Top accent bar */}
+        {}
         <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-400 via-amber-300 to-emerald-400" aria-hidden />
 
         <p className="text-center text-3xl">❌</p>
@@ -58,8 +55,7 @@ export default function ExplanationCard({
             </p>
           </div>
 
-          {/* Only rendered when the AI actually supplied a reason — an empty
-              "Чаро?" heading would promise an explanation that isn't there. */}
+          {}
           {question.explanation && (
             <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-3.5 py-3 text-left">
               <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-200/90">

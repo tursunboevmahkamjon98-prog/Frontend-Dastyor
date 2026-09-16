@@ -1,16 +1,3 @@
-"""Generates a real horizontal timeline infographic (not a bullet list) for
-a konspekt's `timeline`-type visual_blocks entry (see ai_service.py's
-_konspekt_prompt) — colored cards in a row, connected by a line with a
-round node under each one, matching the look of a professionally printed
-methodological guide's "generations/eras" diagram. Rendered once as a PNG
-(via PIL, same approach as cover_builder.py/map_builder.py) and embedded as
-a real image in the docx/pdf exports and the web viewer alike, instead of
-three different from-scratch attempts at the same graphic.
-
-Local-only — no network calls, so this never fails for reasons outside our
-control; still wrapped in try/except by every caller since a missing
-Windows font file is the one real failure mode, and a missing timeline
-graphic should never block the konspekt itself from being generated."""
 
 import io
 import math
@@ -21,26 +8,16 @@ from app.fonts import font_path
 
 _TIMELINES_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "timelines")
 
-# Per role via app/fonts.py — these were pinned to C:\Windows\Fonts, so
-# every timeline label fell back to PIL's fixed-size bitmap face (which
-# ignores the requested size) off Windows. See fonts.py.
 _FONT_REGULAR = font_path("sans")
 _FONT_BOLD = font_path("sans_bold")
 
-# Rotates through these per card (not one flat color for every card) — the
-# app's validated categorical palette (see the dataviz skill's
-# references/palette.md), restricted to the 6 slots that hold up white card
-# text at a comfortable contrast (the other two slots, a light yellow and a
-# pink, are tuned for thin marks/text ON a white surface, not as a filled
-# background white text sits on top of — using them here would read as
-# washed out).
 _PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#008300", "#4a3aa7", "#e34948"]
 
 _CARD_W = 250
 _CARD_H = 150
 _GAP = 22
 _MARGIN = 20
-_LINE_Y_PAD = 22  # space between card bottom and the connecting line
+_LINE_Y_PAD = 22
 
 _SHADOW_COLOR = (15, 23, 42, 60)
 _SHADOW_OFFSET = (0, 5)
@@ -48,11 +25,6 @@ _SHADOW_BLUR = 7
 
 
 def _with_shadows(base: Image.Image, boxes: list[tuple[list[float], int]]) -> Image.Image:
-    """Composites a soft drop shadow under each rounded-rect box — gives
-    otherwise flat, paper-like cards a sense of elevation. Shadows are
-    drawn on their own blurred RGBA layer and composited onto `base`
-    first; the caller then draws crisp (unblurred) card fills/text on top
-    of the returned image, so only the shadow itself is soft."""
     shadow_layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
     sd = ImageDraw.Draw(shadow_layer)
     ox, oy = _SHADOW_OFFSET
@@ -89,11 +61,6 @@ def _wrap(draw, text, font, max_width):
 
 
 def build_timeline_image(events: list[dict]) -> bytes | None:
-    """events: [{"label": str, "date": str, "description": str}, ...] — see
-    the "timeline" data shape in ai_service.py's _konspekt_prompt. Returns
-    None (never raises) if there's nothing to draw or PIL/fonts aren't
-    available, so a caller can treat it exactly like map_builder's
-    best-effort failure mode."""
     events = [e for e in (events or []) if isinstance(e, dict) and (e.get("label") or e.get("description"))][:6]
     if not events:
         return None
@@ -151,8 +118,6 @@ def build_timeline_image(events: list[dict]) -> bytes | None:
             draw.text((x0 + pad, ty), line, font=body_font, fill="#FFFFFF")
             ty += 18
 
-    # Connecting line + a node dot under each card, tying the row together
-    # into one flowing sequence instead of N unrelated boxes.
     if len(centers) > 1:
         draw.line([(centers[0], line_y), (centers[-1], line_y)], fill="#CBD5E1", width=4)
     for i, cx in enumerate(centers):
@@ -166,11 +131,6 @@ def build_timeline_image(events: list[dict]) -> bytes | None:
 
 
 def build_process_image(steps: list[dict]) -> bytes | None:
-    """steps: [{"title": str, "description": str}, ...] — see the
-    "flowchart"/"process" data shape in ai_service.py's _konspekt_prompt.
-    Same card look as build_timeline_image, but a numbered badge per step
-    and arrow connectors between cards instead of a dated timeline — a
-    step-by-step process reads as a flow, not a chronology."""
     steps = [s for s in (steps or []) if isinstance(s, dict) and (s.get("title") or s.get("description"))][:6]
     if not steps:
         return None
@@ -196,7 +156,7 @@ def build_process_image(steps: list[dict]) -> bytes | None:
 
     for i, step in enumerate(steps):
         x0 = _MARGIN + i * (_CARD_W + _GAP + arrow_w)
-        y0 = _MARGIN + 12  # extra top room for the badge overlapping the corner
+        y0 = _MARGIN + 12
         x1, y1 = x0 + _CARD_W, y0 + _CARD_H - 12
         color = _PALETTE[i % len(_PALETTE)]
 
@@ -214,7 +174,6 @@ def build_process_image(steps: list[dict]) -> bytes | None:
             draw.text((x0 + pad, ty), line, font=body_font, fill="#FFFFFF")
             ty += 18
 
-        # Numbered badge, overlapping the card's top-left corner.
         br = 17
         bcx, bcy = x0, y0
         draw.ellipse([bcx - br, bcy - br, bcx + br, bcy + br], fill="#FFFFFF", outline=color, width=3)
@@ -223,7 +182,6 @@ def build_process_image(steps: list[dict]) -> bytes | None:
         nw, nh = nbbox[2] - nbbox[0], nbbox[3] - nbbox[1]
         draw.text((bcx - nw / 2 - nbbox[0], bcy - nh / 2 - nbbox[1]), num, font=badge_font, fill=color)
 
-        # Arrow connector to the next card.
         if i < n - 1:
             ay = y0 + (_CARD_H - 24) / 2
             ax0 = x1 + 6
@@ -237,11 +195,6 @@ def build_process_image(steps: list[dict]) -> bytes | None:
 
 
 def _box_edge_point(sx: float, sy: float, tx: float, ty: float, half_w: float, half_h: float) -> tuple[float, float]:
-    """Point where the segment from (sx,sy) to (tx,ty) crosses the border
-    of the axis-aligned box centered at (tx,ty) with the given
-    half-extents — used to stop a concept-map edge (and its arrowhead) at
-    the target node's actual edge instead of its center, which would
-    otherwise draw underneath the opaque node box."""
     dx, dy = tx - sx, ty - sy
     if dx == 0 and dy == 0:
         return tx, ty
@@ -255,12 +208,6 @@ def _box_edge_point(sx: float, sy: float, tx: float, ty: float, half_w: float, h
 
 
 def build_concept_map_image(nodes: list[dict], edges: list[dict]) -> bytes | None:
-    """nodes: [{"id": str, "label": str}], edges: [{"from": id, "to": id,
-    "label": str|None}] — see the "concept_map" data shape in
-    ai_service.py's _konspekt_prompt. Lays nodes out in a circle (a simple,
-    always-readable layout — no graph-layout engine needed for the small
-    node counts a konspekt actually uses) with straight labeled edges
-    between them, instead of a plain "A → B" bullet list."""
     node_list = [n for n in (nodes or []) if isinstance(n, dict) and (n.get("label") or n.get("id"))][:8]
     if not node_list:
         return None
@@ -272,14 +219,6 @@ def build_concept_map_image(nodes: list[dict], edges: list[dict]) -> bytes | Non
     if not edge_list:
         return None
 
-    # Radius scales down for a handful of nodes instead of always using a
-    # fixed 900x900 canvas — a 4-5 node map on the full-size canvas left a
-    # lot of dead white space around a small cluster in the middle. W and H
-    # are sized independently (not a single square W=H) — nodes are much
-    # wider than they are tall (box_w=140 vs box_h=48), so a square canvas
-    # left a big band of blank space above and below the actual diagram,
-    # which then showed up as a gap before whatever text follows it in the
-    # exported document.
     n = len(node_list)
     radius = 110 if n <= 4 else 165 if n <= 6 else 220
     box_w, box_h = 140, 48
@@ -303,12 +242,6 @@ def build_concept_map_image(nodes: list[dict], edges: list[dict]) -> bytes | Non
     label_font = _font(_FONT_BOLD, 13)
     edge_font = _font(_FONT_REGULAR, 11)
 
-    # Edges first, so the node boxes drawn afterward sit cleanly on top of
-    # the line ends instead of the line visibly poking out past the box.
-    # Each edge stops at the TARGET box's border (not its center) and ends
-    # in an arrowhead there — a plain center-to-center line under an
-    # opaque box reads as an undirected connection; the arrowhead is what
-    # actually shows which way the relationship goes.
     for edge in edge_list:
         x0, y0 = positions[edge["from"]]
         x1, y1 = positions[edge["to"]]
@@ -347,11 +280,6 @@ def build_concept_map_image(nodes: list[dict], edges: list[dict]) -> bytes | Non
 
 
 def _save_image(builder, *args) -> str | None:
-    """Shared save routine for both build_timeline_image and
-    build_process_image — same contract as map_builder.build_geography_map
-    (returns a web-servable /uploads/... path, or None on any failure
-    rather than raising, since a missing graphic should never block the
-    konspekt itself)."""
     try:
         png = builder(*args)
         if not png:
@@ -367,19 +295,12 @@ def _save_image(builder, *args) -> str | None:
 
 
 def save_timeline_image(events: list[dict]) -> str | None:
-    """Builds the timeline image and saves it under uploads/timelines/,
-    returning the web-servable path — see _save_image."""
     return _save_image(build_timeline_image, events)
 
 
 def save_process_image(steps: list[dict]) -> str | None:
-    """Builds the process/flowchart image and saves it under
-    uploads/timelines/, returning the web-servable path — see
-    _save_image."""
     return _save_image(build_process_image, steps)
 
 
 def save_concept_map_image(nodes: list[dict], edges: list[dict]) -> str | None:
-    """Builds the concept map image and saves it under uploads/timelines/,
-    returning the web-servable path — see _save_image."""
     return _save_image(build_concept_map_image, nodes, edges)

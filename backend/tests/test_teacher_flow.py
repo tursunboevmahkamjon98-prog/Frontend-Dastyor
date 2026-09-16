@@ -1,17 +1,3 @@
-# -*- coding: utf-8 -*-
-"""The teacher's actual path, on the wire: sign up with a phone + SMS code,
-log in, generate a material, open it, download every format, and get
-refused once the free slot is gone.
-
-Unlike the other suites this one spends a real AI call and takes a few
-minutes. Run it against a server started with SMS_DRY_RUN=true (no real
-texts) before shipping:
-
-    PYTHONPATH=. python tests/test_teacher_flow.py
-
-DASTYOR_TEST_BASE overrides the target; it defaults to the same
-127.0.0.1:8010 test_api_guards.py uses. The account it creates is
-deleted again in cleanup(), including its generated material."""
 import asyncio, json, os, random, sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import io as _io
@@ -102,9 +88,6 @@ async def main():
             print("\n5. Ochish va yuklab olish")
             r = await c.get(f"/api/materials/konspekts/{mid}", headers=H)
             check("materialni ochish", r.status_code == 200, f"{r.status_code}")
-            # The API stores content as a JSON *string* (KonspektOut.content
-            # is str|None) and the frontend JSON.parses it before use —
-            # the download endpoints want the parsed dict.
             raw = r.json().get("content") if r.status_code == 200 else None
             content = json.loads(raw) if raw else None
             check("saqlangan kontent bor", isinstance(content, dict) and bool(content))
@@ -133,13 +116,6 @@ async def main():
             check("tokensiz yuklab olish -> 401/403", r.status_code in (401, 403), f"{r.status_code}")
 
             print("\n7. Bepul slot tugadi — ikkinchisi pul so'rashi kerak")
-            # Spend the rest of the allowance directly in the database
-            # rather than through the API. It used to be one free
-            # konspekt, so a second /generate hit the paywall; the
-            # allowance is Settings.FREE_GENERATIONS_PER_TYPE now, and
-            # driving it to zero over the wire would mean nine more real
-            # AI calls and several more minutes for a check that is
-            # about the 402, not about generation.
             async with async_session() as db:
                 await db.execute(
                     text("UPDATE users SET free_konspekt_used = :n WHERE phone = :p"),

@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Checks on the deterministic test-quality gate (ai_service.
-_validate_test_quality). No database and no AI call — it is a pure
-function over a dict, which is the point of doing this in code rather
-than with a second model pass."""
 import sys
 
 from app.ai_service import _validate_test_quality, _question_fingerprint, _near_duplicate
@@ -24,7 +19,7 @@ def mc(q, options, correct, **extra):
 print("\n1. An out-of-range answer key is dropped")
 content = {"questions": [
     mc("Что такое атом?", ["A", "B", "C", "D"], 1),
-    mc("Из чего состоит ядро?", ["A", "B"], 7),      # index past the end
+    mc("Из чего состоит ядро?", ["A", "B"], 7),
 ]}
 _validate_test_quality(content, "Атом", 2)
 check("the unanswerable question is gone", len(content["questions"]) == 1,
@@ -34,8 +29,8 @@ check("the good question survives", content["questions"][0]["question"] == "Чт
 print("\n2. A near-duplicate question is dropped, a merely similar one is not")
 content = {"questions": [
     mc("Какие частицы входят в состав атомного ядра?", ["A", "B", "C"], 0),
-    mc("Какие частицы входят в состав ядра атома?", ["A", "B", "C"], 1),   # reword
-    mc("Какой заряд имеет электрон в атоме вещества?", ["A", "B", "C"], 2),  # different
+    mc("Какие частицы входят в состав ядра атома?", ["A", "B", "C"], 1),
+    mc("Какой заряд имеет электрон в атоме вещества?", ["A", "B", "C"], 2),
 ]}
 _validate_test_quality(content, "Атом", 3)
 check("the reworded duplicate is gone", len(content["questions"]) == 2,

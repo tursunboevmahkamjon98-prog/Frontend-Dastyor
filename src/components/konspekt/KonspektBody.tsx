@@ -9,14 +9,7 @@ import VisualBlockRenderer, { VisualBlock } from "./VisualBlockRenderer";
 import { FormulaCards, ConceptCardGrid } from "./ConceptCardGrid";
 import CodeBlock from "./CodeBlock";
 
-/** Shared konspekt renderer — used by both the finished-material viewer
- * (materials/[type]/[id]/page.tsx) and the live generation preview
- * (create/[type]/page.tsx's streaming panel), so the two never drift out
- * of sync with each other. Plain section cards (matching the original
- * pre-redesign look — no icons/accent rails, teacher found those too
- * busy), plus AI-chosen `important_notes` callouts and `visual_blocks`
- * (table/timeline/flowchart/process/comparison/concept_map) woven in next
- * to the section they belong after. */
+
 export default function KonspektBody({
   content,
   onRegenerate,
@@ -31,21 +24,13 @@ export default function KonspektBody({
   content: Record<string, unknown>;
   onRegenerate?: (section: string) => void;
   regenerating?: string | null;
-  /** Retries the real-world photo/map a generation asked for but didn't
-   * get (see materials/[type]/[id]/page.tsx's handleFetchImage) — omitted
-   * entirely for the live streaming preview, which has no material id yet
-   * to retry against. */
+  
   onFetchImage?: () => void;
   fetchingImage?: boolean;
-  /** Swaps one lesson_images entry (by its index in that array) for a
-   * different Commons result — unlike onFetchImage above, this fires on
-   * a slot that already has a picture the teacher just doesn't like.
-   * See materials/[type]/[id]/page.tsx's handleReplaceLessonImage. */
+  
   onReplaceLessonImage?: (index: number) => void;
   replacingLessonImage?: number | null;
-  /** Places the teacher's OWN file into that slot instead of a Commons
-   * pick — the only source of a picture that isn't from Commons at all.
-   * See materials/[type]/[id]/page.tsx's handleUploadLessonImage. */
+  
   onUploadLessonImage?: (index: number, file: File) => void;
   uploadingLessonImage?: number | null;
 }) {
@@ -53,45 +38,45 @@ export default function KonspektBody({
   const subtitle = content.subtitle as string | undefined;
   const importantNotes = (content.important_notes as string[] | undefined) ?? [];
   const rawBlocks = (content.visual_blocks as VisualBlock[] | undefined) ?? [];
-  // Subject-specific "Расмхо" extras (formulas for STEM subjects, concept
-  // cards for Информатика, a generated map for География) — these already
-  // rendered in the docx/pdf exports (see docx_builder.py's
-  // _add_konspekt_body) but were missing entirely from the web viewer.
-  // Positioned exactly where the docx export puts them: formulas/concept
-  // cards right after "key_concepts", the map right after
-  // "real_life_examples".
+  
+  
+  
+  
+  
+  
+  
   const formulas = (content.formulas as (string | { formula: string; explanation?: string })[] | undefined) ?? [];
   const conceptCards =
     (content.concept_cards as { title: string; tag?: string; table?: string[][]; formula?: string; note?: string }[] | undefined) ?? [];
   const mapImage = content.map_image as string | undefined;
   const mapLocations = (content.map_locations as string[] | undefined) ?? [];
-  // Real Wikipedia photo/logo for a concrete real-world subject the AI
-  // named (real_image_query) — a background-removed animal/plant cutout
-  // or a brand/software logo (see image_builder.py's fetch_real_image),
-  // already trimmed to its own content, so it's centered at its natural
-  // size instead of stretched to fill the card.
+  
+  
+  
+  
+  
   const realImage = content.real_image as { path: string; caption?: string } | undefined;
-  // The photo/map fetch is best-effort at generation time (see
-  // ai_service.py's _fetch_real_world_image) and can miss — this is the
-  // only sign left behind afterwards: the AI's query survived, but no
-  // image ever arrived for it. Shown as a small retry affordance instead
-  // of silently leaving a gap where a picture was clearly meant to be.
+  
+  
+  
+  
+  
   const missingRealImage = Boolean(content.real_image_query) && !realImage?.path;
   const missingMapImage = mapLocations.length > 0 && !mapImage;
-  // Информатика/programming topics only (see ai_service.py's
-  // _CODE_SUBJECTS) — real syntax-editor-styled code, positioned right
-  // after "key_terms" to match docx_builder.py's _add_code_card placement.
+  
+  
+  
   const codeBlocks = (content.code_blocks as { language?: string; code: string; explanation?: string }[] | undefined) ?? [];
-  // Short comprehension Q&A a teacher can fire off right after teaching a
-  // section — positioned right after "consolidation" to match
-  // docx_builder.py's _add_quick_check placement.
+  
+  
+  
   const quickCheck = (content.quick_check as { question: string; answer?: string }[] | undefined) ?? [];
-  // The 0-2 Wikimedia Commons teaching illustrations (see ai_service.py's
-  // _render_lesson_images) — was fetched and verified at generation time
-  // but never actually shown in the web viewer before, only in the PDF/
-  // docx exports; a teacher had no way to even SEE which picture a
-  // konspekt carried short of downloading it, let alone replace one they
-  // didn't like.
+  
+  
+  
+  
+  
+  
   const lessonImages =
     (content.lesson_images as { path: string; caption?: string; credit?: string; explanation?: string; position_after?: string }[] | undefined) ?? [];
 
@@ -111,8 +96,8 @@ export default function KonspektBody({
     lessonImagesByAnchor.get(anchor)!.push({ index, image });
   });
 
-  // important_notes has no position info of its own — shown right before
-  // homework (or at the very end, if this konspekt has no homework section).
+  
+  
   const hasHomework = Boolean(content.homework);
 
   return (

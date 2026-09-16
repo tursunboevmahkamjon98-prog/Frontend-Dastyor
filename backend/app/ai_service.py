@@ -15,7 +15,6 @@ from app.http_client import SSL_CONTEXT
 settings = get_settings()
 logger = get_logger(__name__)
 
-# Cost tracking (in-memory, simple)
 _api_call_count = 0
 _daily_reset_time = datetime.now(timezone.utc).date()
 
@@ -27,13 +26,7 @@ LANGUAGE_NAMES = {
 }
 
 
-# ── Subject-specific konspekt prompts ──────────────────────────────────────
 
-# Appended to every STEM subject's style hint below. The history/literature
-# hints already carry their own fact-accuracy rules (tuned to that subject's
-# specific pitfalls); this is the equivalent guardrail for science/math so
-# "fun facts" and named discoveries/scientists don't get invented or
-# mis-attributed there either.
 _STEM_ACCURACY = (
     " ACCURACY RULE: Only state facts, numbers, dates, and named "
     "scientists/discoveries you are confident are correct — never invent a "
@@ -82,32 +75,8 @@ _SUBJECT_KONSPEKT_PROMPTS = {
 
 }
 
-# Subjects whose konspekts get a dedicated, styled "formulas" section in the
-# export (docx_builder.py renders these as boxed formula cards instead of
-# plain paragraph text) — the subjects where a topic routinely has actual
-# formulas/equations worth calling out.
 _FORMULA_SUBJECTS = {"Математика", "Алгебра", "Геометрия", "Физика", "Химия"}
 
-# Subjects where "misol"/worked example PROBLEMS (an actual solvable
-# equation, expression, or shape to compute — not a real-world story) are
-# the content teachers most directly asked this konspekt to include, in
-# quantity. Deliberately a separate field/purpose from real_life_examples
-# (scenario framing, e.g. "splitting a pizza bill") — confirmed via direct
-# teacher feedback that without a dedicated field for this, the model kept
-# defaulting to real-life framing and never produced actual solved
-# problems demonstrating the topic's technique.
-# Subjects where a lesson's practice is EXERCISES rather than computation:
-# a grammar task with its answer worked through, a snippet of code to
-# trace. Kept apart from _WORKED_EXAMPLE_SUBJECTS because they share the
-# "worked_examples" field but not its wording — telling a grammar lesson to
-# produce "an equation to solve, an expression to simplify" produced either
-# nothing or nonsense.
-#
-# Added after reading six real teacher-written konspekts the teacher sent
-# in as the standard to match. Even the grade-4 Забони модарӣ one carries
-# concrete tasks with the answer shown ("Аз матн 5 ному 3 феъл ёфта
-# нависед. Мисол: ном - мактаб, деҳа, дарахт"), so this is not a
-# maths-only expectation.
 _EXERCISE_SUBJECTS = {
     "Информатика",
     "Таджикский язык",
@@ -116,9 +85,6 @@ _EXERCISE_SUBJECTS = {
     "Таджикская литература",
 }
 
-# What one "problem" concretely means for each of them — the generic
-# phrasing produced vague "discuss the topic" prompts instead of tasks a
-# pupil can actually be marked on.
 _EXERCISE_KIND = {
     "Информатика": (
         "a concrete task on this exact topic: code to trace by hand and say what it prints, "
@@ -148,19 +114,8 @@ _EXERCISE_KIND = {
 
 _WORKED_EXAMPLE_SUBJECTS = {"Математика", "Алгебра", "Геометрия", "Физика", "Химия"}
 
-# Subjects where content is often genuinely tabular/comparative (truth
-# tables, classification grids, law-of-X reference cards) — rendered as a
-# colored card grid instead of a bullet list, matching the reference
-# methodological-guide layout the teacher asked to match.
 _CONCEPT_CARD_SUBJECTS = {"Информатика"}
 
-# Subjects where a topic can plausibly center on ONE concrete, photographable
-# real-world thing — a species, a landmark, a historical figure, a software
-# logo. The real_image_query rule is ~350 prompt tokens and, by its own
-# wording, is meant to return empty strings for "grammar rules, math
-# procedures, abstract concepts": on a maths or language konspekt it was
-# therefore paying that cost on every single call to be told nothing. Asked
-# only where an answer is actually possible now.
 _REAL_IMAGE_SUBJECTS = {
     "Биология",
     "География",
@@ -170,21 +125,8 @@ _REAL_IMAGE_SUBJECTS = {
     "Информатика",
 }
 
-# Subjects where a topic routinely centers on actual source code (not just
-# algorithms in the abstract) — these get a dedicated "code_blocks" field
-# rendered as a real syntax-highlighted code card (see docx_builder.py's
-# _add_code_card / export_builder.py's equivalent), instead of code
-# fragments getting buried as plain prose inside main_content.
 _CODE_SUBJECTS = {"Информатика"}
 
-# Nudges which 1 of the 3 randomly-required visual_blocks types (see
-# required_types below) actually fits this subject's kind of content, e.g.
-# a CS topic is far more often a process/pipeline or a tool comparison than
-# a timeline. Deliberately still just a NUDGE (one slot, randomly chosen
-# from the subject's own list) rather than a hard override — keeps the
-# existing regenerate-never-repeats guarantee intact while making the
-# overall mix land on genuinely fitting chart types more often than uniform
-# chance would. Subjects not listed here keep the fully uniform random pick.
 _SUBJECT_VISUAL_PREFERENCE: dict[str, list[str]] = {
     "Информатика": ["process", "flowchart", "comparison"],
     "Математика": ["table", "process"],
@@ -199,14 +141,6 @@ _SUBJECT_VISUAL_PREFERENCE: dict[str, list[str]] = {
     "Таджикская литература": ["timeline", "comparison"],
 }
 
-# Shapes from figure_builder.SHAPES that make sense per subject, with the
-# meaning of each entry's "values" list. Subject-gated for the same reason
-# as _REAL_IMAGE_SUBJECTS: the catalogue is real prompt tokens, and a
-# chemistry topic has no use for being offered a parabola.
-#
-# The model picks an id from this CLOSED list rather than describing a
-# drawing freely — anything it invented would have no renderer, and a
-# figure that silently fails to draw is worse than one never requested.
 _FIGURE_SHAPES: dict[str, list[tuple[str, str]]] = {
     "Геометрия": [
         ("cube", "[qirra]"), ("cuboid", "[a, b, balandlik]"),
@@ -258,22 +192,8 @@ _FIGURE_SHAPES: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-# All visual_blocks types the model can choose from (see the "visual_blocks"
-# rule in _konspekt_prompt below). Left to its own judgment, the model
-# converges on nearly the same combination for a given topic+subject every
-# time (confirmed by generating the same topic twice back to back) — so
-# _konspekt_prompt randomly requires a different subset of these on every
-# call instead, which is what actually guarantees two attempts at the same
-# topic come out visually different from each other.
 _VISUAL_BLOCK_TYPES = ["table", "timeline", "flowchart", "process", "comparison"]
 
-# Same fix, applied to prose instead of visual_blocks — see _konspekt_prompt's
-# "Framing/angle" rule. Left unconstrained, the model reaches for the same
-# "safest"/most obvious real-world examples and framing for a given topic on
-# every call, so two regenerations of the identical topic read almost
-# word-for-word alike. Picking one of these at random each call forces a
-# different lens without touching correctness (facts/definitions still have
-# to be right regardless of angle).
 _KONSPEKT_ANGLES = [
     "Lead with a concrete everyday scenario a student has personally run into, then connect it to the concept.",
     "Frame it around a historical origin story — who first figured this out or needed it, and why.",
@@ -286,26 +206,6 @@ _KONSPEKT_ANGLES = [
 ]
 
 
-# ══ two konspekts on one topic must be two different lessons ════════════
-# The angle list above varies the FRAMING — which real-world examples get
-# reached for, how the prose is pitched. That was not enough: a teacher
-# who generates "Муодилаҳои хаттӣ бо як номаълум" twice was getting the
-# same lesson with different scenery — the same section order, the same
-# worked examples with the same numbers, the same homework.
-#
-# Two mechanisms fix that here:
-#
-#   * a TEACHING SHAPE — how the lesson is actually built, not just how it
-#     is introduced. A lesson taught as a step-by-step procedure and the
-#     same lesson taught as an error hunt are genuinely different lessons
-#     for the same topic, with different tasks, different group work and a
-#     different order of ideas;
-#
-#   * what the earlier konspekts on this exact topic ACTUALLY contained,
-#     fed back into the prompt as a do-not-repeat list. Without it the
-#     model has no way to know what it wrote last time, and no amount of
-#     "be original" gets it past the most obvious example for a topic —
-#     every algebra lesson reaches for 2x + 3 = 7.
 
 _KONSPEKT_SHAPES = [
     "STEP-BY-STEP PROCEDURE: teach it as an explicit algorithm — name each step, show it applied to one "
@@ -328,9 +228,6 @@ _KONSPEKT_SHAPES = [
 
 
 def _content_of(previous: dict) -> dict:
-    """A stored konspekt as a content dict, whatever shape the caller had
-    it in (a parsed dict, or the raw JSON string straight out of the DB
-    column)."""
     if isinstance(previous, dict):
         return previous
     try:
@@ -340,8 +237,6 @@ def _content_of(previous: dict) -> dict:
 
 
 def _first_texts(value, limit: int, chars: int = 90) -> list[str]:
-    """Up to `limit` short excerpts from a konspekt field, whatever shape
-    that field has (a string, a list of strings, a list of dicts)."""
     out = []
     items = value if isinstance(value, list) else ([value] if value else [])
     for item in items[:limit]:
@@ -358,14 +253,6 @@ def _first_texts(value, limit: int, chars: int = 90) -> list[str]:
 
 
 def summarize_previous_konspekt(previous) -> dict:
-    """The compact digest of one earlier konspekt that the prompt needs in
-    order not to repeat it.
-
-    Deliberately short — a handful of one-line excerpts, not the whole
-    document. The prompt has to carry one of these per earlier attempt,
-    and pasting entire previous konspekts in would cost more context than
-    the new konspekt itself while making the model MORE likely to echo
-    them back."""
     content = _content_of(previous)
     if not content:
         return {}
@@ -374,12 +261,6 @@ def summarize_previous_konspekt(previous) -> dict:
         "subtitle": str(content.get("subtitle") or "")[:120],
         "shape": str(variant.get("shape") or "")[:80],
         "angle": str(variant.get("angle") or "")[:80],
-        # A maths konspekt carries 16-20 worked examples and they are the
-        # part a teacher notices repeating first. Listing only the first
-        # few left the later ones free to come back verbatim — measured
-        # live: two runs shared "3(x + 2) = 15", which sat past a 6-item
-        # window. Kept to one short line each, so a dozen still costs
-        # less prompt space than one section of the new konspekt.
         "examples": _first_texts(content.get("worked_examples"), 14, chars=70),
         "real_life": _first_texts(content.get("real_life_examples"), 3),
         "quick_check": _first_texts(content.get("quick_check"), 3),
@@ -393,13 +274,6 @@ def summarize_previous_konspekt(previous) -> dict:
 
 
 def summarize_previous_presentation(previous) -> dict:
-    """The digest of an earlier deck on this topic — what the next one on
-    the same topic must not repeat.
-
-    Same idea and same shape as summarize_previous_konspekt, reading a
-    presentation's own fields instead: the slide titles are what a
-    teacher notices repeating first, and the examples live inside the
-    bullets."""
     content = _content_of(previous)
     if not content:
         return {}
@@ -417,8 +291,6 @@ def summarize_previous_presentation(previous) -> dict:
                 bullets.append(text[:60])
     variant = content.get("variant") or {}
     return {
-        # Marked so _variation_rule knows these "sections" are slide
-        # TITLES worth quoting back, not a konspekt's section keys.
         "kind": "presentation",
         "subtitle": str(content.get("description") or "")[:120],
         "shape": str(variant.get("shape") or "")[:80],
@@ -429,8 +301,6 @@ def summarize_previous_presentation(previous) -> dict:
 
 
 def _variation_rule(previous_digests: list[dict], angle: str, shape: str) -> str:
-    """The do-not-repeat block for the prompt, built from what earlier
-    konspekts on this exact topic actually said."""
     if not previous_digests:
         return ""
     lines = [
@@ -442,8 +312,6 @@ def _variation_rule(previous_digests: list[dict], angle: str, shape: str) -> str
         parts = []
         if digest.get("shape"):
             parts.append(f"taught as: {digest['shape']}")
-        # A presentation's digest carries its slide titles here — the
-        # running order a teacher recognises instantly on a second deck.
         if digest.get("kind") == "presentation" and digest.get("sections"):
             parts.append("slide titles: " + " | ".join(digest["sections"]))
         if digest.get("examples"):
@@ -480,18 +348,8 @@ def _variation_rule(previous_digests: list[dict], angle: str, shape: str) -> str
 
 
 def _pick_variant(previous_digests: list[dict]) -> tuple[str, str]:
-    """An (angle, shape) pair for this generation, avoiding the ones the
-    earlier konspekts on this topic already used.
-
-    Falls back to a plain random pick once every option has been used —
-    with eight shapes and eight angles that is the ninth konspekt on one
-    topic, by which point repeating a shape (with different examples,
-    tasks and homework, which the do-not-repeat list still enforces) is
-    the honest outcome rather than a bug."""
     used_angles = {d.get("angle") for d in previous_digests if d.get("angle")}
     used_shapes = {d.get("shape") for d in previous_digests if d.get("shape")}
-    # The digests hold the truncated forms that were stored, so compare on
-    # the same prefix rather than on the full sentence.
     free_angles = [a for a in _KONSPEKT_ANGLES if a[:80] not in used_angles]
     free_shapes = [s for s in _KONSPEKT_SHAPES if s[:80] not in used_shapes]
     angle = random.choice(free_angles or _KONSPEKT_ANGLES)
@@ -499,7 +357,6 @@ def _pick_variant(previous_digests: list[dict]) -> tuple[str, str]:
     return angle, shape
 
 
-# ── Default konspekt prompt (fallback) ─────────────────────────────────────
 
 def _konspekt_prompt(
     topic: str,
@@ -514,11 +371,6 @@ def _konspekt_prompt(
     previous_digests: list[dict] | None = None,
     variant_out: dict | None = None,
 ) -> str:
-    """`previous_digests` are summarize_previous_konspekt() digests of the
-    konspekts this teacher already has on this exact topic — what the new
-    one must not repeat. `variant_out`, if given, is filled with the
-    (angle, shape) actually chosen, so the caller can store it on the
-    generated konspekt and the NEXT generation can avoid it in turn."""
     level_map = {
         "Лёгкий": "Beginner. Very simple language, like talking to a friend. Avoid academic/technical jargon "
                   "entirely — if a term is truly unavoidable, define it in plain words the moment it's used.",
@@ -533,17 +385,7 @@ def _konspekt_prompt(
     subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
     lang_name = LANGUAGE_NAMES.get(language, "English")
 
-    # Web app addition: the teacher can opt individual sections in/out from
-    # the create wizard (e.g. skip homework for an in-class-only lesson) —
-    # the fields simply aren't requested in the JSON shape at all, rather
-    # than being requested-then-discarded, so the model doesn't waste
-    # output tokens on content nobody asked for.
     optional_fields = []
-    # Subject-specific structured extras — rendered with dedicated styling
-    # by the docx builder (formula cards / an embedded OpenStreetMap image),
-    # not just more paragraph text, so they're only requested where they
-    # actually apply instead of every subject getting a token-wasting field
-    # it has nothing real to put in.
     if subject in _FORMULA_SUBJECTS:
         optional_fields.append(
             '  "formulas": [{"formula": "compact formula in plain-text/unicode math notation, '
@@ -567,16 +409,6 @@ def _konspekt_prompt(
             'answer itself"}],'
         )
     if subject in _WORKED_EXAMPLE_SUBJECTS or subject in _EXERCISE_SUBJECTS:
-        # Deliberately separate from worked_examples, not more of it:
-        # worked_examples TEACHES the method (full steps shown); this is
-        # what a pupil does with the method once shown it — teachers
-        # asked for both, not a longer worked_examples list, because a
-        # konspekt with only solved examples gives a student nothing to
-        # actually DO in class. No "solution" field on purpose — only
-        # "answer" (the bare final result, for a teacher to mark against,
-        # e.g. "x = 4" or "12 см²"), never the working: printing the
-        # working here would just make this a second worked_examples list
-        # with extra steps.
         optional_fields.append(
             '  "practice_problems": [{"problem": "an UNSOLVED problem for the pupil to work out themselves, same '
             'difficulty/style/technique as worked_examples but with genuinely different numbers/wording — never '
@@ -608,29 +440,14 @@ def _konspekt_prompt(
             '— see the code_blocks rule below: for a language-agnostic topic (an algorithm/general concept) this '
             'MUST be 3 entries in 3 different languages like the example shown here, not 1,'
         )
-    # Every other subject relies on formulas/concept_cards (the "schema") for
-    # visual structure rather than a body photo — the teacher explicitly
-    # asked for cards over pictures, so there's no per-lesson image_topics
-    # field here anymore. The PDF cover still gets one fixed, generic photo
-    # per subject (see app/image_builder.py's get_subject_cover_image) —
-    # that's a branding element, not lesson content, so it isn't requested
-    # from the model at all.
     if include_homework:
         optional_fields.append('  "homework": ["Task 1: detailed assignment", "Task 2: detailed exercise", "Task 3: detailed project"],')
-    # "fun_facts" removed — the teacher asked for it (and common_mistakes/
-    # warmup below) to never appear in the konspekt at all.
     if include_assessment:
         optional_fields.append('  "assessment": "3-4 sentence assessment criteria."')
     optional_json = "\n" + "\n".join(optional_fields) if optional_fields else ""
-    # Trailing comma cleanup: assessment (if present) has no comma since
-    # it's meant to be last; if it was skipped, strip the trailing comma
-    # off whichever field ended up last instead.
     if optional_json and not include_assessment:
         optional_json = optional_json.rstrip(",")
 
-    # Gated on the same subject set as the rule that explains these two
-    # fields — asking for them in the schema while never explaining what
-    # they are would just invite the model to fill them in blind.
     real_image_json = (
         '\n  "real_image_query": "Precise English search term for a real photo/logo/diagram, or empty string — see rules above",'
         '\n  "real_image_style": "\\"logo\\", \\"cutout\\", or \\"diagram\\", or empty string if real_image_query is empty",'
@@ -639,11 +456,6 @@ def _konspekt_prompt(
     )
 
     extra_rules = []
-    # Placed absolute first — the single most common quality complaint
-    # about generated konspekts is shallow/generic content that reads as
-    # if it could belong to almost any lesson, not this specific topic.
-    # Model attention on a long rule list skews toward earlier items, so
-    # this goes ahead of even the code_blocks rule below.
     extra_rules.append(
         "- DEPTH — the #1 way a konspekt fails: content so generic it could be pasted into a lesson on almost any "
         "other topic unchanged. Before finalizing each sentence, check whether it names something specific to "
@@ -658,11 +470,6 @@ def _konspekt_prompt(
         "rather than a generic \"for example, in daily life...\" placeholder. When two draft sentences say "
         "essentially the same generic thing, keep the more specific one and cut the other rather than keeping both."
     )
-    # Teachers asked for this directly: an explanation with no example next
-    # to it is the thing students bounce off, so every bullet in the two
-    # "what you must know" lists has to carry its own worked mini-example
-    # rather than examples living only in real_life_examples/worked_examples
-    # further down the document.
     extra_rules.append(
         "- AN EXAMPLE IN EVERY LIST ITEM — this is a hard requirement, not a nice-to-have: EACH AND EVERY entry of "
         "\"key_concepts\" and \"key_terms\" must end with its own short, concrete example of that specific concept/"
@@ -672,9 +479,6 @@ def _konspekt_prompt(
         "without showing one is incomplete: go back and add the example. Give a DIFFERENT example in each entry — "
         "never reuse the same illustration twice in the list."
     )
-    # This exact rule (defaulting to 1 language, Python, even for
-    # language-agnostic algorithm topics) was observed failing in practice
-    # when buried later in the list, so it still gets a near-front slot.
     if subject in _CODE_SUBJECTS:
         extra_rules.append(
             "- \"code_blocks\" LANGUAGE COUNT — read this carefully, it is a hard requirement, not a suggestion:\n"
@@ -809,22 +613,6 @@ def _konspekt_prompt(
             "- \"map_locations\": name 1-3 REAL places (their actual, correct names — never invent a place) that a map "
             "reader would want to see for this topic. If the topic has no specific geographic location, return an empty list."
         )
-    # Core fields (not subject-gated, not in the optional trailing list) —
-    # placed mid-schema in the RETURN JSON template below (right after
-    # main_content / visual_aid) rather than tacked onto the very end,
-    # specifically so the model actually produces them consistently instead
-    # of treating them as an afterthought to skip when it's already written
-    # a long response. A teacher-facing konspekt with zero visuals reads as
-    # a wall of text, so — unlike formulas/concept_cards, which genuinely
-    # don't apply to most subjects — almost every topic should get at least
-    # one visual_blocks entry.
-    #
-    # One of the 3 required slots is nudged toward whatever chart type
-    # actually fits THIS subject (_SUBJECT_VISUAL_PREFERENCE) rather than
-    # picked with zero regard for subject — e.g. a CS topic reaching for
-    # "timeline" as often as "process" made no sense. Still randomized (a
-    # random pick from the subject's own list, not a fixed one) so the
-    # regenerate-never-repeats guarantee below still holds.
     subject_visual_pool = _SUBJECT_VISUAL_PREFERENCE.get(subject)
     if subject_visual_pool:
         forced_type = random.choice(subject_visual_pool)
@@ -832,21 +620,6 @@ def _konspekt_prompt(
         required_types = [forced_type] + random.sample(remaining_pool, 2)
     else:
         required_types = random.sample(_VISUAL_BLOCK_TYPES, 3)
-    # The prompt below deliberately states the rules WITHOUT explaining the
-    # reasoning behind them — the model needs the instruction, not the
-    # history, and the explanations were costing ~300 prompt tokens on every
-    # single call. The reasoning lives here instead:
-    #
-    #  * required_types is re-randomised per call so regenerating the same
-    #    topic doesn't converge on the same combination of visuals twice.
-    #    Phrased as "prefer" rather than "must include": a forced type that
-    #    doesn't fit the topic produced filler blocks.
-    #  * The count is a range, not a fixed 4. "EXACTLY 4" made the model pad
-    #    thin topics with weak blocks to hit the quota — and each block is
-    #    real output tokens, so padding cost money as well as quality.
-    #  * timeline/flowchart/process are preferred over table/
-    #    comparison because those render as an actual diagram rather than a
-    #    data grid.
     extra_rules.append(
         "- \"visual_blocks\": include EXACTLY 5 entries. Not 2, not 3 — five, every time. Treat this as a fixed "
         "count you must reach, not a maximum to stay under: the export lays these out across the whole document, "
@@ -985,19 +758,8 @@ def _konspekt_prompt(
             "procedures, abstract concepts, generic activities) — do not force a tenuous or symbolic connection just to "
             "fill this field."
         )
-    # Picked fresh per generation call (same idea as required_types above)
-    # so regenerating the exact same topic doesn't converge on the same
-    # examples/framing every time — confirmed live: without a forced
-    # angle, repeated runs of an identical prompt tend to reach for the
-    # same "safest"/most obvious examples and phrasing, which reads as
-    # the whole app having "one style" once a teacher regenerates a few
-    # topics. This doesn't touch facts/definitions (those must stay
-    # correct regardless), only which real-world examples, framing, and
-    # narrative thread the AI reaches for while writing them.
     angle, shape = _pick_variant(previous_digests or [])
     if variant_out is not None:
-        # Stored on the finished konspekt so the next generation for this
-        # topic knows which shape/angle is already taken.
         variant_out["angle"] = angle[:80]
         variant_out["shape"] = shape[:80]
     extra_rules.append(
@@ -1123,18 +885,6 @@ RETURN THIS JSON:
 }}"""
 
 
-# ── Lecture prompt ───────────────────────────────────────────────────────────
-# лекция explains a topic; конспект manages a lesson (see app/models.py's
-# Lecture docstring). This is deliberately NOT a thin variant of
-# _konspekt_prompt — it asks for a different JSON shape entirely, one that
-# simply never includes the lesson-management fields (competencies,
-# objectives, lesson_program, tools, pair_work, consolidation, homework,
-# assessment) at all, so build_konspekt_pdf/build_konspekt_docx's per-field
-# `if content.get(field):` guards make those sections silently not render
-# — no separate renderer needed, see build_lecture_pdf's docstring. What
-# lecture asks for MORE of instead: main_content depth, key_concepts/
-# key_terms coverage — since explaining the topic thoroughly is this
-# document's entire job, not one part of a larger lesson plan.
 def _lecture_prompt(
     topic: str,
     subject: str,
@@ -1209,16 +959,6 @@ def _lecture_prompt(
             "put LaTeX in \"formula\". If the topic truly has no formulas, return an empty list."
         )
     if subject in _FORMULA_SUBJECTS:
-        # Was missing from this prompt entirely — the "formulas" rule
-        # above promises "(see the notation rule below)" but until this
-        # was added there was no such rule anywhere in _lecture_prompt at
-        # all, only in _konspekt_prompt's copy. Confirmed live: a lecture
-        # on "Куби сумма ва фарқ" (cube-of-sum/difference identities) came
-        # back with real, working LaTeX overall, but ALSO the exact
-        # exponent-brace mistake this rule now warns about explicitly
-        # ("3a^{2b}" instead of "3a^{2}b") — the model clearly CAN write
-        # correct LaTeX here without being told, just not reliably without
-        # the same explicit rules konspekt already has.
         extra_rules.append(
             "- MATHEMATICAL NOTATION. The export typesets mathematics properly — stacked fractions, real "
             "radicals, raised exponents — but only from LaTeX. Give it LaTeX and it prints like a textbook; "
@@ -1261,12 +1001,6 @@ def _lecture_prompt(
             "map reader would want to see for this topic. If the topic has no specific geographic location, return "
             "an empty list."
         )
-    # Deliberately the OPPOSITE bias from _konspekt_prompt's visual_blocks
-    # rule: teacher feedback was explicit that a лекция should read as a
-    # thorough TEXT explanation, not an infographic-heavy deck — graphics/
-    # pictures should be rare here, with the explaining done in prose
-    # instead. No forced-type-variety mechanism (unlike konspekt's
-    # required_types) since the goal is fewer visuals, not more diverse ones.
     extra_rules.append(
         "- \"visual_blocks\": KEEP THIS SHORT — this document favors thorough TEXT explanation over graphics/"
         "pictures. Include AT MOST 1 entry, and only if one specific fact genuinely benefits from a structured "
@@ -1290,11 +1024,6 @@ def _lecture_prompt(
         "a safety note, an exception to the rule just taught). Return an empty list if this topic has nothing that "
         "warrants one — don't invent a filler note."
     )
-    # The lecture prints these as its "ЗАПОМНИ" and "СОВЕТ" remarks,
-    # spaced through the body so the reader never gets more than a couple
-    # of paragraphs without one. Asked for explicitly because a summary
-    # sentence lifted out of the prose is not the same thing as a line
-    # written to be remembered.
     extra_rules.append(
         "- \"key_ideas\": 2-3 ONE-SENTENCE statements a student should carry out of this lecture — the thing "
         "itself, stated plainly and memorably, not a description of what will be covered. No more than 20 words each."
@@ -1454,17 +1183,7 @@ RETURN THIS JSON:
 }}"""
 
 
-# ── Test prompt ─────────────────────────────────────────────────────────────
 
-# Shared per-type instructions + JSON shape, used both when generating a
-# whole test and when regenerating a single question, so the two prompts
-# never drift out of sync with each other.
-# A test question is answered from what it SAYS, not from a picture next
-# to it — most questions need no image at all, and one glued on for
-# decoration wastes a Commons lookup and risks the mismatch rule below.
-# Only the minority where the question genuinely can't be answered from
-# text alone (identify a labelled structure, read a graph, name a map
-# feature, recognise a geometric figure) earns one.
 _TEST_IMAGE_RULE = (
     "IMAGE (optional, most questions have none): add \"image_query\" (a precise 2-4 word ENGLISH "
     "Wikimedia Commons search phrase) to a question ONLY when the question is genuinely about a picture — "
@@ -1625,12 +1344,8 @@ Return THIS exact JSON (nothing else):
 }}"""
 
 
-# ── Practical tasks prompt ("💡 Амалӣ супоришҳо") ────────────────────────────
 
 def _visual_labels(visual: dict) -> list[str]:
-    """The headings a slide's visual block already prints on its own — the
-    step titles of a process, the first column of a table, the row names
-    of a comparison, the categories of a chart."""
     if not isinstance(visual, dict):
         return []
     data = visual.get("data") or {}
@@ -1649,30 +1364,12 @@ def _visual_labels(visual: dict) -> list[str]:
 
 
 def _norm_label(s: str) -> str:
-    """Comparable form of a slide label: no LaTeX, no punctuation, no case."""
     s = re.sub(r"\$[^$]*\$", " ", str(s or ""))
     s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
 def _drop_bullets_duplicating_visual(content: dict, topic: str) -> None:
-    """Removes bullet points that only restate the slide's own visual.
-
-    Seen on a real generated deck ("Фотосинтез", биология): a slide's two
-    bullet cards read "Световая реакция – захват света" / "Темновая
-    реакция – фиксация CO2", and the process block directly beneath them
-    listed steps titled "Световая реакция" and "Темновая реакция". The
-    slide said the same thing twice, in two different shapes, which reads
-    as padding rather than as structure — and it is the first thing a
-    teacher notices.
-
-    The prompt now forbids it too (see _presentation_prompt), but a prompt
-    rule is a request and this is the guarantee: a bullet survives only if
-    it adds something the visual does not already print. Conservative on
-    purpose — a bullet is dropped only when a visual label is a genuine
-    prefix of it (or vice versa), so "Поглощение фотонов хлорофиллом"
-    against a step titled "Поглощение фотонов" goes, while a bullet that
-    merely shares a word stays."""
     for slide in (content.get("slides") or []):
         if not isinstance(slide, dict):
             continue
@@ -1698,27 +1395,6 @@ def _drop_bullets_duplicating_visual(content: dict, topic: str) -> None:
 
 
 def _validate_practical_quality(content: dict, topic: str) -> None:
-    """Guards against a practical-tasks worksheet that "succeeded" but is
-    actually empty.
-
-    Confirmed live: a teacher downloaded a PDF that was just the title
-    ("Python"), the masthead and a blank Ф.И.О./Класс/Дата/Оценка line —
-    no individual tasks, no group tasks — three separate times. The
-    generation itself never raised, because the JSON _call_ai got back
-    was perfectly valid: `{"title": "...", "description": "...",
-    "individual_tasks": [], "group_tasks": []}` parses fine, it is just
-    empty. That shape is exactly what a response cut short (a real,
-    observed cause here: a Cerebras token-per-minute 429 landing mid-
-    stream, see the "amaliy" branch this joins in the stamping tuple
-    above) leaves behind if the truncation happens to fall right after
-    one of those two keys opens its array and before anything is put in
-    it — every other field the model had already written survives, only
-    the two arrays come out empty.
-
-    A blank worksheet is worse than a clear failure: this raises instead,
-    which routes through the exact same "Не удалось создать: ...
-    Списание отменено" path the 429 case already shows a teacher, rather
-    than silently handing over a sheet with nothing to do on it."""
     individual = content.get("individual_tasks")
     group = content.get("group_tasks")
     has_individual = isinstance(individual, list) and any(
@@ -1739,10 +1415,6 @@ def _practical_prompt(
     language: str = "English",
     source_text: str | None = None,
 ) -> str:
-    """A worksheet of hands-on tasks — deliberately its own material type
-    rather than a Test variant, because a practical task asks the pupil
-    to DO or MAKE something (measure, build, interview, write, classify)
-    and be judged on the result, not to pick a correct option."""
     level_map = {
         "Лёгкий": "Beginner. Short, closely-guided tasks with one clear step at a time.",
         "Средний": "Intermediate. Multi-step tasks that still fit one lesson.",
@@ -1798,12 +1470,7 @@ Return THIS exact JSON (nothing else):
 }}"""
 
 
-# ── Interactive game prompt ("🎮 Интерактивные игры") ────────────────────────
 
-# Every round is tagged with its own "type" in one shared "rounds" list
-# rather than a separate table/field per game format — the player UI
-# (web + mobile) dispatches on that tag, and adding a new round type
-# later means adding one more shape here, not a new material type.
 _GAME_ROUND_SHAPES = """  {"type": "quiz", "question": "A question about the topic", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "One short sentence saying WHY that option is the correct one"},
   {"type": "true_false", "statement": "A factual statement to judge true or false", "answer": true},
   {"type": "matching", "instructions": "Match each item on the left to its pair on the right", "pairs": [{"left": "term", "right": "its matching definition/example"}, {"left": "...", "right": "..."}, {"left": "...", "right": "..."}, {"left": "...", "right": "..."}]},
@@ -1819,9 +1486,6 @@ def _game_prompt(
     language: str = "English",
     source_text: str | None = None,
 ) -> str:
-    """An in-app playable round set — quiz, true/false, matching, ordering
-    and a speed round, all scored the moment the pupil answers. Never
-    rendered to PDF/DOCX; the web/mobile player reads "rounds" directly."""
     level_map = {
         "Лёгкий": "Beginner. Simple recall, generous options, no trick questions.",
         "Средний": "Intermediate. Requires understanding, not just memorised facts.",
@@ -1871,7 +1535,6 @@ exactly 12 rounds:
 }}"""
 
 
-# ── Presentation prompt ─────────────────────────────────────────────────────
 
 def _presentation_prompt(
     topic: str,
@@ -1884,16 +1547,9 @@ def _presentation_prompt(
     previous_digests: list[dict] | None = None,
     variant_out: dict | None = None,
 ) -> str:
-    """`previous_digests` describe the decks this teacher already has on
-    this exact topic (see summarize_previous_presentation); the new one
-    has to be a different lesson, not a reworded copy of them."""
     lang_name = LANGUAGE_NAMES.get(language, "English")
     subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
 
-    # Scale the suggested slide-by-slide arc to whatever slide_count was
-    # actually requested (5/8/10/12/15/20 are all pickable in the app) —
-    # a fixed "Slide 8-9... Slide 10" description stopped making sense the
-    # moment slide_count wasn't exactly 10.
     intro_end = max(1, round(slide_count * 0.15))
     body_end = max(intro_end + 1, min(slide_count - 1, round(slide_count * 0.75)))
     intro_label = f"Slide 1" if intro_end <= 1 else f"Slides 1-{intro_end}"
@@ -1903,10 +1559,6 @@ def _presentation_prompt(
         f"- Slides {body_end + 1}-{slide_count}: Impact, legacy, interesting facts, conclusion, summary, why this matters"
     )
 
-    # The same "one topic must not give one deck twice" machinery the
-    # konspekt uses (see _pick_variant): a teaching shape decides how the
-    # lesson is built, and what earlier decks on this topic actually
-    # contained is fed back as a do-not-repeat list.
     angle, shape = _pick_variant(previous_digests or [])
     if variant_out is not None:
         variant_out["angle"] = angle[:80]
@@ -1918,13 +1570,6 @@ def _presentation_prompt(
         + _variation_rule(previous_digests or [], angle, shape).replace("konspekt", "presentation")
     )
 
-    # Same closed shape catalogue the konspekt offers (see _FIGURE_SHAPES) —
-    # a real technical drawing (a cube, a plotted parabola, a Bohr shell
-    # model, a circuit) reads as far more "this specific lesson" than a
-    # bullet list, so a slide whose topic names a concrete drawable object
-    # should reach for it. Subject-gated for the same reason as the
-    # konspekt version: the catalogue is real prompt tokens and a chemistry
-    # deck has no use for being offered a parabola.
     figure_visual_rule = ""
     if subject in _FIGURE_SHAPES:
         catalog = "; ".join(f"{name} {hint}" for name, hint in _FIGURE_SHAPES[subject])
@@ -2072,7 +1717,6 @@ Return THIS exact JSON:
 }}"""
 
 
-# ── Curriculum roadmap prompt ────────────────────────────────────────────
 
 def _roadmap_prompt(
     mode: str,
@@ -2092,10 +1736,6 @@ def _roadmap_prompt(
         n_given = len(given_topics)
         exam_budget = day_count - n_given
         if exam_budget >= 0:
-            # The normal case: the caller already sized day_count to be
-            # exactly n_given lesson slots plus a pre-computed exam-day
-            # budget (see routers/curriculum.py), specifically so every
-            # topic gets its own day — no merging, no splitting.
             fit_rule = (
                 f"There are exactly {n_given} lesson days — use ONE topic per lesson day, in order, NEVER "
                 f"merging two+ topics onto the same day and NEVER splitting one topic across multiple days. "
@@ -2289,23 +1929,11 @@ def _fix_json(text: str) -> str:
     return text
 
 
-# Backslash escapes JSON itself defines. The first five are the problem:
-# \b \f \n \r \t are valid JSON *and* the start of common LaTeX commands
-# (\frac, \beta, \neq, \rho, \times, \theta), so they cannot be judged
-# without knowing whether the string is mathematics or prose.
 _JSON_STRUCTURAL = set('"\\/')
 _JSON_AMBIGUOUS = set("bfnrt")
 
 
 def _escape_literal(lit: str, mode: str) -> str:
-    """mode: "all" (the whole string is LaTeX), "spans" (only $...$ is),
-    or "none" (ordinary prose).
-
-    Judging a whole string as mathematics was too coarse. A main_content
-    paragraph that mentions "$2x = 20$" is mostly prose, and treating all
-    of it as maths turned its genuine "\n" line breaks into a literal
-    backslash-n printed in the middle of the page. The ambiguous escapes
-    are reinterpreted only where the mathematics actually is."""
     out = []
     i, n = 0, len(lit)
     in_math = (mode == "all")
@@ -2328,32 +1956,15 @@ def _escape_literal(lit: str, mode: str) -> str:
             out.append(lit[i:i + 6])
             i += 6
         elif nxt in _JSON_AMBIGUOUS and not in_math:
-            out.append(lit[i:i + 2])          # a real newline/tab in prose
+            out.append(lit[i:i + 2])
             i += 2
         else:
-            out.append("\\\\")                  # a LaTeX command, or an invalid escape
+            out.append("\\\\")
             i += 1
     return "".join(out)
 
 
 def _fix_backslashes(text: str) -> str:
-    """Doubles the backslashes the model left unescaped in LaTeX.
-
-    Asking for LaTeX means asking for backslashes inside JSON strings,
-    where each one must be written twice. The model routinely writes
-    "\\frac" instead, and the consequences differ by letter:
-
-      * "\\sqrt", "\\pm", "\\cdot" are INVALID escapes — the konspekt
-        fails to parse and is regenerated. Measured live: four rejected
-        attempts and 53 seconds against 9 when it parses first time.
-      * "\\frac" is WORSE. \f is a valid JSON escape, so it parses
-        silently into a form feed followed by "rac", and the teacher gets
-        a corrupted formula instead of an error.
-
-    So the ambiguous five are read as LaTeX only inside a string that is
-    actually mathematics — the value of a "latex" key, or a string
-    carrying $...$ spans. Everywhere else "\\n" keeps meaning a newline.
-    """
     out = []
     i, n = 0, len(text)
     last_key = None
@@ -2396,26 +2007,10 @@ def _fix_backslashes(text: str) -> str:
 
 
 
-# U+2010 HYPHEN and U+2011 NON-BREAKING HYPHEN — confirmed live (fontTools
-# getBestCmap() against C:\Windows\Fonts\arial.ttf, the PDF export's own
-# registered font — see export_builder.py's _register_unicode_font): Arial
-# has NO glyph for either one, so a number range the model wrote with one
-# ("асри 9‑10", "10‑ум") printed as a visible tofu box (□) on the actual
-# page — confirmed with a real generated lecture, not a hypothetical. Every
-# OTHER dash/quote/ellipsis character the model plausibly reaches for (en
-# dash, em dash, curly quotes, guillemets, …) IS in Arial and is left
-# alone; this is deliberately narrow rather than a blanket "ASCII-fy
-# everything" pass that would also flatten characters that print fine and
-# are there on purpose.
 _MISSING_GLYPH_HYPHENS = str.maketrans({"\u2010": "-", "\u2011": "-"})
 
 
 def _normalize_missing_glyphs(obj):
-    """Recursively applies _MISSING_GLYPH_HYPHENS to every string in a
-    parsed AI response — dict values, list items, nested structures alike
-    — so the fix lands wherever the model happened to put the character
-    (a section body, a table cell, a slide bullet, a question's answer
-    choice) without needing a separate pass per material type."""
     if isinstance(obj, str):
         return obj.translate(_MISSING_GLYPH_HYPHENS)
     if isinstance(obj, dict):
@@ -2426,23 +2021,6 @@ def _normalize_missing_glyphs(obj):
 
 
 def _parse_json(text: str) -> dict:
-    """Parses the model's reply, repairing the usual damage.
-
-    The backslash repair runs BEFORE the first plain parse, not after it
-    as a fallback. That ordering is the whole point: text containing
-    "\frac" is VALID JSON — \f is a form feed — so a plain parse
-    succeeds and quietly hands back a corrupted formula. A fallback that
-    only runs when parsing fails would never see it.
-
-    The unrepaired text is still tried second, so if the repair ever makes
-    things worse the original still gets its chance.
-
-    Every successful parse is passed through _normalize_missing_glyphs
-    before returning — done HERE rather than at each of this function's
-    two call sites so every material type gets it from one place, and
-    done AFTER json.loads (not on the raw `text`) so it can't ever
-    interfere with JSON structural characters, only the string VALUES
-    inside the already-parsed result."""
     text = text.strip()
     for candidate in (_fix_backslashes(text), text):
         try:
@@ -2646,25 +2224,12 @@ _LEGACY_TAJIK_GLYPH_FIXES = {
 
 
 def fix_legacy_tajik_glyphs(text: str) -> str:
-    """Normalize legacy-font Tajik look-alike characters to proper Tajik
-    Unicode. Many older Tajik documents were typed with a legacy font (e.g.
-    "Times New Roman TJ") that displayed Tajik-specific letters (ҳ, қ, ғ,
-    ҷ, ӣ) using the Unicode codepoints for look-alike Macedonian/Ukrainian
-    letters instead — the font made them LOOK right on screen, but the
-    underlying character is wrong. Opened without that exact font (or read
-    as raw text, e.g. from an uploaded .docx), those come through literally
-    as the wrong letters. Real Macedonian/Ukrainian text would never appear
-    in a Tajik school document, so this is safe to apply unconditionally to
-    any uploaded document text."""
     return ''.join(_LEGACY_TAJIK_GLYPH_FIXES.get(c, c) for c in text)
 
 
 def _fix_tajik(text: str) -> str:
     for ru, tg in _TAJIK_RUSSIAN_FIXES.items():
         text = text.replace(ru, tg)
-    # Strip anything outside Cyrillic/Latin/digits/common punctuation - the
-    # model occasionally hallucinates a stray fragment in an unrelated script
-    # (Arabic, Devanagari, etc.) in the middle of otherwise-correct Tajik text.
     text = _STRAY_SCRIPT_PATTERN.sub('', text)
     text = re.sub(r'\s{2,}', ' ', text)
     return text.strip()
@@ -2681,24 +2246,12 @@ def _fix_json_strings(obj, fn):
 
 
 def _translate_json(data: dict, target_lang: str) -> dict:
-    # The AI is already instructed (system + user prompt) to write the
-    # material directly in the target language, so routing its output back
-    # through Google Translate here was pure redundant risk rather than a
-    # real translation step: source='auto' occasionally mis-detects a short
-    # string and returns text in a completely different script (observed:
-    # Devanagari fragments leaking into Tajik output). Keep only the
-    # Tajik-specific safety net (common Russian-word swaps + stray
-    # Arabic-script stripping) applied directly to the model's own text.
     if target_lang == "Таджикский":
         return _fix_json_strings(data, _fix_tajik)
     return data
 
 
 def _language_rules(language: str) -> str:
-    """Per-language vocabulary/script guardrails appended to a system
-    prompt. Factored out of generate_material so generate_konspekt_stream
-    (the SSE streaming path) can reuse the exact same rules instead of a
-    second copy drifting out of sync."""
     if language == "Таджикский":
         return """
 ADDITIONAL TAJIK LANGUAGE RULES:
@@ -2711,10 +2264,6 @@ ADDITIONAL TAJIK LANGUAGE RULES:
 
 
 def _konspekt_system_prompt(language: str) -> str:
-    """The konspekt-specific system prompt — factored out of
-    generate_material's system_prompts dict so generate_konspekt_stream can
-    build the identical prompt for its streamed AI call instead of
-    duplicating this text."""
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = _language_rules(language)
     return f"""You are a school teacher creating a structured lesson plan (konspekt). Return ONLY valid JSON.
@@ -2746,12 +2295,6 @@ Every field must have SUBSTANTIAL content. Brief notes are NOT acceptable."""
 
 
 def _lecture_system_prompt(language: str) -> str:
-    """лекция's own system prompt — deliberately NOT the konspekt one above:
-    that one explicitly instructs the model it "MUST include" competencies/
-    objectives/lesson_program/pair_work/consolidation/homework/assessment
-    "IN ORDER", which would directly contradict _lecture_prompt's user-turn
-    instruction to omit them. Reusing it here would give the model two
-    conflicting instructions in the same call."""
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = _language_rules(language)
     return f"""You are a subject-matter expert writing an in-depth lecture (лекция) that explains a topic thoroughly \
@@ -2774,17 +2317,8 @@ _BRACKET_CLOSERS = set(_BRACKET_PAIRS.values())
 
 
 def _code_block_is_balanced(code: str) -> bool:
-    """A cheap, deterministic (non-AI) sanity check on a code_blocks
-    snippet: brackets/braces/parens must balance and close in the right
-    order, ignoring anything inside a string literal or a // or #
-    comment (so a stray bracket in a printed string/comment doesn't count
-    against it). This is NOT a real parser/compiler — it can't catch a
-    logic error or a typo'd keyword — but it reliably catches the most
-    visible failure mode (a truncated/malformed snippet with a dangling
-    open brace), which is worse to ship than no code block at all, same
-    "wrong is worse than missing" rule used throughout image_builder.py."""
     stack: list[str] = []
-    in_string: str | None = None  # the quote char currently open, or None
+    in_string: str | None = None
     i = 0
     n = len(code)
     while i < n:
@@ -2815,10 +2349,6 @@ def _code_block_is_balanced(code: str) -> bool:
 
 
 def _validate_code_blocks(content: dict, topic: str) -> None:
-    """Drops any "code_blocks" entry that fails the balance check above,
-    or is missing its actual code — a broken/truncated snippet reaching
-    the PDF/docx is worse than that one example silently not appearing.
-    Mutates content in place; never raises."""
     blocks = content.get("code_blocks")
     if not isinstance(blocks, list):
         return
@@ -2840,10 +2370,6 @@ def _validate_code_blocks(content: dict, topic: str) -> None:
     content["code_blocks"] = kept
 
 
-# Strings that must NOT be read as mathematics. "code" is the obvious one
-# — "^" is xor in C and Python, and a snippet is printed verbatim — but a
-# path or a URL can also carry a "^" or a digit run that the power rules
-# would otherwise rewrite into an equation.
 _NO_MATH_KEYS = {"code", "language", "image", "images", "image_url", "url",
                  "path", "map_image", "src", "shape", "id", "color", "icon",
                  "lesson_image_queries", "real_image_query", "credit", "source",
@@ -2851,27 +2377,11 @@ _NO_MATH_KEYS = {"code", "language", "image", "images", "image_url", "url",
 
 
 def _typeset_math(node, key: str | None = None):
-    """Rewrites every power the model wrote outside the math pipeline into
-    a $...$ span, so the exports typeset it as a raised exponent instead
-    of printing it flat on the line.
-
-    The prompt asks for LaTeX in dollars everywhere, and mostly gets it,
-    but a konspekt is hundreds of strings and the ones that slip through
-    ("S = a^2", "x²") reached the page as keyboard text — the character
-    "²" is worse still, because the PDF's embedded font has no glyph for
-    it and it printed as an empty box. Done here, once, on the parsed
-    content: both the docx and the PDF read the same corrected text, and
-    the viewer in the app gets it too.
-
-    Applied to CODE it would be actively wrong, so those keys are skipped
-    — see _NO_MATH_KEYS."""
     from app.math_render import normalize_math, brace_scripts
 
     if isinstance(node, str):
         if key in _NO_MATH_KEYS:
             return node
-        # A "latex" value is already mathematics in full; it needs the
-        # exponents braced, not wrapping in dollars it never had.
         return brace_scripts(node) if key == "latex" else normalize_math(node)
     if isinstance(node, list):
         return [_typeset_math(item, key) for item in node]
@@ -2881,27 +2391,8 @@ def _typeset_math(node, key: str | None = None):
     return node
 
 
-# ── Test quality gate ────────────────────────────────────────────────────
-# Runs on every generated test, after the model has answered and before
-# the test is saved. Deterministic checks only — no second AI call, so it
-# costs nothing and cannot itself fail or hallucinate.
-#
-# Why a code check rather than more prompt text: the prompt already asks
-# for all of this ("questions must vary in difficulty", "explanations
-# should be clear", "ALL questions must be about the topic ONLY"), and a
-# model that ignores an instruction will ignore a more emphatic version of
-# the same instruction. What it cannot do is emit a question this function
-# has removed.
-#
-# Each rule below drops or repairs exactly one defect and leaves everything
-# else untouched, because a test with 8 good questions is worth far more
-# than a rejected generation — a teacher who gets an error has nothing.
 
 _STOPWORDS = {
-    # Russian/Tajik/English function words, stripped before comparing two
-    # questions for sameness. Without this, "Что такое X?" and "Что такое
-    # Y?" look 80% identical and a genuinely different question gets
-    # dropped as a duplicate.
     "что", "как", "какой", "какая", "какое", "какие", "кто", "где", "когда",
     "почему", "зачем", "это", "такое", "для", "чего", "из", "на", "в", "и",
     "или", "не", "ли", "the", "a", "an", "is", "are", "of", "to", "in", "on",
@@ -2910,23 +2401,10 @@ _STOPWORDS = {
 }
 
 
-# Content words are cut to this many characters before being compared.
-# Russian and Tajik inflect heavily, and the duplicate this is meant to
-# catch is a REWORDING, which means the same words in different cases:
-# "в состав атомного ядра" and "в состав ядра атома" share every idea and
-# not one identical word form. Comparing full forms scored that pair at
-# 0.67 and let the duplicate through. Four characters is short enough that
-# "атомного"/"атома" and "частицы"/"частиц" collapse together, and long
-# enough that unrelated words very rarely do — and a chance collision on
-# one word cannot trip the threshold below on its own, since that needs
-# three quarters of the whole question to match.
 _STEM_CHARS = 4
 
 
 def _question_fingerprint(text: str) -> frozenset:
-    """The content words of a question, lowercased and crudely stemmed.
-    Two questions with the same fingerprint are the same question however
-    they're worded."""
     words = re.findall(r"\w+", (text or "").lower())
     return frozenset(
         w[:_STEM_CHARS] for w in words if len(w) > 2 and w not in _STOPWORDS
@@ -2934,15 +2412,6 @@ def _question_fingerprint(text: str) -> frozenset:
 
 
 def _near_duplicate(a: frozenset, b: frozenset) -> bool:
-    """Jaccard overlap over stemmed content words.
-
-    0.75 against stems, measured on real generated output: two questions
-    approaching the same fact from different angles land around 0.1-0.3,
-    while a reword of the same question lands at 0.8 or above. Very short
-    questions (under 3 content words) are compared for exact equality
-    instead — the ratio is meaningless there, and "Что такое атом?" vs
-    "Что такое ион?" would otherwise share their only word and read as
-    identical."""
     if not a or not b:
         return False
     if len(a) < 3 or len(b) < 3:
@@ -2951,11 +2420,6 @@ def _near_duplicate(a: frozenset, b: frozenset) -> bool:
 
 
 def _validate_test_quality(content: dict, topic: str, requested_count: int) -> None:
-    """Repairs and prunes a generated test in place, logging what it did.
-
-    The order matters: structural repairs run first (a question with a
-    broken answer key is worth fixing, not discarding), then unfixable
-    questions are dropped, then duplicates."""
     questions = content.get("questions")
     if not isinstance(questions, list) or not questions:
         return
@@ -2976,24 +2440,14 @@ def _validate_test_quality(content: dict, topic: str, requested_count: int) -> N
         qtype = q.get("type") or "multiple_choice"
 
         if qtype == "open_ended":
-            # Nothing to check structurally — an open question has no
-            # options and no index to be wrong. A missing model answer is
-            # not fatal (the player shows it as ungraded), so it is left.
             pass
         else:
             options = q.get("options")
             if not isinstance(options, list):
                 dropped["malformed"] += 1
                 continue
-            # Blank options are a real failure mode: the model pads a
-            # 4-option shape when it only had 3 distinct answers, and the
-            # pupil sees an empty button that can never be right.
             cleaned = [str(o).strip() for o in options if str(o).strip()]
             if len(cleaned) < len(options):
-                # Whatever the answer key pointed at has to move with the
-                # options it points into, or the key silently becomes
-                # wrong — the exact bug the editor's removeOption guards
-                # against on the frontend.
                 index_map = {}
                 new_i = 0
                 for old_i, o in enumerate(options):
@@ -3013,8 +2467,6 @@ def _validate_test_quality(content: dict, topic: str, requested_count: int) -> N
                 dropped["malformed"] += 1
                 continue
 
-            # Two identical options mean at best a wasted choice and at
-            # worst two correct answers to a single-answer question.
             lowered = [o.strip().lower() for o in options]
             if len(set(lowered)) < len(lowered):
                 dropped["trivial_options"] += 1
@@ -3029,20 +2481,13 @@ def _validate_test_quality(content: dict, topic: str, requested_count: int) -> N
                     continue
                 q["correct_indices"] = sorted(set(idx))
                 if len(q["correct_indices"]) == len(options):
-                    # Every option correct is not a question.
                     dropped["trivial_options"] += 1
                     continue
             else:
                 idx = q.get("correct_index")
                 if not isinstance(idx, int) or idx < 0 or idx >= len(options):
-                    # An out-of-range answer key is the single worst
-                    # defect a test can ship with: the pupil is marked
-                    # wrong no matter what they pick, and nothing in the
-                    # UI reveals why.
                     dropped["no_answer"] += 1
                     continue
-                # A single-answer question whose key duplicates another
-                # option's text has two right answers.
                 if lowered.count(lowered[idx]) > 1:
                     dropped["trivial_options"] += 1
                     continue
@@ -3060,9 +2505,6 @@ def _validate_test_quality(content: dict, topic: str, requested_count: int) -> N
             f"Test quality gate removed {removed}/{len(questions)} question(s) for "
             f"topic={topic[:60]!r}: {dropped}"
         )
-    # A test stripped to nothing is worse than one with a few flawed
-    # questions a teacher can edit — the editor exists precisely for that.
-    # Only replace the list when something survived.
     if kept:
         content["questions"] = kept
     elif removed:
@@ -3079,8 +2521,6 @@ def _validate_test_quality(content: dict, topic: str, requested_count: int) -> N
 
 
 def _typeset_math_content(content: dict, topic: str) -> None:
-    """Runs _typeset_math over a konspekt in place; never raises, because
-    a formula must not be able to fail a generation."""
     try:
         fixed = _typeset_math(content)
         if isinstance(fixed, dict):
@@ -3090,34 +2530,11 @@ def _typeset_math_content(content: dict, topic: str) -> None:
         logger.warning(f"Math typesetting pass failed for topic={topic[:50]}: {e}")
 
 
-# Where a lesson image may be anchored. An anchor the model invented, or
-# one naming a section this konspekt does not actually have, would leave
-# the picture with nothing to sit under — so anything outside this set is
-# replaced with a real section from the konspekt itself.
 _IMAGE_ANCHORS = ("key_concepts", "main_content", "worked_examples",
                   "real_life_examples", "consolidation", "key_terms")
 
 
 def _section_text(content: dict, key: str, limit: int = 400) -> str:
-    """The actual reading matter behind an anchor like "key_concepts",
-    for feeding to _caption_and_verify_images — not the bare section
-    NAME, which is all the check used to get.
-
-    That gap is why a bad Commons match survived and then kept
-    surviving: "does this file match \"key_concepts\"" is a question
-    about a heading, answerable yes for almost anything remotely
-    on-topic. Measured live — a "Python" konspekt anchored a UML-style
-    "standard type hierarchy" diagram (built for language-internals
-    documentation, not a first lesson) to key_concepts, the check saw
-    only the word "key_concepts", said relevant, and models.
-    LessonImageCache then handed that same picture to every later
-    "Python" generation regardless of teacher or grade — one weak
-    verification, silently multiplied forever. "Does this match
-    <actual paragraph text>" is a real yes/no question; "does this
-    match <a heading>" barely is.
-
-    Sections here are a list of bullet strings, a single paragraph, or
-    (rarely) a dict of sub-fields — joined into one string either way."""
     val = content.get(key)
     if isinstance(val, list):
         text = " ".join(str(v) for v in val if v)
@@ -3130,24 +2547,9 @@ def _section_text(content: dict, key: str, limit: int = 400) -> str:
 
 
 def _place_lesson_images(content: dict, images: list[dict], requests: list[dict]) -> None:
-    """Attaches each fetched picture to the section it explains.
-
-    The model chose the anchor while it was writing the sections (see the
-    "lesson_images" prompt rule), which is the only point where anything
-    knows what each paragraph actually says. This checks that choice
-    against the konspekt that came back: an anchor naming a section that
-    ended up empty would print the picture under a heading that is not
-    there, and both pictures on one anchor would stack them together
-    instead of spreading them through the lesson."""
     available = [key for key in _IMAGE_ANCHORS if content.get(key)]
     if not available:
         available = ["main_content"]
-    # Matched on the query text, not on position: a query that found
-    # nothing has its slot filled from another one's runners-up (see
-    # image_builder.fetch_lesson_images), so the Nth picture back is not
-    # necessarily the Nth request — and pairing them positionally would
-    # hand a picture the anchor and the reading instruction meant for a
-    # different one.
     by_query = {str(r.get("query") or "").strip(): r for r in requests}
     used: set[str] = set()
     for i, image in enumerate(images):
@@ -3156,8 +2558,6 @@ def _place_lesson_images(content: dict, images: list[dict], requests: list[dict]
             request = requests[i] if i < len(requests) else {}
         anchor = str(request.get("position_after") or "").strip()
         if anchor not in available or anchor in used:
-            # Fall back to a section this konspekt really has, preferring
-            # one no other picture has taken.
             anchor = next((k for k in available if k not in used), available[0])
         used.add(anchor)
         image["position_after"] = anchor
@@ -3168,36 +2568,6 @@ def _place_lesson_images(content: dict, images: list[dict], requests: list[dict]
 
 async def _caption_and_verify_images(content: dict, topic: str, images: list[dict],
                                      context_of=None) -> list[dict]:
-    """Rewrites each picture's reading instruction to match the file that
-    was ACTUALLY found, and DROPS any file that turns out not to depict
-    what it was fetched for — the two are one AI call because both need
-    the same judgment call (does this file's own description match what
-    it's standing in for), and a picture worth keeping needs the caption
-    written anyway.
-
-    The model writes its search query and a hoped-for caption before any
-    search has run, so a query can land on the wrong file and the caption
-    still describes what was asked for, not what arrived. Measured live:
-    "Pythagorean theorem proof diagram" got "see how the two smaller
-    squares add up to the largest one" as its caption, but Commons
-    actually returned "Proof of the INVERSE pythagorean theorem", which
-    shows no such squares — a caption for a picture that is not the one
-    printed is worse than no picture, and this is also the backstop for
-    the analogy/metaphor mistakes the prompt rules try to prevent
-    upstream (a snail-anatomy diagram for a sentence-structure lesson):
-    even if a bad query slips through, its own Commons description will
-    not match "a sentence's structure" and gets caught here.
-
-    `context_of(image)` returns the text this ONE picture is supposed to
-    illustrate — a konspekt/lecture section key by default (its own
-    "position_after"), or the caller's own slide title / question text
-    for presentations and tests. Returns the images that survived, in
-    their original order; the caller is responsible for using this
-    return value instead of the list it passed in.
-
-    Fail-soft: on any error every image is kept with its original
-    (possibly slightly-off) caption, since dropping every picture over a
-    transient API failure is worse than one imperfect caption."""
     if context_of is None:
         context_of = lambda im: im.get("position_after") or "main_content"
     described = [im for im in images if im.get("file_title") or im.get("caption")]
@@ -3261,34 +2631,6 @@ async def _caption_and_verify_images(content: dict, topic: str, images: list[dic
 
 
 async def _render_slide_images(content: dict, topic: str) -> None:
-    """Fetches a Wikimedia Commons figure for each slide that asked for
-    one (the "image_query" field, see the presentation prompt) and stamps
-    it onto that slide as {"path", "caption", "credit", "source"}.
-
-    Capped at eight pictures a deck (was four — the prompt now asks for an
-    image_query on every slide, per direct feedback that a deck where only
-    some slides carry a picture read as unfinished; eight is a compromise
-    between that and how long one deck generation can reasonably take).
-
-    Fetched CONCURRENTLY (asyncio.gather), not one `await` per slide in a
-    loop. Confirmed live: with a slow/degraded path to Wikimedia (a real,
-    observed condition — even a trivial Commons search taking 10+ seconds)
-    the old sequential loop meant slide 8's fetch didn't even START until
-    slides 1-7's had each finished waiting out their own timeout+retries,
-    stacking into several minutes of "stuck" generation. Concurrent
-    fetches all wait out the SAME bad network at once instead of one after
-    another — worst case is still slow, but it's one slide's worth of
-    slow, not eight.
-
-    Wrapped in an overall wait_for below with a hard ceiling: no matter
-    how bad the network is, this phase gives up and the deck finishes
-    generating WITHOUT some/all pictures rather than hanging the whole
-    request indefinitely — the fail-soft philosophy already documented
-    below, extended to cover time and not just outright failure.
-
-    Fail-soft: a slide whose lookup finds nothing simply keeps its text
-    layout, and a network failure costs the deck its pictures, never the
-    deck itself."""
     slides = content.get("slides") or []
     wanted = [s for s in slides
               if isinstance(s, dict) and str(s.get("image_query") or "").strip()][:8]
@@ -3300,24 +2642,6 @@ async def _render_slide_images(content: dict, topic: str) -> None:
         from app.image_query import build_queries
 
         async def _one(slide: dict) -> tuple[dict, dict] | None:
-            # The model's own phrase is only the CORE of the search now.
-            # build_queries qualifies it for the subject and for the
-            # branch of the subject the lesson is in, and returns the
-            # attempts most-specific-first — fetch_lesson_images walks
-            # that list until something usable turns up. The model's
-            # untouched phrase is always the last entry, so this can only
-            # add better options, never remove the one that already works.
-            # Only the top TWO attempts are actually issued, not the whole
-            # ranked list. Wikimedia rate-limits this app's IP hard, and
-            # image_builder already paces request starts 0.6s apart
-            # globally — so the budget that matters is TOTAL requests per
-            # deck, not how many are in flight.
-            #
-            # Measured: eight slides x four queries x ~three calls each is
-            # ~100 requests, 60s of pure pacing against a 75s cap for the
-            # whole phase, and Wikimedia answered 429 to most of it —
-            # every deck came out with zero pictures. Two queries a slide
-            # is ~30s and leaves room for the retries.
             queries = build_queries(slide, topic, content.get("subject"),
                                     content.get("grade"))[:2]
             found = await fetch_lesson_images(queries, count=1, grade=content.get("grade"),
@@ -3332,17 +2656,6 @@ async def _render_slide_images(content: dict, topic: str) -> None:
         fetched: list[tuple[dict, dict]] = [
             r for r in results if isinstance(r, tuple)
         ]
-        # One picture, one slide. fetch_lesson_images dedupes within a
-        # single call, but every slide makes its OWN call, so nothing
-        # stopped eight slides whose queries overlap ("world map
-        # continents", "continent map illustration") from all landing on
-        # the same file — a deck illustrated with one picture eight times
-        # reads as broken, and it is the first thing a teacher notices.
-        #
-        # The later slide simply goes without rather than re-searching:
-        # another round of queries is another 0.6s-paced burst against an
-        # API that is already rate-limiting us, and a slide with no
-        # picture still has its own composition.
         _seen_paths: set[str] = set()
         _unique: list[tuple[dict, dict]] = []
         for _slide, _image in fetched:
@@ -3356,10 +2669,6 @@ async def _render_slide_images(content: dict, topic: str) -> None:
         fetched = _unique
         if not fetched:
             return
-        # One batched relevance check for the whole deck rather than one
-        # call per slide — same reasoning as the konspekt's pair of
-        # pictures, and it catches a slide whose title says one thing
-        # while the picture Commons actually returned shows another.
         slide_of = {id(image): slide for slide, image in fetched}
         context_of = lambda im: (
             f'{slide_of[id(im)].get("title", "")} — {str(slide_of[id(im)].get("body") or "")[:200]}'
@@ -3383,15 +2692,6 @@ async def _render_slide_images(content: dict, topic: str) -> None:
 
 
 def _render_slide_figures(content: dict, topic: str) -> None:
-    """Draws every slide whose "visual" is a {"type": "figure", ...} block
-    (see _presentation_prompt's figure_visual_rule) via the same
-    figure_builder used for konspekts (_render_subject_figures) and stamps
-    the resulting PNG path onto visual["image"].
-
-    Fail-soft, same as _render_subject_figures: an unknown shape id or a
-    drawing error just drops the "visual" key entirely so the slide falls
-    back to its plain bullet_points/body layout rather than losing the
-    slide or the whole deck."""
     from app.figure_builder import save_figure
     for slide in (content.get("slides") or []):
         if not isinstance(slide, dict):
@@ -3412,20 +2712,6 @@ def _render_slide_figures(content: dict, topic: str) -> None:
 
 
 async def _render_test_images(content: dict, topic: str) -> None:
-    """Fetches a Wikimedia Commons figure for each question that asked for
-    one (the "image_query" field, see _TEST_IMAGE_RULE) and stamps it onto
-    that question as {"path", "caption", "credit", "source"}.
-
-    Most questions have no "image_query" at all — a test is answered from
-    its own text, so a picture only belongs on the minority that are
-    genuinely about one (identify a labelled part, read a map/graph).
-    Capped at 3 questions per test for the same reason a deck is capped at
-    4 slides: past that, a lookup is filling space rather than answering
-    a real need.
-
-    Fail-soft: a question whose lookup finds nothing simply prints as a
-    plain question, and a network failure costs the test its pictures,
-    never the test itself."""
     questions = content.get("questions") or []
     wanted = [q for q in questions
               if isinstance(q, dict) and str(q.get("image_query") or "").strip()][:3]
@@ -3460,28 +2746,12 @@ async def _render_test_images(content: dict, topic: str) -> None:
             }
 
     try:
-        # Same fix as _render_lesson_images (konspekt): this had no local
-        # deadline, just a bare await into image_builder's single global
-        # pacer shared by every concurrent request in the process — one
-        # slow/rate-limited teacher's image lookups could hold up
-        # another's entirely unrelated test. 15s matches konspekt's own
-        # tuning — see that function's comment for the measurement behind
-        # the number (a healthy single fetch is ~12s; more than that under
-        # load is waiting on a block that doesn't lift any faster for it).
         await asyncio.wait_for(_do(), timeout=15.0)
     except Exception as e:
         logger.warning(f"Test image fetch failed for topic={topic[:50]}: {e}")
 
 
 def _copy_textbook_image_to_uploads(source_path: str) -> str | None:
-    """Copies a real textbook image (see _find_textbook_image) into
-    uploads/images/ under a fresh name and returns the "/uploads/images/…"
-    web path the exports expect — the same convention every other image
-    source here uses (image_builder.py's Commons/logo/map fetchers all
-    save there too), so export_builder.py's path resolution doesn't need
-    a special case for this one source. None on any I/O failure — same
-    fail-soft contract as everything else in this file that touches a
-    picture."""
     import shutil
     import uuid
 
@@ -3498,11 +2768,6 @@ def _copy_textbook_image_to_uploads(source_path: str) -> str | None:
 
 
 async def _lookup_lesson_image_cache(subject: str, topic_key: str, limit: int) -> list[dict]:
-    """Up to `limit` previously-verified illustrations for this exact
-    (subject, topic) — see models.LessonImageCache's own docstring for
-    why grade isn't part of the match. Never raises: a cache miss (or a
-    DB hiccup) just means the normal Commons-search path runs, same as
-    before this cache existed."""
     if limit <= 0 or not topic_key:
         return []
     try:
@@ -3534,11 +2799,6 @@ async def _lookup_lesson_image_cache(subject: str, topic_key: str, limit: int) -
 
 
 async def _save_lesson_images_to_cache(subject: str, topic: str, topic_key: str, images: list[dict]) -> None:
-    """Persists newly Commons-fetched, AI-verified illustrations (see the
-    `_cache_slot` marker _render_lesson_images stamps on them) so the next
-    generation on this same (subject, topic) reuses them instead of
-    searching Commons again. Never raises — a failed save just means this
-    topic keeps costing a Commons search until it succeeds."""
     if not images or not topic_key:
         return
     try:
@@ -3573,33 +2833,6 @@ async def _save_lesson_images_to_cache(subject: str, topic: str, topic_key: str,
 
 
 async def _render_lesson_images(content: dict, topic: str) -> None:
-    """Fetches the konspekt's two Wikimedia Commons teaching illustrations
-    (see the "lesson_images" prompt rule) and rewrites
-    content["lesson_images"] into what the exports need:
-    {"path", "caption", "credit", "source", "position_after",
-    "explanation"} — 0, 1 or 2 entries, since the export renders however
-    many actually came back rather than failing over a picture Commons
-    did not have.
-
-    The model's own entries arrive in that same key as {"query",
-    "position_after", "explanation"}; they are replaced here by the
-    fetched files, carrying the anchor and the reading instruction over.
-    A legacy "lesson_image_queries" list of plain strings is still
-    accepted, and an empty/malformed field falls back to the topic, so a
-    konspekt still gets its illustrations rather than silently going
-    without.
-
-    Best-effort like every other illustration lookup here: a Commons
-    outage or an empty search result means the konspekt goes out with
-    fewer pictures, never that generation fails.
-
-    Reuses models.LessonImageCache before searching Commons at all: once
-    one teacher's generation on a (subject, topic) has an AI-verified
-    illustration, every later generation on that same topic — any
-    teacher, any grade — gets it for free instead of paying for its own
-    Commons search. New Commons finds are saved back to the cache after
-    they survive verification, so the cache only ever fills with images
-    already proven relevant, never a raw unverified search hit."""
     subject = str(content.get("subject") or "").strip()
     topic_key = topic.strip().lower()
     requested = content.get("lesson_images")
@@ -3621,11 +2854,6 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
     async def _do() -> None:
         from app.image_builder import fetch_lesson_images
 
-        # A real illustration from the assigned textbook itself beats an
-        # AI-guessed Commons search — when one exists (see
-        # _find_textbook_image's docstring for why this is scoped to a
-        # human-verified subset of books) it takes one of the two lesson
-        # image slots, leaving Commons to fill just the other.
         images: list[dict] = []
         textbook_image = _find_textbook_image(content.get("subject") or "", content.get("grade") or "", topic)
         if textbook_image:
@@ -3634,25 +2862,12 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
                 images.append({
                     "path": copied, "caption": topic,
                     "credit": f"Аз китоби дарсии расмии синфи {content.get('grade')}",
-                    # An empty "description" here got this image silently
-                    # dropped by _caption_and_verify_images below when a
-                    # Commons candidate with a real description was also
-                    # in the running — confirmed live: the verification
-                    # call has nothing to judge "does this match the
-                    # lesson" against otherwise, and the two-candidate
-                    # case not the one-candidate case is what surfaced it
-                    # (a lone image with no description still got kept).
-                    # Stating plainly what this is gives it the same
-                    # footing as a Commons file's real description.
                     "description": f"Тасвири аслии китоби дарсии расмии синфи {content.get('grade')}, наздики мавзӯи «{topic}».",
                     "source": None, "width": None, "height": None,
                 })
 
         remaining_slots = 2 - len(images)
         if remaining_slots > 0:
-            # Already-verified images for this exact topic, reused as-is —
-            # skip Commons and skip re-verification (they passed it once
-            # already; the caption/explanation stored is that verified one).
             cached = await _lookup_lesson_image_cache(subject, topic_key, remaining_slots)
             images.extend(cached)
             still_needed = remaining_slots - len(cached)
@@ -3661,29 +2876,10 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
                                                      grade=content.get("grade"),
                                                      language=content.get("language"),
                                                      subject=content.get("subject"))
-                # Tagged with which cache slot they'd occupy (0-based among
-                # THIS call's Commons-sourced images) so a save after
-                # verification below knows which of these are new finds —
-                # a cache hit above never gets this marker, so it's never
-                # written back as if it were freshly discovered.
                 for i, image in enumerate(fetched):
                     image["_cache_slot"] = len(cached) + i
                 images.extend(fetched)
 
-        # Three independent sources feed `images` above — the textbook
-        # scan, the per-topic cache, and a fresh Commons/Openverse search
-        # — and until this ran, nothing compared them against each other.
-        # fetch_lesson_images dedupes only WITHIN its own call, and it is
-        # never told what the cache already returned, so the obvious case
-        # went straight through: the cache holds the one good picture for
-        # this topic, the search for the remaining slot finds that same
-        # Commons file, and the konspekt prints it twice. Reported from a
-        # real material.
-        #
-        # Keyed on the Commons file title where there is one and the
-        # saved path otherwise: two cache hits share a title but each
-        # download gets its own uuid filename, so path alone would call
-        # them different pictures.
         _seen: set[str] = set()
         _unique: list[dict] = []
         for im in images:
@@ -3702,10 +2898,6 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
                 content, topic, images,
                 context_of=lambda im: _section_text(content, im.get("position_after") or "main_content"))
         if images:
-            # Save BEFORE stripping "_cache_slot" below — the save reads
-            # that marker, and popping it first (even from a filtered
-            # copy) would strip it here too since these are the same dict
-            # objects, not copies.
             to_cache = [im for im in images if im.get("_cache_slot") is not None]
             if to_cache and topic_key:
                 await _save_lesson_images_to_cache(subject, topic, topic_key, to_cache)
@@ -3713,34 +2905,9 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
                 im.pop("_cache_slot", None)
             content["lesson_images"] = images
         else:
-            # Nothing found: drop the model's request objects rather than
-            # leaving them in the stored konspekt, where an export would
-            # read {"query": ...} as if it were a fetched picture.
             content.pop("lesson_images", None)
 
     try:
-        # Unlike _render_slide_images (presentations), this had no local
-        # deadline at all — just a bare await straight into
-        # fetch_lesson_images, which funnels through image_builder's
-        # single GLOBAL pacer shared by every concurrent request in the
-        # process. Under one request at a time that await returns in a
-        # few seconds; under a real load test (8 teachers generating at
-        # once) every one of them queued behind the same 0.6s-spaced,
-        # 429-backing-off pacer, and a konspekt that normally takes ~10s
-        # took 110s+ waiting on OTHER teachers' image lookups — with
-        # several others still not back after 180s.
-        #
-        # First fix used 30s here. Measured against a real solo request:
-        # a SUCCESSFUL fetch (search + download + AI relevance check)
-        # takes ~12s end to end. 30s was never buying more successes —
-        # under the same 8-way load, every single one still came back
-        # with zero images even at the full 30s, because Wikimedia's
-        # block doesn't lift faster the longer you wait on it. It was
-        # pure wasted tail latency: a request already destined to get no
-        # picture sat there for up to 30s finding that out instead of 15.
-        # 15s is a bit above 12s's real success time, so a normal fetch
-        # still comfortably completes, but the worst case a teacher
-        # actually feels is roughly cut in half.
         await asyncio.wait_for(_do(), timeout=15.0)
     except Exception as e:
         logger.warning(f"Lesson image fetch failed for topic={topic[:50]}: {e}")
@@ -3748,11 +2915,6 @@ async def _render_lesson_images(content: dict, topic: str) -> None:
 
 
 def _render_subject_figures(content: dict, topic: str) -> None:
-    """Draws every "figures" entry (see figure_builder.py) and stamps the
-    resulting path onto the entry as "image", so the pdf/docx exports and
-    the web viewer all embed the same drawing. Same best-effort contract as
-    _render_timeline_images — a shape the model invented, or a drawing that
-    fails, drops out silently rather than failing the konspekt."""
     from app.figure_builder import save_figure
 
     kept = []
@@ -3765,8 +2927,6 @@ def _render_subject_figures(content: dict, topic: str) -> None:
             logger.warning(f"Figure render failed for topic={topic[:50]}: {e}")
             path = None
         if not path:
-            # No renderer for it, so there is nothing to show — dropping it
-            # beats leaving a caption under a blank space.
             logger.info(f"Figure skipped (unknown shape {fig.get('shape')!r}) topic={topic[:50]}")
             continue
         fig["image"] = path
@@ -3776,17 +2936,6 @@ def _render_subject_figures(content: dict, topic: str) -> None:
 
 
 def _render_timeline_images(content: dict, topic: str) -> None:
-    """Renders a real infographic (see timeline_builder.py) for every
-    "timeline" and "flowchart"/"process"-type visual_blocks entry — a
-    connected-cards graphic (dated line for timeline, numbered arrow-chain
-    for process) — and stamps its path onto the block as "image", so the
-    docx/pdf exports and the web viewer all embed that same image instead
-    of three separate from-scratch attempts at the same graphic.
-    "table"/"comparison"/"concept_map" stay as real HTML/docx/PDF
-    tables/lists — those already render natively well and don't need a
-    flattened image. Best-effort and synchronous (pure local PIL drawing,
-    no network) — a failure here should never fail the konspekt itself,
-    same contract as the geography map."""
     from app.timeline_builder import save_timeline_image, save_process_image, save_concept_map_image
 
     for block in (content.get("visual_blocks") or []):
@@ -3810,18 +2959,6 @@ def _render_timeline_images(content: dict, topic: str) -> None:
 
 
 async def _fetch_real_world_image(content: dict, topic: str) -> None:
-    """Best-effort: when the AI named a concrete real-world subject via
-    "real_image_query" (see _konspekt_prompt), fetches an actual photo from
-    Wikipedia — a clean brand/product mark for "logo" style, a real
-    background-removed photo cutout for "cutout" style (a named animal/
-    plant/object), or the labeled internal-anatomy illustration itself for
-    "diagram" style (biology topics specifically about an organism's
-    internal structure) — via app/image_builder.py's fetch_real_image, and
-    stamps content["real_image"] = {"path", "caption", "style"}. Mutates
-    content in place; any failure (no article found, network error,
-    background-removal error) just means the konspekt goes out without
-    this image, same fail-soft contract as the map/timeline images above —
-    never fails the konspekt itself."""
     query = (content.get("real_image_query") or "").strip()
     if not query:
         return
@@ -3829,12 +2966,6 @@ async def _fetch_real_world_image(content: dict, topic: str) -> None:
     if style not in ("logo", "cutout", "diagram"):
         style = "cutout"
     try:
-        # Same fix as _render_lesson_images/_render_test_images: no local
-        # deadline here either, and this one goes through image_builder's
-        # single global pacer too — plus, for "cutout" style, a local
-        # rembg background-removal pass on top of the network fetch. One
-        # query only, so 12s (vs. 15s for the other two, which may fetch
-        # more than one image) plus a little slack for rembg.
         from app.image_builder import fetch_real_image
         language = content.get("language") or "Русский"
         result = await asyncio.wait_for(fetch_real_image(query, language, style), timeout=12.0)
@@ -3846,14 +2977,6 @@ async def _fetch_real_world_image(content: dict, topic: str) -> None:
 
 
 async def retry_visual_assets(content: dict, topic: str, subject: str) -> bool:
-    """Re-attempts whichever image the original generation asked for but
-    didn't end up with — `real_image` (from `real_image_query`) and/or,
-    for География, `map_image` (from `map_locations`). Both fetches are
-    best-effort at generation time (see _fetch_real_world_image's
-    docstring) and a teacher previously had no way to retry a miss short
-    of regenerating the whole konspekt/lektsiya. Mutates `content` in
-    place; returns whether anything was actually added, so the caller
-    knows whether it's worth persisting."""
     changed = False
     if subject == "География" and content.get("map_locations") and not content.get("map_image"):
         try:
@@ -3871,24 +2994,6 @@ async def retry_visual_assets(content: dict, topic: str, subject: str) -> bool:
 
 
 async def retry_lesson_image(content: dict, topic: str, index: int) -> bool:
-    """Replaces ONE lesson_images entry (see _render_lesson_images) with a
-    different Wikimedia Commons result for the same search query — for
-    when the picked image technically passed the relevance check but a
-    teacher just doesn't think it fits their class, not a case
-    retry_visual_assets covers (that one only fires when a fetch came
-    back with NOTHING at all; this is "I have a picture, I want a
-    DIFFERENT one").
-
-    Excludes the current file by its Commons title so a retry can never
-    hand back the exact same picture. Deliberately does NOT touch
-    models.LessonImageCache — a teacher clicking "try another" is an
-    explicit signal the auto-picked one wasn't good enough for THIS
-    lesson, not evidence the replacement is better for every future
-    lesson on this topic, so overwriting the shared cache entry here
-    would be presumptuous.
-
-    Mutates `content` in place; returns whether anything actually
-    changed, so the caller knows whether it's worth persisting."""
     images = content.get("lesson_images")
     if not isinstance(images, list) or not (0 <= index < len(images)):
         return False
@@ -3899,9 +3004,6 @@ async def retry_lesson_image(content: dict, topic: str, index: int) -> bool:
     exclude_title = current.get("file_title") or ""
     try:
         from app.image_builder import fetch_lesson_images
-        # count=2 for the one query: Commons search is deterministic, so
-        # asking for just 1 would likely just hand back the same file
-        # again. The second candidate is the actual "different" pick.
         fetched = await fetch_lesson_images([query], count=2,
                                             grade=content.get("grade"),
                                             language=content.get("language"),
@@ -3924,33 +3026,14 @@ async def retry_lesson_image(content: dict, topic: str, index: int) -> bool:
         return False
 
 
-# How much of the (already up-to-60000-char, see document_extract.py)
-# source text actually gets woven into a single generation prompt. Was
-# 15000, cut to 6000 to roughly halve the token overhead a source excerpt
-# adds (~8000 extra prompt tokens measured live at 15000). Raised back up
-# past the original value on explicit request for MAXIMUM textbook
-# fidelity — a teacher who has a real assigned textbook cached for their
-# subject/grade wants the konspekt built from as much of the actual
-# chapter as reasonably fits a prompt, not the leanest slice that gets
-# "most of the grounding benefit"; the extra token cost is accepted
-# on purpose here in exchange for that.
 _SOURCE_EXCERPT_CHARS = 20000
 
 
 def _find_topic_offset(source_text: str, topic: str) -> int:
-    """Case-insensitive search for `topic` in `source_text`, last match
-    first (see _select_relevant_excerpt's docstring for why last-not-first
-    matters for a full textbook). -1 when nothing matches at all, even
-    word-by-word. Shared by _select_relevant_excerpt (windows the prompt
-    excerpt around this offset) and _find_textbook_image (maps it to a
-    page number instead)."""
     haystack = source_text.lower()
     needle = topic.lower().strip()
     idx = haystack.rfind(needle) if needle else -1
     if idx == -1 and needle:
-        # Whole topic phrase not found verbatim — try its longest words
-        # individually (a chapter heading rarely repeats the exact
-        # multi-word topic string a teacher typed).
         for word in sorted(set(needle.split()), key=len, reverse=True):
             if len(word) > 3:
                 idx = haystack.rfind(word)
@@ -3960,27 +3043,6 @@ def _find_topic_offset(source_text: str, topic: str) -> int:
 
 
 def _select_relevant_excerpt(source_text: str, topic: str, max_chars: int = _SOURCE_EXCERPT_CHARS) -> str:
-    """A teacher-uploaded document ("book mode") — or now a cached official
-    textbook, see _load_cached_textbook — can easily be longer than what's
-    worth spending a whole prompt on. This picks the max_chars window most
-    likely to actually cover `topic`, instead of always keeping just the
-    start of the document (which, for a topic covered later in a long
-    textbook, would mean the source material never reaches the model at
-    all). Plain case-insensitive substring search, not real semantic
-    retrieval — no extra AI call/embedding step, and good enough to
-    usually land the window on the right chapter/section.
-
-    Uses the LAST match, not the first: a full textbook's table of
-    contents repeats every chapter title near the very start of the file,
-    so `find()` reliably landed the window on the TOC line itself instead
-    of the chapter body — confirmed live on Математика 5's "Порча" (a
-    grade-5 geometry topic): the TOC mentions it twice around char 1600,
-    the real section starts around char 28000. The teacher's-own-upload
-    case this was originally written for isn't hurt by the switch — those
-    documents are rarely long enough to have a TOC at all, so first vs.
-    last match is usually the same occurrence anyway.
-    Falls back to a head-truncation (the old behavior) when the topic
-    string can't be found anywhere in the source."""
     if len(source_text) <= max_chars:
         return source_text
 
@@ -3989,7 +3051,6 @@ def _select_relevant_excerpt(source_text: str, topic: str, max_chars: int = _SOU
     if idx == -1:
         return source_text[:max_chars]
 
-    # Center the window on the match, clamped to the document's bounds.
     half = max_chars // 2
     start = max(0, idx - half)
     end = min(len(source_text), start + max_chars)
@@ -4002,22 +3063,6 @@ def _select_relevant_excerpt(source_text: str, topic: str, max_chars: int = _SOU
     return excerpt
 
 
-# Full extracted text of real teaching material for one (subject, grade),
-# cached once rather than fetched per request, from two different sources:
-#   - scripts/build_textbook_cache.py — scanned official textbook PDFs
-#     (kitobkhona.tj, a public resource — the same source
-#     official-topics.json's topic titles were pulled from); most turned
-#     out to be image-only scans with no text layer (pypdf extracts 0
-#     chars from those), so only a few grades came through clean
-#   - scripts/build_local_konspekt_cache.py — real ready-made lesson-plan
-#     documents (native digital .pdf/.docx, not scans) covering more
-#     subjects with richer, more konspekt-shaped text
-# Both write into the same _manifest.json this reads, so a (subject, grade)
-# pair works identically regardless of which one produced it. Grounds
-# generation in real material instead of the model's own (sometimes
-# fabricated — see the anti-fabrication rule in _konspekt_prompt)
-# knowledge; costs MORE input tokens, not fewer (measured live — see
-# _SOURCE_EXCERPT_CHARS's comment), the trade is for accuracy, not price.
 _TEXTBOOK_CACHE_DIR = os.path.join(os.path.dirname(__file__), "textbooks_cache")
 _textbook_manifest_cache: dict | None = None
 
@@ -4035,19 +3080,11 @@ def _textbook_manifest() -> dict:
 
 
 def _textbook_entry(subject: str, grade: str) -> dict | None:
-    """{"name": <cache file stem>, "images_ok": bool} for this exact
-    (subject, grade), or None when the pilot doesn't cover it yet. grade
-    arrives as e.g. "11 класс" (see lib/material-types.ts's CLASSES) —
-    only the leading number matters for the lookup."""
     grade_num = (grade or "").strip().split()[0] if grade else ""
     return _textbook_manifest().get(subject, {}).get(grade_num)
 
 
 def _load_cached_textbook(subject: str, grade: str) -> str | None:
-    """None when there's no cached textbook for this exact (subject, grade)
-    — the caller falls back to ordinary from-the-model generation, exactly
-    like it always has, so a subject/grade this pilot doesn't cover yet
-    behaves no differently than before this existed."""
     entry = _textbook_entry(subject, grade)
     if not entry:
         return None
@@ -4059,24 +3096,6 @@ def _load_cached_textbook(subject: str, grade: str) -> str | None:
 
 
 def _find_textbook_image(subject: str, grade: str, topic: str) -> dict | None:
-    """A real illustration from the actual assigned textbook, near
-    wherever `topic` appears, instead of an AI-guessed Wikimedia Commons
-    search photo — but only for (subject, grade) pairs a human has
-    actually looked at a sample of and confirmed the extracted images are
-    genuine standalone illustrations (see _manifest.json's "images_ok").
-    That check matters: two of the three pilot books' extracted images
-    turned out unusable despite passing every automated filter —
-    Математика 5's "images" were the whole scanned page background
-    repeated on every page, and Алгебра 11's were texture-fill fragments
-    (a hatched circle, a hatched bar) cut out of a larger vector-drawn
-    diagram, not complete pictures on their own. Serving either as "the
-    textbook's own illustration" would be worse than serving nothing.
-
-    Returns {"path": <absolute path>, "page": int} for the closest image
-    to the topic's page, or None (no cached book, images_ok is false, no
-    images extracted, or the topic string isn't found in the text at
-    all — same conditions _load_cached_textbook / _select_relevant_excerpt
-    already handle gracefully)."""
     entry = _textbook_entry(subject, grade)
     if not entry or not entry.get("images_ok"):
         return None
@@ -4086,7 +3105,7 @@ def _find_textbook_image(subject: str, grade: str, topic: str) -> dict | None:
         with open(os.path.join(_TEXTBOOK_CACHE_DIR, f"{name}.txt"), encoding="utf-8") as f:
             text = f.read()
         with open(os.path.join(_TEXTBOOK_CACHE_DIR, f"{name}.pages.json"), encoding="utf-8") as f:
-            breakpoints = json.load(f)  # [[char_offset, page_number], ...]
+            breakpoints = json.load(f)
         images_dir = os.path.join(_TEXTBOOK_CACHE_DIR, f"{name}_images")
         with open(os.path.join(images_dir, "images.json"), encoding="utf-8") as f:
             images = json.load(f)
@@ -4106,10 +3125,6 @@ def _find_textbook_image(subject: str, grade: str, topic: str) -> dict | None:
         else:
             break
 
-    # Closest page wins; a same-page image beats a same-distance tie by
-    # being listed first (images list is already page-ordered). Capped at
-    # 5 pages away — past that, the "closest" image is more likely from an
-    # unrelated section than actually illustrating this topic.
     best = min(images, key=lambda im: abs(im["page"] - page))
     if abs(best["page"] - page) > 5:
         return None
@@ -4133,18 +3148,11 @@ async def generate_material(
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
 ) -> dict:
-    """`previous_digests`: summarize_previous_konspekt() digests of what
-    this teacher already has on this exact topic, so a second konspekt on
-    it comes out as a different lesson rather than a reworded copy. The
-    router builds them (see routers/materials.py's _previous_digests)."""
     prompt_fn = PROMPTS.get(material_type)
     if not prompt_fn:
         logger.error(f"Unknown material type: {material_type}")
         raise ValueError(f"Unknown material type: {material_type}")
 
-    # A teacher's own uploaded document always wins if they gave one
-    # (explicit "book mode" — see routers/materials.py's upload-source) —
-    # the cached official textbook only fills in when they didn't.
     source_text = source_text or _load_cached_textbook(subject, grade)
     source_excerpt = _select_relevant_excerpt(source_text, topic) if source_text else None
 
@@ -4169,10 +3177,6 @@ async def generate_material(
     else:
         test_type_rule = "Create exactly the number of questions requested, MIXING four types: multiple_choice, true_false, multiple_select, open_ended — do NOT make every question a 4-option multiple choice."
 
-    # Set when this konspekt is one day of a multi-day Curriculum (see
-    # generate_roadmap/CurriculumDay) — tells the model where this lesson
-    # sits in the course so it builds on prior days instead of repeating or
-    # re-introducing material the students already covered.
 
     system_prompts = {
         "konspekt": _konspekt_system_prompt(language),
@@ -4217,59 +3221,18 @@ CRITICAL RULES:
 
     content = await _call_ai(system_prompt, user_prompt, language, log_label=f"{material_type} topic={topic[:50]}")
 
-    # Second pass: fact-check/consistency pass, for the types where invented
-    # facts/dates/names are the real risk — konspekt, and now prezentatsiya
-    # (every slide shares the same title/bullet_points/speaker_notes shape,
-    # so there's little structural-corruption risk).
-    # Skipped for "test": its per-question shape actually varies (type,
-    # correct_index vs. correct_indices, model_answer), and asking the model
-    # to "fix" that heterogeneous JSON risks corrupting it for comparatively
-    # little accuracy benefit.
     if material_type in ("konspekt", "lektsiya", "prezentatsiya"):
         content = await _verify_and_fix(material_type, content, language, topic)
 
-    # "test" and "amaliy" are in this list too: both sheets are printed in
-    # their own language and accented by their subject, and neither is
-    # knowable from the tasks/questions alone.
-    #
-    # "amaliy" was missing here until a teacher generated a practical-
-    # tasks worksheet in Tajik and got it back with Tajik task text but a
-    # Russian "Ф.И.О./Класс/Дата/Оценка" header and "Индивидуальные
-    # задания"/"Групповые задания" section titles — every OTHER material
-    # type stamps its language onto the stored content at generation time
-    # so the download buttons (routers/materials.py) can pick the right
-    # label language later; amaliy simply never did, so
-    # build_practical_pdf/_docx always fell back to their Russian default
-    # regardless of what the teacher actually asked for.
     if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy"):
-        # The JSON shape never asks the model for these (it already knows
-        # them from the prompt), but docx_builder/export_builder's cover
-        # page and header tag need them on the stored content itself —
-        # stamped from the actual request params, not the model's guess.
-        # "language" specifically matters because the Konspekt/Presentation
-        # DB rows have no language column of their own — this is the only
-        # place it survives past generation, so the download buttons can
-        # later pick the right section-label language (Компетенции vs
-        # Салоҳиятҳо vs Competencies) instead of always defaulting to
-        # Russian. "template"/"subject" together are what let
-        # build_presentation_pptx/pdf pick a per-subject accent color and
-        # per-template header style instead of one fixed hardcoded look.
         content["subject"] = subject
         content["grade"] = grade
         content["language"] = language
         content["level"] = level
         content["template"] = template
         if variant:
-            # Which lesson shape/angle this konspekt was built on. Stored
-            # so the NEXT konspekt on the same topic can pick a different
-            # one — see _pick_variant.
             content["variant"] = variant
 
-    # Geography gets a real, generated OpenStreetMap image (not just text) —
-    # best-effort, a failed/slow lookup should never fail the konspekt
-    # itself. Every other subject relies on formulas/concept_cards for
-    # visual structure instead of a body photo (the teacher asked for
-    # schema/cards over pictures in the lesson content itself).
     if material_type in ("konspekt", "lektsiya") and subject == "География" and content.get("map_locations"):
         try:
             from app.map_builder import build_geography_map
@@ -4288,68 +3251,27 @@ CRITICAL RULES:
         await _render_lesson_images(content, topic)
 
     if material_type == "prezentatsiya":
-        # Before anything is drawn or fetched: a bullet that only repeats
-        # the slide's own visual is removed, so the layout below never
-        # budgets space for it. See _drop_bullets_duplicating_visual.
         _drop_bullets_duplicating_visual(content, topic)
-        # Slides carry their own figures — one per slide that asked for
-        # one, not a shared pair like a konspekt's.
         _typeset_math_content(content, topic)
         _render_slide_figures(content, topic)
         await _render_slide_images(content, topic)
 
     if material_type == "test":
-        # Before the images: a question the gate is about to drop must not
-        # first cost a Commons lookup.
         _validate_test_quality(content, topic, question_count or 10)
         _typeset_math_content(content, topic)
-        # Most questions get no image at all — see _TEST_IMAGE_RULE. Only
-        # the few the model marked as genuinely needing one are looked up.
         await _render_test_images(content, topic)
 
     if material_type == "amaliy":
         _validate_practical_quality(content, topic)
 
-    # The PDF cover page went back to gradient-only, no photo — see
-    # export_builder.py's build_konspekt_pdf. get_subject_cover_image()
-    # still exists in app/image_builder.py if that's wanted again later.
-    # Presentations briefly got a per-slide Wikipedia photo too, but that
-    # was reverted (teacher asked for no images at all in presentations,
-    # same call already made for konspekt) — see app/image_builder.py's
-    # fetch_topic_image for the fetch logic, still there unused if wanted
-    # again later.
 
     return content
 
 
-# Keys that answered 402 ("payment required / credits exhausted") at least
-# once in this process. A drained key stays drained until someone tops it
-# up and restarts the server, so re-trying it on every single AI call just
-# spends a network round-trip to be told the same thing again — with the
-# first key drained that was ~1-2s added to EVERY generation, and every
-# call logging a scary "credits exhausted" warning. Deliberately NOT
-# persisted: a restart is exactly when a key may have been topped up, so
-# each process gets one fresh attempt per key.
 _exhausted_keys: set[str] = set()
 
 
 async def _call_ai(system_prompt: str, user_prompt: str, language: str, log_label: str) -> dict:
-    """Shared request/retry/key-rotation logic for a single AI JSON call.
-    Applies the Tajik post-processing safety net before returning the
-    parsed dict. No daily cap enforced — see the comment right below.
-
-    Bounded by security.ai_slot: this is the single chokepoint every AI
-    call in the app passes through (generation, per-item regeneration,
-    chat-edit, quiz sets, curriculum days, the verify pass), so putting
-    the concurrency ceiling here covers all of them at once instead of
-    each endpoint remembering to apply it.
-
-    The ceiling matters for a reason specific to this provider: the
-    retry loop below already documents that the token-per-minute quota
-    is SHARED across all five API keys. Firing more concurrent requests
-    at it therefore doesn't get more throughput, it gets more 429s and
-    more retries — every in-flight generation gets slower, not just the
-    new ones. Queueing is strictly better than piling on."""
     global _api_call_count, _daily_reset_time
 
     async with ai_slot(log_label):
@@ -4365,16 +3287,8 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
         _daily_reset_time = today
         logger.info(f"Daily API call count reset on {today}")
 
-    # Daily materials cap removed per product decision — teachers can
-    # generate as much as they want. _api_call_count is still tracked and
-    # logged below (calls_today) purely for observability; nothing reads
-    # settings.MAX_MATERIALS_PER_DAY as an enforced limit anymore.
 
     api_keys = [k for k in [settings.AI_API_KEY, settings.AI_API_KEY_2, settings.AI_API_KEY_3, settings.AI_API_KEY_4, settings.AI_API_KEY_5] if k]
-    # Drop keys already known to be out of credit (see _exhausted_keys).
-    # If that would leave nothing, keep the full list and let them fail
-    # normally — an empty rotation would turn a billing problem into an
-    # unexplained "AI service not configured".
     _live = [k for k in api_keys if k not in _exhausted_keys]
     if _live:
         api_keys = _live
@@ -4385,16 +3299,6 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
     last_error = None
     start_time = time.time()
 
-    # A 429 here (Cerebras token-per-minute limit) deliberately falls
-    # through to the generic retry-same-key path below instead of jumping
-    # straight to the next key the way 402 (credits exhausted) does —
-    # tried that under a 10-concurrent-request burst and it measurably
-    # made things WORSE (success dropped from 8/10 to 4/10), which means
-    # the TPM quota is shared across all 5 keys rather than tracked
-    # separately per key: cycling keys fast on a 429 just burns through
-    # all 5 keys' one attempt each without giving the shared quota time
-    # to refill, where waiting ~2s per retry on the same key actually
-    # does. Don't "fix" this again without re-running that same load test.
     for key_idx, key in enumerate(api_keys):
         for attempt in range(3):
             if attempt > 0 or key_idx > 0:
@@ -4446,11 +3350,6 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
                 elapsed_time = time.time() - start_time
                 _api_call_count += 1
 
-                # The provider returns a token breakdown on every call and
-                # this used to be thrown away, so there was no way to answer
-                # "what does one konspekt actually cost" without running a
-                # one-off script. Logged per call now: prompt vs completion
-                # matters because only the prompt half is ours to shrink.
                 usage = data.get("usage") or {}
                 logger.info(
                     f"AI SUCCESS: {log_label} time={elapsed_time:.2f}s "
@@ -4483,28 +3382,6 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
 
 
 async def _call_ai_stream(system_prompt: str, user_prompt: str, log_label: str):
-    """Streaming counterpart to _call_ai — same daily-cap/key-rotation/retry
-    shape, but yields raw text deltas as they arrive (`stream: true` against
-    the OpenAI-compatible /chat/completions endpoint) instead of waiting for
-    the full response. Used by generate_konspekt_stream for real token-level
-    progress; _call_ai itself is untouched and still used everywhere else.
-
-    Async generators can't carry a return value the way sync generators use
-    StopIteration for — the caller is responsible for concatenating yielded
-    deltas to reconstruct the full text (see generate_konspekt_stream).
-
-    Retry safety: once any real content has been streamed to the caller for
-    this call, a later failure is raised rather than silently retried —
-    retrying after partial output would duplicate content in the caller's
-    buffer. Retries only happen for failures before any content arrived
-    (auth/network/rate-limit failures at request time), same cases _call_ai
-    already retries.
-
-    Takes a security.ai_slot for the whole stream, same ceiling _call_ai
-    respects — a streamed generation holds an upstream connection for its
-    entire duration, so if anything it occupies a slot longer than a
-    non-streaming one and would be the wrong thing to leave uncounted.
-    """
     global _api_call_count, _daily_reset_time
 
     async with ai_slot(f"{log_label} (stream)"):
@@ -4521,16 +3398,8 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
         _daily_reset_time = today
         logger.info(f"Daily API call count reset on {today}")
 
-    # Daily materials cap removed per product decision — teachers can
-    # generate as much as they want. _api_call_count is still tracked and
-    # logged below (calls_today) purely for observability; nothing reads
-    # settings.MAX_MATERIALS_PER_DAY as an enforced limit anymore.
 
     api_keys = [k for k in [settings.AI_API_KEY, settings.AI_API_KEY_2, settings.AI_API_KEY_3, settings.AI_API_KEY_4, settings.AI_API_KEY_5] if k]
-    # Drop keys already known to be out of credit (see _exhausted_keys).
-    # If that would leave nothing, keep the full list and let them fail
-    # normally — an empty rotation would turn a billing problem into an
-    # unexplained "AI service not configured".
     _live = [k for k in api_keys if k not in _exhausted_keys]
     if _live:
         api_keys = _live
@@ -4541,16 +3410,6 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
     last_error = None
     start_time = time.time()
 
-    # A 429 here (Cerebras token-per-minute limit) deliberately falls
-    # through to the generic retry-same-key path below instead of jumping
-    # straight to the next key the way 402 (credits exhausted) does —
-    # tried that under a 10-concurrent-request burst and it measurably
-    # made things WORSE (success dropped from 8/10 to 4/10), which means
-    # the TPM quota is shared across all 5 keys rather than tracked
-    # separately per key: cycling keys fast on a 429 just burns through
-    # all 5 keys' one attempt each without giving the shared quota time
-    # to refill, where waiting ~2s per retry on the same key actually
-    # does. Don't "fix" this again without re-running that same load test.
     for key_idx, key in enumerate(api_keys):
         for attempt in range(3):
             if attempt > 0 or key_idx > 0:
@@ -4584,7 +3443,7 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
                             if key not in _exhausted_keys:
                                 _exhausted_keys.add(key)
                                 logger.warning(f"AI API key {key[:8]}... credits exhausted, skipping it for the rest of this process")
-                            break  # next key
+                            break
 
                         if response.status_code != 200:
                             body = await response.aread()
@@ -4642,15 +3501,6 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
 
 
 def _resolve_pointer(root, pointer: str):
-    """Walk a JSON Pointer (RFC 6901) and return (parent, key) for the
-    node it names, or None if the path does not already exist.
-
-    Returning the PARENT rather than the value is what lets the caller
-    overwrite in place. Refusing to resolve a path that isn't already
-    there is deliberate: the verify pass may only correct values that the
-    generator produced, never invent new fields or grow arrays, so a
-    hallucinated path is dropped instead of quietly reshaping the JSON.
-    """
     if not isinstance(pointer, str) or not pointer.startswith("/"):
         return None
     node = root
@@ -4678,15 +3528,6 @@ def _resolve_pointer(root, pointer: str):
 
 
 def _apply_fixes(content: dict, fixes: list) -> tuple[dict, int]:
-    """Apply the verify pass's corrections to a copy of [content].
-
-    Only scalar leaves are replaceable, and only at paths that already
-    exist — see _resolve_pointer. Between those two rules the document's
-    shape is guaranteed to survive verification untouched, which is a
-    stronger guarantee than the whole-document rewrite this replaced
-    could give (there, a model that dropped an array item silently lost
-    the teacher's content).
-    """
     patched = copy.deepcopy(content)
     applied = 0
     for fix in fixes:
@@ -4698,9 +3539,6 @@ def _apply_fixes(content: dict, fixes: list) -> tuple[dict, int]:
             continue
         parent, key = target
         new = fix.get("new")
-        # A correction swaps one piece of text (or one number) for
-        # another. Anything else — a dict, a list — would be the model
-        # restructuring rather than correcting, so it is refused.
         if not isinstance(new, (str, int, float)) or isinstance(new, bool):
             logger.warning(f"Verify fix skipped, non-scalar value at: {str(fix.get('path'))[:120]}")
             continue
@@ -4712,43 +3550,11 @@ def _apply_fixes(content: dict, fixes: list) -> tuple[dict, int]:
 
 
 async def _verify_and_fix(material_type: str, content: dict, language: str, topic: str) -> dict:
-    """Second AI pass: show the model its own generated content and ask it
-    to correct any invented facts, wrong dates/numbers/names, or internal
-    contradictions before the teacher ever sees it — the same kind of
-    scholarly-accuracy check the history/literature prompts already do
-    inline, applied as a dedicated review step so every subject benefits.
-
-    Asks for a LIST OF FIXES, not a corrected copy of the document. The
-    original version had the model re-emit the whole konspekt JSON even
-    when nothing was wrong, which measured at ~6,000 output tokens per
-    material — about a third of a konspekt's total AI cost, spent almost
-    entirely on echoing text back unchanged. A fix list is a handful of
-    tokens in the (common) no-errors case. It is also safer: fixes are
-    applied by _apply_fixes, which can only overwrite scalar leaves at
-    paths that already exist, so a bad response can no longer drop an
-    array item or reshape the document.
-
-    Costs one extra AI call (and one extra unit of the daily quota) per
-    material. Never blocks the original result: if the verify call fails,
-    times out, or comes back in an unexpected shape, the un-reviewed
-    original content is returned instead of raising.
-    """
     lang_name = LANGUAGE_NAMES.get(language, "English")
     system_prompt = (
         "You are a meticulous fact-checking editor reviewing educational content for a school "
         f"teacher. Return ONLY valid JSON, with every field still written in {lang_name}."
     )
-    # Language-purity check, added alongside the original fact-check after
-    # direct review of generated Tajik content found real recurring
-    # problems: an invented/wrong grammatical term, a Turkish spelling, and
-    # a stray Russian conjunction, none of which the fact-check rules above
-    # would ever catch (they're all fluent, plausible-sounding sentences —
-    # just using the wrong word). Kept general (not gated to one subject)
-    # since a stray foreign word can show up in any subject's Tajik text,
-    # not just the "Таджикский язык" grammar lessons where it was found.
-    # The Tajik-specific examples are the ones actually observed being
-    # wrong in testing — listed explicitly so this pass knows to look for
-    # exactly that failure mode instead of a vague "check the language".
     language_check = (
         "\n- Any word from a different language that has no business being in {lang} text — a foreign "
         "spelling variant, a loanword used where a normal {lang} word exists, or a technical/grammatical "
@@ -4802,14 +3608,6 @@ The document to review:
     return content
 
 
-# All top-level fields the konspekt JSON contract can ever contain, in no
-# particular required order (the model may emit them in any order) — used
-# by generate_konspekt_stream to detect, from the raw streamed text alone,
-# when one field's value ends and the next begins (a new field's `"key":`
-# appearing in the buffer means the previous one just closed). Kept as its
-# own list rather than reusing frontend's KONSPEKT_SECTION_ORDER (that file
-# doesn't exist on this side) — must stay in sync with the JSON shape built
-# by _konspekt_prompt.
 _KONSPEKT_STREAM_FIELDS = [
     "title", "subtitle", "duration", "competencies", "objectives", "key_concepts",
     "key_terms", "real_life_examples", "lesson_program", "tools", "main_content",
@@ -4833,34 +3631,7 @@ async def generate_konspekt_stream(
     template: str | None = None,
     previous_digests: list[dict] | None = None,
 ):
-    """SSE-friendly counterpart to generate_material(material_type="konspekt").
-    An async generator yielding progress-event dicts as plain work actually
-    happens (never a fabricated timer) — the router (routers/materials.py's
-    /generate-konspekt-stream) JSON-encodes each yielded dict as one SSE
-    `data:` frame. The final "complete" event carries the same content shape
-    generate_material would have returned; the router persists it to the DB
-    exactly like the existing /generate endpoint does.
-
-    Event shapes yielded:
-      {"stage": <name>, "status": "start"|"done", ...extra}
-      {"type": "token", "delta": "..."}                       — raw AI text, for the live-typing preview
-      {"type": "field_start"|"field_done", "field": "..."}    — a top-level JSON key opening/closing
-      {"type": "complete", "content": {...}}                  — terminal, success
-      {"type": "error", "message": "...", "code": "..."}      — terminal, failure
-
-    Never raises — every failure path yields an "error" event and returns,
-    so the router doesn't need its own try/except around iterating this.
-    """
     try:
-        # A teacher's own uploaded document always wins if they gave one
-        # (explicit "book mode") — the cached official textbook (see
-        # _load_cached_textbook) only fills in when they didn't. Mirrors
-        # generate_material's konspekt branch exactly: this streaming path
-        # is what the actual wizard calls (the non-streaming /generate
-        # endpoint's konspekt branch is effectively unused by the app),
-        # so before this fix the cached-textbook pilot never actually
-        # reached a real teacher's konspekt — it worked, it was tested,
-        # it just wasn't wired into the code path that ships.
         source_text = source_text or _load_cached_textbook(subject, grade)
         source_excerpt = _select_relevant_excerpt(source_text, topic) if source_text else None
 
@@ -4898,9 +3669,6 @@ async def generate_konspekt_stream(
             buffer += delta
             yield {"type": "token", "delta": delta}
 
-            # A new field's `"key":` showing up in the buffer means whatever
-            # field was previously active just finished streaming — this is
-            # a real signal read off the model's own output, not a timer.
             found = None
             for field in remaining_fields:
                 if f'"{field}"' in buffer and (f'"{field}":' in buffer or f'"{field}" :' in buffer):
@@ -4914,7 +3682,6 @@ async def generate_konspekt_stream(
                 yield {"type": "field_start", "field": active_field}
 
         if not generate_sections_started:
-            # The model produced no content at all.
             yield {"type": "error", "message": "AI returned an empty response.", "code": "ai_error"}
             return
         if active_field:
@@ -4957,10 +3724,6 @@ async def generate_konspekt_stream(
 
         yield {"stage": "validate", "status": "start"}
         content = await _verify_and_fix("konspekt", content, language, topic)
-        # Again after the review pass: it rewrites whole strings, and a
-        # corrected sentence comes back in the model's own notation, so a
-        # power fixed before the review could be flat text after it. The
-        # pass is idempotent, so running it twice costs nothing.
         _typeset_math_content(content, topic)
         yield {"stage": "validate", "status": "done"}
 
@@ -5007,12 +3770,6 @@ Return THIS exact JSON (nothing else):
 
 def _regenerate_practical_task_prompt(kind: str, topic: str, subject: str, level: str, grade: str,
                                       language: str, existing_titles: list[str]) -> str:
-    """One replacement task for a practical-tasks worksheet — `kind` is
-    "individual_tasks" or "group_tasks", since those are two differently-
-    shaped arrays (see _practical_prompt's own JSON schema), not one flat
-    list like a test's questions. The regenerated task keeps its slot's
-    shape (an individual task never comes back with "roles"/"group_size",
-    a group task always gets them)."""
     level_map = {
         "Лёгкий": "Beginner. Short, closely-guided, one clear step at a time.",
         "Средний": "Intermediate. Multi-step but still fits one lesson.",
@@ -5063,12 +3820,6 @@ def _regenerate_slide_prompt(topic: str, subject: str, level: str, grade: str, l
     lang_name = LANGUAGE_NAMES.get(language, "English")
     existing_text = "\n".join(f"- {t}" for t in existing_titles) or "(none)"
 
-    # Mirrors _presentation_prompt's rules 5/9 exactly (short bullets,
-    # visual-first, min 3 bullets when there's no visual) — this prompt
-    # used to be a stale older style (long full-sentence bullets, no
-    # "visual" option at all), so a teacher who regenerated just ONE
-    # slide got one that visually clashed with every other slide in the
-    # same deck instead of fitting in seamlessly.
     return f"""Create exactly ONE new presentation slide (slide {slide_index + 1} of {total_slides}) about "{topic}" for grade {grade}, subject "{subject}".
 
 CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, nothing else.
@@ -5097,9 +3848,6 @@ Return THIS exact JSON (nothing else) — omit the "visual" key entirely if this
 }}"""
 
 
-# One section at a time instead of the whole konspekt — so a teacher who
-# only dislikes e.g. "main_content" can swap just that out, keeping
-# everything else (and any manual edits they'd already made) untouched.
 _KONSPEKT_SECTION_SPECS = {
     "competencies": "a JSON array of 3-4 SHORT phrases (max ~12 words each) — not detailed sentences",
     "objectives": "a JSON array of 3-4 SHORT phrases (max ~12 words each) — not detailed sentences",
@@ -5123,11 +3871,6 @@ def _regenerate_konspekt_section_prompt(
     section: str, existing_content: dict, topic: str, subject: str, level: str, grade: str, language: str,
     material_type: str = "konspekt",
 ) -> str:
-    # Cosmetic only (which word the prompt uses for "this document"/"this
-    # lesson plan") — the section shape rules (_KONSPEKT_SECTION_SPECS)
-    # and JSON-key contract are identical for both, since a лекция's
-    # regeneratable sections (key_concepts, main_content, ...) are a
-    # subset of a конспект's, not a different shape.
     doc_word = "lecture (лекция)" if material_type == "lektsiya" else "lesson plan (konspekt)"
     lang_name = LANGUAGE_NAMES.get(language, "English")
     level_map = {
@@ -5138,8 +3881,6 @@ def _regenerate_konspekt_section_prompt(
     level_text = level_map.get(level, level_map["Средний"])
     shape_hint = _KONSPEKT_SECTION_SPECS.get(section, "content matching the existing field's type (array or string)")
 
-    # The rest of the konspekt, for consistency (same facts/flow) — trimmed
-    # so a very long existing lesson doesn't blow up the prompt.
     other_context = {
         k: v for k, v in existing_content.items()
         if k != section and k not in ("title", "subtitle", "language", "subject", "grade") and isinstance(v, (str, list)) and v
@@ -5177,10 +3918,6 @@ async def regenerate_item(
     section: str | None = None,
     existing_content: dict | None = None,
 ) -> dict:
-    """Regenerate a single test question, presentation slide, or (via
-    `section`/`existing_content`) one named field of a konspekt — so a
-    teacher can swap out just the one part they don't like instead of the
-    whole material."""
     existing_items = existing_items or []
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = ""
@@ -5205,8 +3942,6 @@ async def regenerate_item(
 
     if material_type == "test":
         existing_questions = [item.get("question", "") for item in existing_items if item.get("question")]
-        # Keep the same question type the teacher is swapping out, so the
-        # regenerated question still fits its slot in the mixed-type test.
         question_type = "multiple_choice"
         if 0 <= item_index < len(existing_items):
             question_type = existing_items[item_index].get("type") or "multiple_choice"
@@ -5225,11 +3960,6 @@ async def regenerate_item(
             f"Write ALL content in {lang_name} language.{tajik_rules}"
         )
     elif material_type == "amaliy":
-        # `section` carries which array this task belongs to
-        # ("individual_tasks" or "group_tasks") — reusing the same field
-        # konspekt/lektsiya already use for their own field name, since a
-        # practical worksheet's two task lists are exactly that kind of
-        # named-slot, not a single flat list like a test's questions.
         kind = section if section in ("individual_tasks", "group_tasks") else "individual_tasks"
         existing_titles = [item.get("title", "") for item in existing_items if item.get("title")]
         user_prompt = _regenerate_practical_task_prompt(kind, topic, subject, level, grade, language, existing_titles)
@@ -5261,16 +3991,6 @@ async def chat_edit_material(
     level: str,
     grade: str,
 ) -> dict:
-    """Applies a teacher's free-text edit instruction (e.g. "add 5 more
-    questions", "make the main content shorter", "add a slide about X")
-    to an already-generated material and returns the full updated JSON in
-    the same schema. Unlike regenerate_item above (which replaces exactly
-    one named section/item), this round-trips the WHOLE current content
-    through the model as context — anything the instruction doesn't ask
-    to change is expected to come back unchanged, but there's no
-    structural guarantee of that the way a targeted single-section
-    rewrite has, so this is deliberately the free-form option, not a
-    replacement for regenerate_item."""
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = ""
     if language == "Таджикский":
@@ -5298,19 +4018,11 @@ async def chat_edit_material(
         system_prompt, user_prompt, language,
         log_label=f"chat-edit {material_type} topic={topic[:50]} instruction={instruction[:60]!r}",
     )
-    # Belt-and-suspenders: keep the original title if the model dropped it
-    # despite the "copy everything else unchanged" instruction above.
     if not result.get("title") and content.get("title"):
         result["title"] = content["title"]
     return result
 
 
-# What each material type is generated as when the teacher used the
-# "all at once" shortcut and therefore never saw a template picker. Kept
-# equal to the constants the one-at-a-time wizard pins on both clients
-# (frontend/src/app/dashboard/create/[type]/page.tsx's konspektTemplate /
-# deckTemplate / lectureTemplate, and the Flutter form's _kTemplate /
-# _kDeckTemplate). A test has no template.
 _ALL_DEFAULT_TEMPLATES = {
     "konspekt": "nakscha",
     "prezentatsiya": "playful",
@@ -5320,19 +4032,6 @@ _ALL_DEFAULT_TEMPLATES = {
 
 def _default_template_for(material_type: str, subject: str | None,
                           grade: str | None) -> str | None:
-    """The template a generated material is STORED with.
-
-    Presentations no longer take a fixed default. The subject picks the
-    design (see app/subject_templates.py), and the id it picked is what
-    gets written onto the deck — not left empty — so the deck records
-    which design it was actually built with. That matters twice: the
-    editor can show it, and a re-export years later reproduces the same
-    deck even if the resolution rules change underneath.
-
-    Without this the subject system would never run at all for the way
-    teachers actually generate: both clients go through generate-all,
-    which pinned "playful" on every single deck, and a stored legacy id
-    deliberately wins over the automatic pick."""
     if material_type == "prezentatsiya":
         from app.subject_templates import resolve
         return resolve(subject, grade).id
@@ -5350,11 +4049,6 @@ async def generate_all_materials(
     test_type: str | None = None,
     types: list[str] | None = None,
 ) -> dict:
-    """Generates several material types for the same topic in parallel.
-    `types` defaults to all four (konspekt/test/prezentatsiya/lektsiya) —
-    routers/materials.py's /generate-all passes a narrower list when the
-    free tier has already used up one or more of them, so this never
-    burns an AI call on a type that's just going to be discarded anyway."""
     import asyncio
 
     if types is None:
@@ -5363,28 +4057,6 @@ async def generate_all_materials(
     results = {}
     errors = {}
 
-    # Serialized, not run 2-at-a-time. Confirmed live and repeatedly: a
-    # teacher asking for Konspekt + Лексия together — the two heaviest
-    # types, each ~4000 tokens for its own generation PLUS another
-    # ~3000-5000 for its own fact-check pass (see _verify_and_fix) —
-    # landed both of those inside the same one-minute window under
-    # Semaphore(2), together well past Cerebras's shared token-per-minute
-    # ceiling (the same ceiling _call_ai's own comment on 429 handling
-    # documents as shared across all 5 keys, not per-key). One of the two
-    # came back "429 Tokens per minute limit exceeded" on all 3 retry
-    # attempts and failed outright — reliably, not as a rare fluke — which
-    # is what a teacher saw as "it makes one material but not the other,
-    # every time I ask for two at once."
-    #
-    # Running one type at a time instead means generate-all takes longer
-    # wall-clock (nothing is now happening in parallel), but each request
-    # goes out with the PREVIOUS one's tokens already counted and some
-    # real time having passed, instead of two heavy requests racing into
-    # the same window together — which is what was actually causing the
-    # failure, not sheer token volume on its own. If this needs to be
-    # loosened again, re-run the same kind of live "2 heavy types
-    # together" test this fix was based on, the same way _call_ai's own
-    # 429-vs-key-rotation comment insists on for that logic.
     sem = asyncio.Semaphore(1)
 
     async def _gen(mt: str):
@@ -5400,21 +4072,9 @@ async def generate_all_materials(
                     slide_count=slide_count if mt == "prezentatsiya" else None,
                     question_count=question_count if mt == "test" else None,
                     test_type=test_type if mt == "test" else None,
-                    # Generate-all used to pass no template at all, so every
-                    # material it produced was stored with template=None and
-                    # fell back to whatever each renderer's default happened
-                    # to be — a deck made this way came out in the konspekt
-                    # cover instead of its own notebook design. These are the
-                    # same per-type templates the single-material wizard
-                    # pins (see _ALL_DEFAULT_TEMPLATES) — except a deck,
-                    # which is stored with whichever subject design was
-                    # resolved for it.
                     template=_default_template_for(mt, subject, grade),
                 )
             except Exception as e:
-                # Was a bare print(): on Windows it raised on any Tajik
-                # character in the message and turned one material's
-                # failure into the whole batch failing. See app/logger.py.
                 logger.warning(f"generate_all: {mt} FAILED: {e}")
                 return mt, e
 
@@ -5427,28 +4087,12 @@ async def generate_all_materials(
         else:
             results[mt] = result
 
-    # Keyed by whatever was actually asked for. This used to name the four
-    # types literally, so adding "amaliy" to the caller's list generated it,
-    # paid for it, logged "AI SUCCESS: amaliy" — and then dropped it here,
-    # because the returned dict simply had no key for it. Anything the
-    # caller requests now comes back.
     out: dict = {mt: results.get(mt) for mt in types}
     out["errors"] = errors if errors else None
     return out
 
 
 async def extract_topics_from_document(raw_text: str) -> str:
-    """Given the raw dumped text of an uploaded curriculum document (which
-    mixes real lesson topics with headers, dates, hour counts, table
-    column labels, teacher names, page numbers, etc.), return just the
-    lesson topics — one per line, in their original order and language,
-    with none of the surrounding document noise. Used by
-    POST /api/curriculum/parse-docx so uploading a real school document
-    doesn't dump its entire raw text into the topic-list field.
-    """
-    # Defensive cap: this is meant for a topic list, not a whole textbook —
-    # keep the request cheap and within context regardless of what the
-    # teacher uploads.
     trimmed = raw_text[:12000]
     system_prompt = (
         "You extract a clean lesson-topic list from messy raw text dumped from a school "
@@ -5485,12 +4129,6 @@ async def generate_roadmap(
     goal_topic: str | None = None,
     subject: str | None = None,
 ) -> dict:
-    """Generate a {title, subject, topics: [{day_index, day_type, topic, goal}, ...]}
-    course roadmap for a Curriculum, sized to day_count. When `subject` is
-    omitted the model picks one from the known subject list itself. Uses
-    the same _call_ai request/retry/quota machinery as generate_material —
-    no separate cost accounting to keep track of.
-    """
     lang_name = LANGUAGE_NAMES.get(language, "English")
     user_prompt = _roadmap_prompt(mode, grade, level, language, day_count, topic_list_text, goal_topic, subject)
     system_prompt = (
@@ -5505,14 +4143,10 @@ async def generate_roadmap(
     if subject:
         content["subject"] = subject
     elif not content.get("subject") or content["subject"] not in _SUBJECT_KONSPEKT_PROMPTS:
-        # Model returned no subject, or invented one outside the known list
-        # (whose prompts/docx labels/etc. are the only ones the rest of the
-        # app understands) — fall back rather than carry an unusable value.
         content["subject"] = next(iter(_SUBJECT_KONSPEKT_PROMPTS))
     return content
 
 
-# ── Standalone quiz set (Қуттиҳои сеҳрнок) ──────────────────────────────────
 
 async def generate_quiz_set(
     topic: str,
@@ -5522,19 +4156,6 @@ async def generate_quiz_set(
     language: str,
     count: int,
 ) -> list[dict]:
-    """A flat list of 4-option questions, each with an explanation of WHY the
-    correct answer is correct.
-
-    Exists separately from generate_material("igra") because the magic-box
-    game needs exactly one shape (multiple choice) in an arbitrary quantity
-    chosen by the player, whereas a game material is a fixed 12-round mix of
-    five different round types. Reuses the same _call_ai request/retry/quota
-    machinery, so there's no separate cost accounting to track.
-    """
-    # Fail loudly on an unknown language rather than silently defaulting to
-    # English: a caller passing e.g. the Tajik endonym instead of this map's
-    # key would otherwise get a whole game's worth of questions in the wrong
-    # language with nothing in the logs to explain it.
     if language not in LANGUAGE_NAMES:
         raise ValueError(
             f"Unknown language {language!r} — expected one of {sorted(LANGUAGE_NAMES)}"
@@ -5581,8 +4202,6 @@ Return ONLY valid JSON in exactly this shape:
     if not isinstance(raw, list) or not raw:
         raise ValueError("Quiz-set response missing a non-empty 'questions' list")
 
-    # Keep only well-formed entries rather than trusting the model wholesale —
-    # a malformed correct_index would silently make a question unanswerable.
     cleaned: list[dict] = []
     for q in raw:
         if not isinstance(q, dict):

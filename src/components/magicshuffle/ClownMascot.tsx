@@ -2,12 +2,7 @@
 
 export type ClownMood = "idle" | "reveal" | "casting" | "shuffling" | "waiting" | "happy" | "sad" | "surprised";
 
-/** Per-mood body animation. The clown himself is the project's existing
- * background-removed clown photo (public/game-backgrounds/jester.png) —
- * reusing the real asset rather than drawing a CSS approximation, since a
- * flat-vector stand-in next to the illustrated classroom would look pasted
- * on. The *acting* is done by animating him plus the wand and hand props
- * around him. */
+
 const BODY_ANIMATION: Record<ClownMood, string | undefined> = {
   idle: "mascot-bob 2.8s ease-in-out infinite",
   reveal: "mascot-bob 2.4s ease-in-out infinite",
@@ -19,10 +14,7 @@ const BODY_ANIMATION: Record<ClownMood, string | undefined> = {
   surprised: "mascot-pop 0.5s ease-out",
 };
 
-/** What he "says" per mood — a speech bubble is the cheapest way to make a
- * static character read as reacting, and it doubles as the game's own
- * instruction line so there's no separate block of UI text competing with
- * him for the player's attention. All Tajik Cyrillic. */
+
 const BUBBLE: Record<ClownMood, string | null> = {
   idle: null,
   reveal: "Саволро хуб дар хотир гиред!",
@@ -47,18 +39,16 @@ export default function ClownMascot({ mood, size = 200 }: { mood: ClownMood; siz
           style={{ animation: "mascot-pop 0.4s ease-out" }}
         >
           {bubble}
-          {/* Bubble tail */}
+          {}
           <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-white/95" aria-hidden />
         </div>
       )}
 
       <div className="relative" style={{ animation: BODY_ANIMATION[mood] }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- small static art asset, not a Next/Image candidate */}
+        {}
         <img src="/game-backgrounds/jester.png" alt="" className="w-auto drop-shadow-2xl" style={{ height: size }} />
 
-        {/* Magic wand in his right hand — only drawn while he's actually
-            casting/shuffling, so it reads as a prop he picks up for the
-            trick rather than something he's always holding. */}
+        {}
         {wandActive && (
           <span
             className="absolute right-[-6px] top-[45%] origin-bottom-left text-3xl"
@@ -69,7 +59,7 @@ export default function ClownMascot({ mood, size = 200 }: { mood: ClownMood; siz
           </span>
         )}
 
-        {/* Sweeping hands over the boxes while shuffling. */}
+        {}
         {mood === "shuffling" && (
           <span
             className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-2xl"
@@ -80,7 +70,7 @@ export default function ClownMascot({ mood, size = 200 }: { mood: ClownMood; siz
           </span>
         )}
 
-        {/* Magic sparkles pouring off the wand while casting. */}
+        {}
         {wandActive &&
           [0, 0.25, 0.5].map((d, i) => (
             <span

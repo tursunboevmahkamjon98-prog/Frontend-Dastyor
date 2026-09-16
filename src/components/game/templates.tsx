@@ -3,27 +3,21 @@
 import { Flag, Coins, Swords, Star, Apple } from "lucide-react";
 import { GameTemplate } from "./types";
 
-// ---------------------------------------------------------------------------
-// Template "skins" — same Blooket-style idea as types.ts's GameTemplate doc:
-// the question widgets (Stage in SoloGame.tsx, DuelStage in DuelGame.tsx)
-// never change, only how progress reads on screen. Three entry points here:
-// TemplateScene (the whole screen's background atmosphere — a themed scene
-// rather than one flat violet panel regardless of template, per the
-// reference product's actual illustrated-background games), SoloProgress
-// (one player's progress bar) and DuelHud (the two-player race read at the
-// top of DuelGame). Everything else in either screen — hearts, score/streak
-// chips, the timer, the actual round card — stays template-agnostic on
-// purpose: reskinning the *answer* widgets too would risk making them
-// harder to read, not more fun.
-// ---------------------------------------------------------------------------
 
-/** The full-screen atmosphere behind everything else — swapped per
- * template so picking "Гонка" doesn't just recolor a thin progress bar
- * while the rest of the screen stays the exact same violet panel every
- * other template also uses. Pure CSS (gradients + blurred shapes), no
- * image assets: a dusk horizon + haze for race, a warm torchlit glow for
- * goldrush, a dim embers-and-blood-red arena for battle, and the
- * original violet for classic. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export function TemplateScene({ template, children }: { template: GameTemplate; children: React.ReactNode }) {
   if (template === "race") {
     return (
@@ -54,17 +48,17 @@ export function TemplateScene({ template, children }: { template: GameTemplate; 
     );
   }
   if (template === "classroom") {
-    // A real illustrated classroom (public/game-backgrounds/classroom.png —
-    // teacher-supplied art, no baked-in text/stats/leaderboard, see that
-    // file's own note) instead of a flat color + emoji approximation. A
-    // dark scrim sits between the photo and `children` for the same reason
-    // every other template's scene stays dark: the HUD drawn on top
-    // (hearts, score, timer, round badges — see SoloGame.tsx) is plain
-    // white text, and it would wash out against the picture's own bright
-    // sky-blue walls without it.
+    
+    
+    
+    
+    
+    
+    
+    
     return (
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0f3226]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed static background, not a Next/Image candidate */}
+        {}
         <img
           src="/game-backgrounds/classroom.png"
           alt=""
@@ -84,8 +78,7 @@ export function TemplateScene({ template, children }: { template: GameTemplate; 
   );
 }
 
-/** One player's progress toward the end of the round set, themed. `pct` is
- * 0..1. Solo-only (see DuelHud for the two-sided equivalent). */
+
 export function SoloProgress({ template, pct }: { template: GameTemplate; pct: number }) {
   const clamped = Math.max(0, Math.min(1, pct));
   if (template === "race") return <RaceTrack pct={clamped} />;
@@ -137,9 +130,9 @@ function GoldPile({ pct }: { pct: number }) {
   );
 }
 
-// A chalk-drawn dashed rail with an apple travelling toward the end —
-// same "one traveling icon over a filling track" shape as RaceTrack, just
-// styled as a chalk line on the board instead of a raceway.
+
+
+
 function ChalkTrack({ pct }: { pct: number }) {
   return (
     <div className="relative h-9 w-full overflow-hidden rounded-full border-2 border-dashed border-white/25 bg-[#081f18]">
@@ -155,9 +148,9 @@ function ChalkTrack({ pct }: { pct: number }) {
 }
 
 function BattleBar({ pct }: { pct: number }) {
-  // The player "attacks" a boss — boss HP drains as pct rises. Framed as one
-  // bar (not player-vs-boss split) since SoloGame's own hearts row already
-  // covers the player's own health; this is just the boss's.
+  
+  
+  
   return (
     <div className="flex items-center gap-2">
       <span className="text-base">🧌</span>
@@ -172,10 +165,7 @@ function BattleBar({ pct }: { pct: number }) {
   );
 }
 
-/** The duel top-strip, themed — replaces the plain "P1 chip / timer / P2
- * chip" row with a two-sided race/pile/HP-bar read, both sides sharing
- * `totalRounds` as the finish line so "who's ahead" stays legible at a
- * glance regardless of theme. */
+
 export function DuelHud({
   template,
   scoreP1,

@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   BookOpen, Presentation, ClipboardCheck, Lightbulb, ClipboardList,
   Sparkles, Check, Zap, ShieldCheck, Clock, ArrowRight,
-  FileDown, Languages, Wand2, Layers, Wallet, Pencil,
+  FileDown, Languages, Wand2, Layers, Wallet, Pencil, Download,
 } from "lucide-react";
 import SubjectsCarousel from "@/components/SubjectsCarousel";
 import Reveal from "@/components/Reveal";
@@ -10,12 +10,12 @@ import LandingFaq from "@/components/LandingFaq";
 import SamplesGallery from "@/components/SamplesGallery";
 import { SUBJECTS, LANGUAGES } from "@/lib/material-types";
 
-// The five material types this landing page markets — deliberately NOT
-// all six of lib/material-types.ts's MATERIAL_TYPES. "игра" stays a real
-// in-app feature (see GamePlayer.tsx / the magicshuffle components) but
-// is no longer sold as a headline product on the marketing page, so this
-// list, the STATS count and the copy below all stop mentioning it as one
-// of "the things Dastyor makes" alongside конспект/тест/etc.
+
+
+
+
+
+
 const FEATURES = [
   {
     icon: BookOpen,
@@ -60,15 +60,15 @@ const FACTS = [
   { icon: Clock, label: "План до 62 дней подряд" },
 ];
 
-// Real, verifiable numbers only — no invented "10 000+ учителей" counter.
-// Each of these is a straight read of what the product actually offers
-// (see lib/material-types.ts), so the stats bar never says more than the
-// app can back up.
+
+
+
+
 const STATS = [
   { value: "5", label: "видов материалов" },
   { value: String(SUBJECTS.length), label: "предметов" },
   { value: String(LANGUAGES.length), label: "языка" },
-  // PDF, DOCX, PPTX, TXT — see the backend's /materials/download-* routes.
+  
   { value: "4", label: "формата для скачивания" },
 ];
 
@@ -94,24 +94,14 @@ const STEPS = [
 ];
 
 
-/** What "Всё сразу" actually does, stated as the product enforces it:
- * routers/materials.py's _GENERATE_ALL_TYPES is exactly these five, and
- * POST /materials/generate-all takes ONE topic and returns all of them in
- * a single billed call. No invented throughput numbers — the claim is
- * about what the button does, not how fast someone's machine is. */
+
 const ALL_AT_ONCE_POINTS = [
   "Одна тема — пять документов за одну генерацию",
   "Каждый материал открывается и правится отдельно",
   "Всё скачивается одним архивом",
 ];
 
-/** Trust claims. Every one is a straight read of the code:
- *  - no subscription: billing.py has no recurring charge at all, only a
- *    balance an administrator tops up;
- *  - formats: the four /materials/download-* routes;
- *  - languages: lib/material-types.ts's LANGUAGES;
- *  - editable: build_presentation_pptx writes real text/table/chart
- *    shapes, not a picture of a slide. */
+
 const TRUST = [
   {
     icon: Wallet,
@@ -146,11 +136,11 @@ const NAV_LINKS = [
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col overflow-x-clip bg-background">
-      {/* Nav */}
+      {}
       <header className="sticky top-0 z-30 border-b border-border-light/70 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {}
             <img src="/logo.png" alt="Dastyor" className="h-9 w-9" />
             <span className="text-lg font-bold text-text-primary">Dastyor</span>
           </div>
@@ -176,7 +166,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
+      {}
       <section className="relative">
         <div
           className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[620px] w-[920px] -translate-x-1/2 rounded-full bg-primary/[0.10] blur-3xl"
@@ -206,9 +196,7 @@ export default function Home() {
                 <span className="relative bg-gradient-to-r from-primary via-primary-light to-primary bg-clip-text text-transparent">
                   за секунды
                 </span>
-                {/* Hand-drawn underline squiggle — draws itself in once on
-                    load (landing-draw keyframe) a beat after the headline
-                    appears, instead of a plain static <span> underline. */}
+                {}
                 <svg
                   viewBox="0 0 220 14"
                   className="pointer-events-none absolute -bottom-2 left-0 h-3 w-full text-primary/70 sm:-bottom-3"
@@ -244,6 +232,21 @@ export default function Home() {
                 У меня есть аккаунт
               </Link>
             </div>
+            {/* Direct APK download - the app isn't on Google Play (a
+                teacher-facing tool for one country doesn't clear Play's
+                review bar the same way a consumer app does), so this link
+                is the only install path. Points at the backend's own
+                /uploads mount (see backend/app/main.py's StaticFiles
+                mount) rather than a package registry - the APK is dropped
+                there by hand on the server, same as any other upload. */}
+            <a
+              href="/uploads/app/dastyor.apk"
+              download
+              className="mt-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-text-secondary underline decoration-border underline-offset-4 transition hover:text-primary"
+            >
+              <Download className="h-4 w-4" />
+              Скачать приложение для Android (.apk)
+            </a>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 lg:justify-start">
               {FACTS.map(({ icon: Icon, label }) => (
                 <span key={label} className="flex items-center gap-1.5 text-sm text-text-tertiary">
@@ -254,21 +257,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero illustration — Openclipart "teacher-explains-pointing-to-the-
-              blackboard" (id 191304, Public Domain, see subject_theme.py's
-              cover-illustration comment for the same licence check done for
-              presentation exports). Sits on its own soft gradient card so the
-              artwork's transparent padding reads as deliberate breathing room
-              rather than empty canvas, with the same drifting blob used
-              elsewhere in the hero glowing behind it for depth. Hidden below
-              lg: at phone width there isn't room beside the headline without
-              pushing the CTA off-screen, and the product mockup below already
-              carries the "what you get" visual on mobile. */}
+          {}
           <div className="relative hidden lg:block">
-            {/* No card panel behind the illustration — it sits directly on
-                the page background (a soft page-wide glow already comes
-                from the blob divs above), just the drifting accent blobs
-                and floating proof chips anchored around it. */}
+            {}
             <div
               className="pointer-events-none absolute right-10 top-6 h-56 w-56 rounded-full bg-primary/[0.14] blur-3xl"
               style={{ animation: "landing-blob-drift 14s ease-in-out infinite" }}
@@ -280,7 +271,7 @@ export default function Home() {
               aria-hidden
             />
             <div className="relative" style={{ animation: "landing-float 6s ease-in-out infinite" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {}
               <img
                 src="/images/hero-teacher.svg"
                 alt=""
@@ -312,7 +303,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats — real, code-derived numbers only. */}
+      {}
       <section className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {STATS.map((s) => (
@@ -324,7 +315,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* Features deep-dive */}
+      {}
       <section id="features" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="mx-auto mb-12 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Всё, что нужно для урока</h2>
@@ -343,7 +334,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How it works */}
+      {}
       <section id="how" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="mx-auto mb-12 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Как это работает</h2>
@@ -364,10 +355,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* "Всё сразу" — the single feature that most distinguishes this
-          product from generating one document at a time. Mirrors 5-rka's
-          own "automation highlight" slot in the page flow, but the claims
-          are only what POST /materials/generate-all actually does. */}
+      {}
       <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="overflow-hidden rounded-3xl border border-border-light bg-surface shadow-sm shadow-black/[0.02]">
           <div className="grid gap-8 p-7 sm:p-10 lg:grid-cols-2 lg:items-center">
@@ -417,59 +405,8 @@ export default function Home() {
         <SubjectsCarousel />
       </div>
 
-      {/* Pricing — honest and exact: what _check_can_generate in
-          routers/materials.py actually enforces, not a marketing-rounded
-          number. One free generation per material type, then a flat price
-          with no subscription/hidden tiers. */}
-      {/* Real output, not mockups. Every image in public/samples/ is a page
-          rendered straight out of the product's own PDF export — see the
-          backend's /materials/download-pdf. A landing page that describes
-          the result in prose asks a teacher to take its word for it; this
-          shows them the document they would get.
-
-          Each type is now its own independent topic on purpose (deliberate
-          call, not an oversight) — five tiles from one shared lesson read
-          like a single cherry-picked demo; five DIFFERENT real subjects
-          reads like "this works generally", which is the actual claim a
-          teacher deciding whether to sign up cares about:
-            konspekt/       Сохт ва вазифаи системаи нафаскашии инсон
-                             (биология, 8 класс)
-            lektsiya/        Исмоили Сомонӣ ва давлати Сомониён
-                             (история Таджикистана, 9 класс)
-            test/             Теоремаи Пифагор (геометрия, 8 класс)
-            amaliy/           Фотосинтез (биология, 8 класс)
-            prezentatsiya/    Рӯдакӣ — падари шеъри форсу тоҷик
-                             (таджикская литература, 9 класс)
-          This is why the copy below names neither a subject nor a grade —
-          there is no longer one to name. Keep each type's OWN pages
-          internally consistent (all of one type's pages from the same
-          lesson); nothing requires the five types to match each other.
-
-          lektsiya/ and prezentatsiya/ specifically were picked (and their
-          topics re-picked once already) for a REAL illustration landing
-          in the export, not just matching text — amaliy/ (practical
-          tasks) never renders one at all regardless of topic (see
-          ai_service.py's per-material_type dispatch: only konspekt,
-          lektsiya, prezentatsiya and occasionally test call the image
-          pipeline), so its topic carries no such requirement. Confirmed
-          live: a plain generate of these two types running through the
-          FULL concurrent image-fetch pass came back with zero pictures —
-          Wikimedia was already rate-limited hard from this same session's
-          own testing, and the 75s per-request budget ran out waiting on
-          it before Commons' fallback (Openverse, see image_builder.py's
-          _openverse_lesson_candidates) ever got a turn. What's checked in
-          here has the picture attached via one direct, unhurried
-          fetch_lesson_images() call outside that time budget instead —
-          the export code path is identical either way, only how this ONE
-          set of sample images was produced differs from a teacher's own
-          generate button.
-
-          Regenerate a given type's images the same way these were made:
-          generate that material, POST its content to download-pdf, and
-          rasterise the page with PyMuPDF (see frontend/public/samples/
-          for the matrix scale already in use — matched to the existing
-          834px-wide pages, or 1920px-wide for prezentatsiya's 16:9 deck,
-          so a resample doesn't stand out at a different size). */}
+      {}
+      {}
       <section id="samples" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="mx-auto mb-10 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Как выглядит результат</h2>
@@ -491,9 +428,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* Trust — 5-rka puts a credentials block here; ours carries only
-          claims the code backs (see the TRUST array's own comment). No
-          invented certifications, no stock-photo "expert panel". */}
+      {}
       <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
         <Reveal className="mx-auto mb-12 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Почему этому можно доверять</h2>
@@ -516,7 +451,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ */}
+      {}
       <section id="faq" className="mx-auto w-full max-w-4xl px-4 pb-20 sm:px-6 sm:pb-28">
         <Reveal className="mx-auto mb-10 max-w-xl text-center">
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">Частые вопросы</h2>
@@ -526,7 +461,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* CTA */}
+      {}
       <section className="mx-auto w-full max-w-2xl px-4 pb-20 text-center sm:pb-28">
         <Reveal>
           <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary-50 px-3.5 py-1.5 text-xs font-semibold text-primary-dark">
@@ -548,7 +483,7 @@ export default function Home() {
       <footer className="border-t border-border-light py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 px-4 text-center sm:flex-row sm:justify-between sm:text-left">
           <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {}
             <img src="/logo.png" alt="Dastyor" className="h-7 w-7" />
             <span className="text-sm font-semibold text-text-primary">Dastyor</span>
           </div>

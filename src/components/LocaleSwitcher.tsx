@@ -3,12 +3,7 @@
 import { useLocale } from "@/lib/i18n";
 import { LOCALES } from "@/lib/messages";
 
-/** Three-way segmented control for the UI language.
- *
- * Sits on the auth pages because that is the one place a visitor has to be
- * able to change language *before* signing in — a Tajik teacher landing on
- * a Russian login form otherwise has no way through to the setting, which
- * lives behind the account. */
+
 export default function LocaleSwitcher({ className = "" }: { className?: string }) {
   const { locale, setLocale } = useLocale();
 

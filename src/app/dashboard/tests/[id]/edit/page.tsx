@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 import { materialsApi, ApiError } from "@/lib/api";
 
-// The four question shapes the generator produces and TestPlayer can grade
-// (see backend/app/ai_service.py's _QUESTION_TYPE_INFO). The editor has to
-// understand all four, because a test is a heterogeneous list: one item's
-// answer lives in `correct_index`, the next one's in `correct_indices`,
-// the third's in `model_answer`. Editing them through a single "correct
-// answer" field would silently corrupt three of the four.
+
+
+
+
+
+
 type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "open_ended";
 
 interface Question {
@@ -53,19 +53,7 @@ function normalizedType(q: Question): QuestionType {
   return (q.type as QuestionType) ?? "multiple_choice";
 }
 
-/** Teacher/administrator editor for a generated test.
- *
- * A separate route rather than another mode inside the shared material
- * viewer for the same reason the slide editor is one: this needs a full
- * page of its own, and threading it through the page that six material
- * types share would mean a lot of `type === "test"` branching for a
- * layout only one type wants.
- *
- * Saving goes through the same PUT /materials/tests/{id} the rest of the
- * app already uses, so the ownership check that endpoint performs is the
- * only thing that decides whether an edit is allowed — nothing here
- * grants anything.
- */
+
 export default function TestEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -96,10 +84,10 @@ export default function TestEditorPage() {
 
   const questions = useMemo(() => (content.questions as Question[] | undefined) ?? [], [content]);
 
-  // Debounced autosave with the FULL next state — questions_json holds the
-  // whole blob, so a partial patch is not expressible (same contract the
-  // presentation editor works under). The title is a real column, so it
-  // travels alongside rather than inside the JSON.
+  
+  
+  
+  
   function persist(nextContent: Record<string, unknown>, nextTitle = title) {
     setContent(nextContent);
     setSaveState("saving");
@@ -125,11 +113,7 @@ export default function TestEditorPage() {
     updateQuestions(questions.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-  /** Switching type has to rewrite the answer fields, not just the label.
-   * A true/false question with four leftover options, or a
-   * multiple_select still carrying a single `correct_index`, is exactly
-   * the shape TestPlayer's grader mis-scores — so the conversion builds
-   * the target shape explicitly and drops what no longer applies. */
+  
   function changeType(index: number, type: QuestionType) {
     const q = questions[index];
     const base: Question = {
@@ -213,11 +197,7 @@ export default function TestEditorPage() {
     setOpen(next.length - 1);
   }
 
-  /** Removing an option has to renumber whatever pointed at the ones after
-   * it. Dropping option 1 of four leaves the old `correct_index: 2`
-   * pointing at what is now option 3 — a silently wrong answer key, and
-   * the kind of bug nobody notices until a pupil is marked down for a
-   * right answer. */
+  
   function removeOption(index: number, optionIndex: number) {
     const q = questions[index];
     const options = (q.options ?? []).filter((_, i) => i !== optionIndex);
@@ -265,9 +245,7 @@ export default function TestEditorPage() {
         </div>
       </div>
 
-      {/* Title + topic. Both are real columns on the row, not part of the
-          questions blob, so they save through the same PUT but as their
-          own fields. */}
+      {}
       <div className="mb-4 space-y-3 rounded-2xl border border-border-light bg-surface p-4">
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-tertiary">
@@ -316,9 +294,7 @@ export default function TestEditorPage() {
                     {q.question || <span className="text-text-tertiary">Без текста</span>}
                   </span>
                 </button>
-                {/* Always visible, never hover-revealed: this page is used
-                    on a phone as much as a laptop, and a hover-only control
-                    does not exist on a touch screen. */}
+                {}
                 <div className="flex shrink-0 items-center gap-0.5">
                   <button
                     onClick={() => moveQuestion(i, -1)}

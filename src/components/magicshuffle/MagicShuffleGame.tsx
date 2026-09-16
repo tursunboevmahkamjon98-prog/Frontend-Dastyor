@@ -15,17 +15,12 @@ import VictoryScreen from "./VictoryScreen";
 import { BOX_COUNT, Phase, ShuffleQuestion, roundConfig } from "./types";
 import { useShuffleGame } from "./useShuffleGame";
 
-/** Horizontal spacing between box slots, and the box's own width — the row
- * is laid out by absolutely positioning each box at `position * SLOT_W`,
- * which is exactly what makes the shuffle a real movement (a CSS transition
- * interpolates between the old and new x). Narrower on phones so three
- * boxes still fit without a horizontal scroll. */
+
 const SLOT_W_DESKTOP = 150;
 const SLOT_W_MOBILE = 106;
 const BOX_W = 104;
 
-/** Which clown mood belongs to which phase — one map instead of a branch
- * chain at the call site. */
+
 const MOOD_FOR_PHASE: Record<Phase, ClownMood> = {
   setup: "idle",
   reveal: "reveal",
@@ -38,32 +33,21 @@ const MOOD_FOR_PHASE: Record<Phase, ClownMood> = {
   opening: "surprised",
   emerging: "surprised",
   question: "waiting",
-  feedback: "idle", // overridden by correctness below
+  feedback: "idle", 
   result: "happy",
 };
 
-/** Vertical distance from a centred question card to the row of boxes. */
+
 const CARD_TO_BOX_Y = 190;
 
-/** "Қуттиҳои сеҳрнок" — three identical boxes, three real questions, one
- * each. The clown posts them in behind closed lids, shuffles, and whichever
- * box the player opens gives up the question that was genuinely inside it.
- *
- * Single-player by design (watching a shuffle has no meaningful two-player
- * split — both players would be watching the same one).
- *
- * All rules/timing live in useShuffleGame; this file is composition and
- * layout only. The one thing it owns is the responsive slot width, since
- * that's a pure presentation concern the logic must not know about. */
+
 export default function MagicShuffleGame({
   defaultSubject,
   defaultTopic,
   defaultGrade,
   onClose,
 }: {
-  /** Pre-fill the setup form from the material this game was opened from,
-   * so a teacher playing their own lesson doesn't retype what the app
-   * already knows. Every question is still written by the AI. */
+  
   defaultSubject?: string;
   defaultTopic?: string;
   defaultGrade?: string;
@@ -73,14 +57,12 @@ export default function MagicShuffleGame({
   const { user } = useAuth();
   const playerName = user?.full_name?.trim() || "Меҳмон";
 
-  /** The set chosen on the setup screen — kept so "Аз нав бозӣ кардан" can
-   * replay the same questions without sending the player back through
-   * setup (or, worse, silently regenerating and charging another AI call). */
+  
   const [chosenQuestions, setChosenQuestions] = useState<ShuffleQuestion[]>([]);
 
-  // Slot width follows the viewport so the row of three never overflows a
-  // narrow phone. Measured via matchMedia rather than a resize listener so
-  // it only re-renders when the breakpoint is actually crossed.
+  
+  
+  
   const [slotW, setSlotW] = useState(SLOT_W_DESKTOP);
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
@@ -90,7 +72,7 @@ export default function MagicShuffleGame({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  // Esc closes the overlay, matching every other full-screen surface here.
+  
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -105,7 +87,7 @@ export default function MagicShuffleGame({
   const mood: ClownMood =
     game.phase === "feedback" ? (game.answerCorrect ? "happy" : "sad") : MOOD_FOR_PHASE[game.phase];
 
-  // ---- Setup ----
+  
   if (game.phase === "setup") {
     return (
       <ClassroomScene>
@@ -115,8 +97,8 @@ export default function MagicShuffleGame({
           defaultTopic={defaultTopic}
           defaultGrade={defaultGrade}
           onReady={(qs) => {
-            // The whole set exists before the first box is ever drawn —
-            // nothing is generated once the game is running.
+            
+            
             setChosenQuestions(qs);
             game.start(qs);
           }}
@@ -125,7 +107,7 @@ export default function MagicShuffleGame({
     );
   }
 
-  // ---- Result ----
+  
   if (game.phase === "result") {
     return (
       <ClassroomScene>
@@ -146,25 +128,23 @@ export default function MagicShuffleGame({
     );
   }
 
-  // ---- In-round ----
+  
   const lidsUp = game.phase === "lidsOpen" || game.phase === "inserting";
   const lidsClosing = game.phase === "lidsClose";
   const showBoxes = game.phase !== "reveal";
   const boxesInteractive = game.phase === "choosing";
 
-  /** Pixel delta from the centre of the stage to the centre of the box at
-   * `position` — this aims a flying card at a real box on screen rather
-   * than at a guessed coordinate. */
+  
   function offsetToSlot(position: number): number {
     return position * slotW + BOX_W / 2 - rowWidth / 2;
   }
 
   const openedBox = game.boxes.find((b) => b.id === game.pickedBoxId) ?? null;
 
-  // Once the card has come back out there are answer buttons pinned to the
-  // bottom of the stage, so it rests higher than dead centre to leave room
-  // for them. The flight's y-target is compensated by the same amount so
-  // the card still aims at the box's real position on screen.
+  
+  
+  
+  
   const cardRestY = game.phase === "emerging" || game.phase === "question" ? -104 : 0;
 
   return (
@@ -180,12 +160,12 @@ export default function MagicShuffleGame({
       />
 
       <div className="relative flex h-full w-full flex-1 flex-col items-center justify-end overflow-hidden px-3 pb-12 pt-16 sm:pb-14">
-        {/* --- Clown --- always on stage, reacting to the phase. */}
+        {}
         <div className="relative z-20 mb-1 flex flex-col items-center">
           <ClownMascot mood={mood} size={slotW === SLOT_W_DESKTOP ? 170 : 130} />
         </div>
 
-        {/* --- Stage banner --- names whatever beat is playing. */}
+        {}
         {(game.phase === "reveal" || game.phase === "lidsOpen" || game.phase === "lidsClose") && (
           <div className="pointer-events-none absolute inset-x-0 top-[14%] z-40 flex justify-center px-4">
             <span
@@ -202,7 +182,7 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- Countdown overlay --- */}
+        {}
         {game.phase === "countdown" && (
           <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-3">
             <span
@@ -221,7 +201,7 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- Combo / bonus toast --- */}
+        {}
         {game.comboToast && (
           <div className="pointer-events-none absolute inset-x-0 top-1/3 z-40 flex justify-center">
             <span
@@ -234,10 +214,7 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- The three boxes --- identical in every respect. Nothing below
-            is keyed to box identity: same theme, same float phase, same
-            glow. The only per-box difference is the lid stagger, which is
-            keyed to screen POSITION and only runs while the lids move. */}
+        {}
         {showBoxes && (
           <div className="relative z-10 h-[150px] shrink-0" style={{ width: rowWidth }}>
             {game.boxes.map((box) => {
@@ -265,9 +242,7 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- Reveal: all three questions at once, before anything is
-            hidden. The boxes are off-stage here so nothing competes with
-            them. --- */}
+        {}
         {game.phase === "reveal" && (
           <div className="absolute inset-0 z-40 flex items-center justify-center px-3">
             <div className="grid w-full max-w-3xl gap-2.5 sm:grid-cols-3">
@@ -287,8 +262,7 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- Insert: the three cards fly, one into each box. Each card
-            aims at the box that genuinely receives it. --- */}
+        {}
         {game.phase === "inserting" &&
           game.boxes.map((box) => {
             const q = game.roundQuestions[box.questionIndex];
@@ -307,8 +281,7 @@ export default function MagicShuffleGame({
             );
           })}
 
-        {/* --- Emerge / answer: the one question that was really inside the
-            opened box flies back out and stays. --- */}
+        {}
         {(game.phase === "emerging" || game.phase === "question") && game.activeQuestion && (
           <FlyingQuestionCard
             question={game.activeQuestion}
@@ -331,14 +304,14 @@ export default function MagicShuffleGame({
           </div>
         )}
 
-        {/* --- Answer buttons --- under the card that just flew out. */}
+        {}
         {game.phase === "question" && game.activeQuestion && (
           <div className="absolute inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-10 sm:pb-12">
             <QuestionPanel question={game.activeQuestion} picked={game.pickedAnswer} onAnswer={game.answer} />
           </div>
         )}
 
-        {/* --- Feedback --- */}
+        {}
         {game.phase === "feedback" && game.activeQuestion && (
           <FeedbackPanel
             correct={game.answerCorrect === true}
@@ -366,9 +339,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** The post-answer card. Always shows the reason the correct answer is
- * correct — that's the teaching moment, and on a wrong answer it's the
- * whole point: the player sees what they picked, what was right, and why. */
+
 function FeedbackPanel({
   correct,
   question,
@@ -382,9 +353,9 @@ function FeedbackPanel({
   isLastRound: boolean;
   onNext: () => void;
 }) {
-  // The "next" button is focused on mount so a keyboard player can just hit
-  // Enter to continue, and nothing auto-advances past a child who is still
-  // reading the explanation.
+  
+  
+  
   const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     btnRef.current?.focus();
@@ -408,9 +379,7 @@ function FeedbackPanel({
 
         {correct && <p className="relative mt-1 text-sm font-black text-amber-600">+100 хол</p>}
 
-        {/* On a wrong answer, show BOTH what they chose and what was right —
-            seeing only the right answer leaves them guessing what they'd
-            actually picked. */}
+        {}
         {!correct && pickedText && (
           <p className="relative mt-3 rounded-xl bg-red-50 px-3 py-2 text-left text-sm font-semibold text-red-800">
             <span className="mr-1 font-black">Ҷавоби шумо:</span>

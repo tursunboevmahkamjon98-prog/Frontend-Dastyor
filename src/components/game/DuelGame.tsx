@@ -8,9 +8,9 @@ import { sfx } from "./sound";
 
 type Side = 1 | 2;
 
-// A matched pair's drawn connector — same shape/technique as SoloGame.tsx's
-// MatchLine (see that file's doc comment); kept as its own copy here since
-// the two screens don't otherwise share a component module.
+
+
+
 interface MatchLine {
   key: number;
   x1: number;
@@ -19,10 +19,10 @@ interface MatchLine {
   y2: number;
 }
 
-// Every per-side Tailwind class spelled out literally (not built from a
-// `${accent}-100` template) — Tailwind's JIT scanner only picks up classes
-// that appear as literal substrings in the source, so an interpolated
-// accent name would silently generate no CSS at all. See THEME below.
+
+
+
+
 interface SideTheme {
   halfBg: string;
   badgeBg: string;
@@ -50,27 +50,7 @@ const THEME: Record<Side, SideTheme> = {
   },
 };
 
-/** Two kids, one screen, one question at a time — both sides see the exact
- * same round and race to answer on their own half (see product decision:
- * "Duel/Buzzer"). The screen splits left/right on anything roomy enough for
- * two hands (tablet/desktop/landscape phone) and top/bottom on a narrow
- * portrait phone, since a literal side-by-side split there would leave each
- * zone too cramped to tap accurately.
- *
- * Touch needs nothing special for simultaneous presses: each half's buttons
- * are separate DOM elements, and two fingers landing on two different
- * elements at once already dispatch two independent pointer events — no
- * custom multi-touch handling required. Keyboard gets an explicit split
- * instead (P1_KEYS/P2_KEYS, far enough apart on a real keyboard that two
- * hands don't collide) since two keydowns for the same physical key can't
- * otherwise be told apart.
- *
- * DuelGame itself only owns what must survive across rounds — the two
- * scores and which round we're on. Everything scoped to a single round
- * (the countdown, who's locked out, the winner banner) lives in DuelRound
- * below, which React remounts fresh every round via `key={index}` — that
- * remount IS the reset, so no effect-driven "resync state to the new round"
- * logic is needed anywhere here. */
+
 export default function DuelGame({
   rounds,
   template,
@@ -152,7 +132,7 @@ function DuelRound({
     const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     if (timeLeft <= 3) sfx.tick();
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [timeLeft, banner]);
 
   return (
@@ -252,16 +232,16 @@ function DuelStage({
       setWrongFlash(true);
       sfx.wrong();
       setTimeout(() => setWrongFlash(false), 300);
-      setPicked(chosen); // locks this side out of the round, doesn't award
+      setPicked(chosen); 
     }
   }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const key = e.key.toLowerCase();
-      // Speed round has no options to index into — its own key (keys[0],
-      // same one that doubles as the buzz button's on-screen hint) just
-      // buzzes directly, same as tapping it.
+      
+      
+      
       if (round.type === "speed") {
         if (key === keys[0] && !locked) onWin();
         return;
@@ -276,11 +256,11 @@ function DuelStage({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [locked, picked]);
 
-  // Same last-3-seconds heartbeat SoloGame's Stage uses — only quiz/
-  // true_false actually fail on timeout, so only they pulse.
+  
+  
   const urgent = (round.type === "quiz" || round.type === "true_false") && !locked && timeLeft <= 3;
   const cardCls = `rounded-2xl bg-white/95 p-4 shadow-lg ${wrongFlash ? "animate-[game-shake_0.3s_ease-in-out]" : ""}`;
   const cardStyle = urgent ? { animation: "game-urgent-pulse 0.6s ease-in-out infinite" } : undefined;
@@ -342,8 +322,8 @@ function DuelStage({
   if (round.type === "matching") return <DuelMatching round={round} locked={locked} onWin={onWin} cardCls={cardCls} theme={theme} />;
   if (round.type === "order") return <DuelOrder round={round} locked={locked} onWin={onWin} cardCls={cardCls} theme={theme} />;
 
-  // Speed round: pure buzzer, no correctness check (matches SoloGame's
-  // treatment of this type — see its doc comment).
+  
+  
   return (
     <div className={cardCls}>
       <p className="mb-3 text-center text-sm font-bold text-[#3b0764]">{round.question}</p>
@@ -372,12 +352,12 @@ function DuelMatching({
   cardCls: string;
   theme: SideTheme;
 }) {
-  // Lazy useState initializer rather than useMemo: this component is
-  // already fresh-mounted once per round (DuelRound above is keyed by
-  // round index), so there's no "recompute when round changes" case to
-  // serve — just a one-time shuffle at mount, which is exactly what a
-  // lazy initializer is for (and, unlike useMemo, isn't flagged as an
-  // impure render call since it only ever runs once).
+  
+  
+  
+  
+  
+  
   const [rightShuffled] = useState(() => [...round.pairs.map((p) => p.right)].sort(() => Math.random() - 0.5));
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
   const [matched, setMatched] = useState<Record<number, string>>({});
@@ -394,7 +374,7 @@ function DuelMatching({
       wonRef.current = true;
       onWin();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [done]);
 
   function pickRight(right: string) {
@@ -520,12 +500,12 @@ function DuelOrder({
       wonRef.current = true;
       onWin();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [correct]);
 
-  // Same Pointer Events drag-reorder as SoloGame.tsx's OrderStage (see its
-  // doc comment on why not native HTML5 drag-and-drop) — duplicated rather
-  // than shared since this side's version also has to respect `locked`.
+  
+  
+  
   function onPointerDown(e: React.PointerEvent, index: number) {
     if (locked || correct) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -547,8 +527,8 @@ function DuelOrder({
       const movingDown = i > drag.index && e.clientY > mid;
       const movingUp = i < drag.index && e.clientY < mid;
       if (movingDown || movingUp) {
-        // See SoloGame.tsx's OrderStage for why the old index has to be
-        // captured before drag.index is mutated below.
+        
+        
         const fromIndex = drag.index;
         setItems((prev) => {
           const next = [...prev];

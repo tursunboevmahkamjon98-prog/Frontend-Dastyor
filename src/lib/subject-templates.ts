@@ -1,36 +1,17 @@
 import { PRESENTATION_TEMPLATES } from "./material-types";
 
-/* Per-subject presentation designs — the site's mirror of
- * backend/app/subject_templates.py.
- *
- * Same ids, same palettes, same structural switches. The backend is the
- * source of truth; this copy exists so the site can name a deck's design
- * and draw an honest preview of it without a round trip.
- *
- * backend/tests/test_presentation_templates.py reads this file and checks
- * the two lists still agree, so an id added on one side and forgotten on
- * the other fails a test instead of quietly showing a teacher the wrong
- * design name.
- *
- * A deck generated now is STORED with the id its subject resolved to (see
- * ai_service._default_template_for), so `content.template` is one of
- * these. The six ids in PRESENTATION_TEMPLATES only appear on decks made
- * before this system existed — which is exactly why deckTemplateName()
- * below looks in both lists.
- */
+
 
 export type SubjectTemplate = {
   id: string;
   name: string;
-  /** What the design IS, in one line — printed under the preview. */
+  
   note: string;
   accent: string;
   support: string;
   bg: string;
   ink: string;
-  /** The structural switches the preview draws from. Same vocabulary as
-   *  the Python dataclass's header / card / marker / decor fields, so a
-   *  preview can never claim a look the exporter does not produce. */
+  
   header:
     | "rule" | "underline" | "band" | "smallcaps" | "index" | "measure"
     | "hexband" | "lozenge" | "masthead" | "prompt" | "initial" | "ornamental";
@@ -44,10 +25,7 @@ export type SubjectTemplate = {
     | "grid" | "symbols" | "construction" | "wave" | "hexlattice" | "organic"
     | "contour" | "timeline" | "dots" | "ruled" | "ornament" | "letters"
     | "girih" | "network" | "cycle" | "none";
-  /** Which composition the preview draws in its body — the same vocabulary
-   *  as the exporter's cover compositions (slide_decor.draw_cover), so the
-   *  card shows the subject's real character rather than a generic
-   *  header-and-two-cards that no longer resembles a slide. */
+  
   cover: string;
   serif?: boolean;
 };
@@ -181,7 +159,7 @@ export const SUBJECT_TEMPLATES: SubjectTemplate[] = [
   },
 ];
 
-/** Exact subject name -> template id. Mirrors SUBJECT_TO_TEMPLATE. */
+
 export const SUBJECT_TEMPLATE_BY_SUBJECT: Record<string, string> = {
   "Математика": "mathematics",
   "Алгебра": "algebra",
@@ -208,18 +186,13 @@ export function templateById(id: string | null | undefined): SubjectTemplate | u
   return SUBJECT_TEMPLATES.find((t) => t.id === String(id ?? "").trim());
 }
 
-/** The design a given subject's deck will actually be built with. */
+
 export function subjectTemplateFor(subject: string | null | undefined): SubjectTemplate {
   const id = SUBJECT_TEMPLATE_BY_SUBJECT[String(subject ?? "").trim()];
   return (id ? templateById(id) : undefined) ?? GENERAL;
 }
 
-/** The display name for whatever is stored in a deck's `template` field.
- *
- * The editor used to fall back to PRESENTATION_TEMPLATES[0], which
- * labelled every deck "Яркий блокнот" whatever it really was — harmless
- * while that WAS the only design, wrong the moment the subject started
- * choosing. */
+
 export function deckTemplateName(templateId: string | null | undefined): string {
   const id = String(templateId ?? "").trim();
   return (

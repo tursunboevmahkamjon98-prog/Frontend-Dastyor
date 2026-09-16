@@ -12,10 +12,10 @@ import { LEVEL_LABEL_KEYS } from "@/lib/material-types";
 
 const TEMPLATES: GameTemplate[] = ["classic", "race", "goldrush", "battle", "classroom"];
 
-// Each template card tinted toward its own in-game scene (see
-// templates.tsx's TemplateScene) rather than the same flat white/10 for
-// all four — picking "Гонка" here should already hint at the dusk-racing
-// atmosphere it leads to, not look identical to "Битва".
+
+
+
+
 const CARD_STYLE: Record<GameTemplate, { card: string; badge: string }> = {
   classic: { card: "bg-white/10 hover:bg-white", badge: "bg-white/15" },
   race: { card: "border border-[#ffb86b]/25 bg-[#3a3f6b]/50 hover:bg-white", badge: "bg-[#ffb86b]/25" },
@@ -24,13 +24,13 @@ const CARD_STYLE: Record<GameTemplate, { card: string; badge: string }> = {
   classroom: { card: "border border-emerald-400/25 bg-[#0f3226]/50 hover:bg-white", badge: "bg-emerald-400/25" },
 };
 
-// The game's title scene — "ШАБЛОН → ИГРАТЬ → 1 ИГРОК / 2 ИГРОКА" per
-// product spec (template picked first, Blooket-style, since it's the
-// choice that decides what the whole run looks like — mode and difficulty
-// are refinements on top of it). Difficulty is picked here for solo play
-// (rather than only ramping mid-run) because the ask was for BOTH a
-// pre-game choice and in-run progression — see SoloGame.tsx's LEVEL_SIZE
-// for the latter.
+
+
+
+
+
+
+
 export default function StartScreen({
   title,
   totalRounds,
@@ -43,19 +43,11 @@ export default function StartScreen({
 }: {
   title: string;
   totalRounds: number;
-  /** This game's own id — fetches this account's real past attempts (see
-   * GameEngine.tsx's finishRun) to back the stats/best-results panel
-   * below. No fake numbers: if there are no attempts yet, the panel just
-   * doesn't render rather than showing a made-up "0" or placeholder. */
+  
   materialId: string;
-  /** Bumped by GameEngine after every run finishes saving — re-fetches the
-   * attempts list so a just-played run shows up without reopening the
-   * whole game. */
+  
   attemptsVersion: number;
-  /** Set when GamePlayer.tsx's own gallery cover already picked a
-   * template — skips straight to "mode" and, since there's no template
-   * list to return to in that case, the mode screen's back arrow closes
-   * the whole overlay (back to the gallery) instead of going to "template". */
+  
   initialTemplate?: GameTemplate;
   onStartSolo: (difficulty: Difficulty, template: GameTemplate) => void;
   onStartDuel: (template: GameTemplate) => void;
@@ -82,18 +74,16 @@ export default function StartScreen({
     };
   }, [materialId, attemptsVersion]);
 
-  // Backed by the same TemplateScene every round screen (SoloGame/DuelGame)
-  // already uses — this used to be one fixed violet gradient no matter
-  // which template got picked from GamePlayer.tsx's own gallery, so
-  // "Урок" would launch into this screen still looking like "Классика".
-  // Now the atmosphere here already matches what the round itself looks
-  // like once it starts.
+  
+  
+  
+  
+  
+  
   return (
     <TemplateScene template={template}>
     <div className="relative flex h-full w-full flex-1 flex-col items-center overflow-y-auto px-4 pb-6 pt-4 text-center">
-      {/* Real signed-in account, not a placeholder "Студент" — this app has
-          no separate student login, so the name here is whoever's account
-          this material belongs to. */}
+      {}
       {user && (
         <div className="mb-2 flex w-full max-w-xs items-center gap-2 self-start rounded-2xl bg-white/10 px-3 py-2 text-left shadow-lg shadow-black/20 backdrop-blur-sm">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-white/40 to-white/10 text-xs font-extrabold text-white ring-2 ring-white/30">
@@ -216,12 +206,7 @@ export default function StartScreen({
   );
 }
 
-/** Real per-account history for THIS game — "Ваша статистика" (games
- * played / best score / win rate) plus a top-3 "Ваши лучшие результаты"
- * list, both computed from GameAttempt rows already fetched by the parent.
- * Renders nothing at all rather than a fake/zeroed placeholder when there's
- * no history yet (a brand-new game has never been played) — an honest
- * empty state beats a made-up "0 игр, 0%". */
+
 function StatsPanel({ attempts }: { attempts: GameAttemptOut[] | null }) {
   const t = useT();
   if (!attempts || attempts.length === 0) return null;
@@ -266,10 +251,10 @@ function Stat({ icon, label, value, color }: { icon: React.ReactNode; label: str
   );
 }
 
-// Solid color per button (blue for solo, violet for duel — matches the
-// reference's own blue/violet card pair) instead of the same translucent
-// glass panel for both, so "1 player" and "2 players" read as two distinct
-// choices at a glance, not one repeated shape.
+
+
+
+
 const MODE_BUTTON_STYLE = {
   solo: "bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500",
   duel: "bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500",

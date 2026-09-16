@@ -1,11 +1,4 @@
-/** UI strings, keyed by dotted path. Russian is the source of truth: the
- * other two locales are typed against it, so forgetting a key there is a
- * compile error rather than a string that silently falls back to Russian
- * in production.
- *
- * Deliberately a plain object rather than an i18n library — the project
- * has no other runtime deps of that kind, the key set is small, and this
- * keeps the whole translation surface readable in one file. */
+
 
 export type Locale = "ru" | "tg" | "en";
 
@@ -16,13 +9,13 @@ export const LOCALES: { code: Locale; label: string }[] = [
 ];
 
 const ru = {
-  // Shared
+  
   "common.error": "Произошла ошибка",
   "common.loading": "Загрузка...",
   "common.back": "Назад",
   "common.offline": "Нет подключения к интернету — создание материалов недоступно",
 
-  // Dashboard navigation
+  
   "nav.home": "Главная",
   "nav.materials": "Материалы",
   "nav.create": "Создать",
@@ -30,7 +23,7 @@ const ru = {
   "nav.balance": "Баланс",
   "nav.somoni": "смн",
 
-  // Login
+  
   "login.title": "С возвращением",
   "login.subtitle": "Войдите в свой аккаунт Dastyor",
   "login.otpTitle": "Подтвердите вход",
@@ -46,7 +39,7 @@ const ru = {
   "login.noAccount": "Нет аккаунта?",
   "login.register": "Зарегистрироваться",
 
-  // Register
+  
   "register.title": "Создать аккаунт",
   "register.subtitle": "Начните пользоваться Dastyor бесплатно",
   "register.fullName": "Имя и фамилия",
@@ -64,7 +57,7 @@ const ru = {
   "register.passwordTooShort": "Пароль должен содержать не менее 6 символов",
   "register.otpTitle": "Подтвердите номер",
 
-  // Password reset
+  
   "forgot.title": "Восстановление пароля",
   "forgot.stepPhone": "Введите номер телефона",
   "forgot.stepCode": "Введите код, отправленный по SMS",
@@ -79,19 +72,19 @@ const ru = {
   "forgot.saving": "Сохранение...",
   "forgot.backToLogin": "Вернуться ко входу",
 
-  // Auth side panel
+  
   "auth.badge": "Учебные материалы с ИИ",
   "auth.headline": "ИИ-помощник для учителей",
   "auth.tagline": "Конспект, тест, презентация и учебный план на весь курс — за секунды.",
-  // The two floating chips over the illustration. They were written
-  // straight into AuthLayout.tsx as Russian literals while everything
-  // around them went through t(), so switching the sign-in page to Tajik
-  // translated the headline and tagline but left these two stranded in
-  // Russian right next to them.
+  
+  
+  
+  
+  
   "auth.chipAssistant": "ИИ-ассистент",
   "auth.chipTypes": "5 видов материалов",
 
-  // Dashboard home
+  
   "home.greetNight": "Доброй ночи",
   "home.greetMorning": "Доброе утро",
   "home.greetDay": "Добрый день",
@@ -102,7 +95,7 @@ const ru = {
   "home.recent": "Недавние материалы",
   "home.quickCreate": "Быстрое создание",
 
-  // Create hub
+  
   "create.title": "Создать",
   "create.prompt": "Что вы хотите создать?",
   "create.curriculum": "Маҷмӯа",
@@ -111,7 +104,7 @@ const ru = {
   "create.allAtOnceDesc": "Конспект, тест, презентация и лекция по одной теме — за один раз",
   "create.typeDesc": "Создайте с помощью ИИ за несколько секунд",
 
-  // Billing
+  
   "billing.title": "Баланс",
   "billing.subtitle": "Пополнение и история",
   "billing.subtitleAdmin": "Пополнение через администратора",
@@ -144,7 +137,7 @@ const ru = {
   "billing.paymentFailed": "Платёж не прошёл",
   "billing.paymentCanceled": "Платёж отменён",
 
-  // Materials list
+  
   "materials.title": "Материалы",
   "materials.subtitle": "Все ваши созданные материалы",
   "materials.search": "Поиск...",
@@ -171,7 +164,7 @@ const ru = {
   "materials.statusReady": "Готово",
   "materials.statusPartialFailed": "Есть ошибки",
 
-  // Profile
+  
   "profile.teacher": "Учитель",
   "profile.contact": "Связь",
   "profile.password": "Пароль",
@@ -224,10 +217,10 @@ const ru = {
   "create.errorOffline": "Нет подключения к интернету — материал не может быть создан",
   "create.charsCounted": "символов",
   "create.gradeWord": "класс",
-  // The "all at once" create screen's own states. These were written as
-  // Russian literals in the page while everything around them went
-  // through t(), so a Tajik/English user got a half-translated screen:
-  // "ИИ готовит материалы…" over Tajik material names.
+  
+  
+  
+  
   "create.generating": "ИИ готовит материалы…",
   "create.done": "Готово",
   "create.failedPrefix": "Не удалось создать:",
@@ -298,7 +291,7 @@ const ru = {
   "profile.photoUploadFailed": "Не удалось загрузить фото",
   "profile.photoRemoveFailed": "Не удалось удалить фото",
 
-  // Material detail / PDF preview
+  
   "material.previewPdf": "Просмотр PDF",
   "material.tabContent": "Содержание",
   "material.openFull": "Открыть во весь экран",
@@ -307,16 +300,16 @@ const ru = {
   "material.download": "Скачать",
   "material.close": "Закрыть",
 
-  // Material types
+  
   "type.konspekt": "Конспект",
   "type.lektsiya": "Лекция",
   "type.test": "Тест",
   "type.prezentatsiya": "Презентация",
   "type.amaliy": "Практические задания",
   "type.igra": "Игра",
-  // Accusative/object form of each type's name, for sentences like
-  // "AI создаёт …" — type.* above is nominative ("Презентация"), which
-  // reads wrong mid-sentence ("AI создаёт Презентация").
+  
+  
+  
   "type.konspektAcc": "конспект",
   "type.lektsiyaAcc": "лекцию",
   "type.testAcc": "тест",
@@ -333,7 +326,7 @@ const ru = {
   "create.questionType": "Тип вопросов",
   "create.headerSubtitle": "Заполните информацию для создания",
 
-  // GamePlayer.tsx — the "Играть" cover card for an "igra" material.
+  
   "game.noRounds": "В этой игре пока нет раундов.",
   "game.defaultTitle": "Игра",
   "game.play": "Играть",
@@ -391,7 +384,7 @@ const ru = {
   "box.playAgain": "Играть снова",
   "box.close": "Закрыть",
 
-  // TestPlayer.tsx — online test play (see components/TestPlayer.tsx).
+  
   "test.noQuestions": "В этом тесте пока нет вопросов.",
   "test.defaultTitle": "Тест",
   "test.questionsCount": "вопросов",
@@ -428,8 +421,7 @@ const ru = {
   "value.testTypeOpenEnded": "Открытый вопрос",
 } as const;
 
-/** Every locale must cover exactly the Russian key set — see the note at
- * the top of this file. */
+
 type Messages = Record<keyof typeof ru, string>;
 
 const tg: Messages = {
@@ -494,9 +486,9 @@ const tg: Messages = {
   "auth.badge": "Маводҳои таълимӣ бо AI",
   "auth.headline": "Ёрдамчии AI барои омӯзгорон",
   "auth.tagline": "Конспект, тест, презентатсия ва нақшаи таълимӣ барои тамоми курс — дар якчанд сония.",
-  // "AI" is left as the Latin acronym in Tajik on purpose: the Cyrillic
-  // calque "ЁС" was in use here and read as an unfamiliar abbreviation
-  // rather than as the product category teachers actually recognise.
+  
+  
+  
   "auth.chipAssistant": "Ёрдамчии AI",
   "auth.chipTypes": "5 навъи мавод",
 
@@ -1211,9 +1203,7 @@ export type MessageKey = keyof typeof ru;
 
 export const MESSAGES: Record<Locale, Messages> = { ru, tg, en };
 
-/** Maps the account's stored generation language (backend User.language,
- * e.g. "Таджикский") onto a UI locale. Anything unrecognised falls back to
- * Russian, which is what the site shipped in originally. */
+
 export function localeFromAccountLanguage(language: string | null | undefined): Locale {
   switch (language) {
     case "Таджикский":

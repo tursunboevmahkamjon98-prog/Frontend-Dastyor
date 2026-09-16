@@ -9,16 +9,12 @@ import { MATERIAL_TYPE_CONFIG, MATERIAL_TYPES } from "@/lib/material-types";
 
 const PAGE_SIZE = 30;
 
-/** The nav item pointing here (admin/layout.tsx's "Материалы") has
- * existed since before this page did — adminApi.listMaterials/
- * removeMaterial and the backend endpoints behind them (see
- * routers/admin.py) were already there too, just never wired to
- * anything, so the tab silently 404'd. This is that missing page. */
+
 export default function AdminMaterialsPage() {
-  // ?user=<id> narrows the list to one teacher — set by the "materials"
-  // button on an admin/users row, so an admin can go from "who is this
-  // account" straight to "what have they actually made" instead of
-  // hunting for their name in the all-teachers list.
+  
+  
+  
+  
   const params = useSearchParams();
   const userId = params.get("user") || "";
   const [query, setQuery] = useState("");
@@ -50,18 +46,18 @@ export default function AdminMaterialsPage() {
     }
   }, [query, type, userId]);
 
-  // Debounced like admin/users — a search/type change goes back to page 1
-  // rather than keeping whatever offset was scrolled to for the OLD filter.
+  
+  
   useEffect(() => {
     const t = setTimeout(() => load(0), 250);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [query, type, userId]);
 
   async function remove(item: AdminMaterialOut) {
-    // Same reasoning as admin/users' remove(): irreversible, no undo
-    // story here, worth a native confirm() despite the rest of the app
-    // having moved to the undo-toast pattern for a teacher's OWN deletes.
+    
+    
+    
     if (!confirm(`Удалить «${item.title}» (${MATERIAL_TYPE_CONFIG[item.type]?.label ?? item.type}, владелец: ${item.owner_name})? Это необратимо.`)) return;
     setBusyId(item.id);
     setError(null);
@@ -146,9 +142,7 @@ export default function AdminMaterialsPage() {
                     </p>
                   </div>
 
-                  {/* "igra" has no standalone viewer page (see
-                      MATERIAL_TYPE_LABEL_KEY's own docs on why it's
-                      excluded from LIBRARY_TYPES) — no link for it. */}
+                  {}
                   {item.type !== "igra" && (
                     <Link
                       href={`/dashboard/materials/${item.type}/${item.id}`}

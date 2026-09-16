@@ -13,23 +13,13 @@ import ReagentBottle from "./ReagentBottle";
 import { LabQuestion, REAGENT_COLORS, reactionConfig } from "./types";
 import { useLabGame } from "./useLabGame";
 
-/** Horizontal spacing between reagent slots, used to work out how far the
- * chosen bottle has to travel to reach the flask. Matches the flex gap +
- * bottle width below; kept as constants because the flight is a CSS
- * transform and can't read layout. */
+
 const SLOT_W_DESKTOP = 108;
 const SLOT_W_MOBILE = 88;
-/** How far above the bench the flask sits relative to the bottles. */
+
 const FLASK_RISE = 132;
 
-/** "Лабораторияи махфӣ" — a secret-laboratory quiz. Each round the AI asks a
- * question and the bench fills with reagent bottles, one per answer option.
- * Picking one physically carries it to the big flask and pours it in; the
- * reaction that follows is the feedback.
- *
- * All rules and timing live in useLabGame; this file is composition and
- * layout. The one thing it owns is the responsive slot width, since that's a
- * presentation concern the logic must not know about. */
+
 export default function SecretLabGame({
   defaultSubject,
   defaultTopic,
@@ -45,8 +35,7 @@ export default function SecretLabGame({
   const { user } = useAuth();
   const playerName = user?.full_name?.trim() || "Меҳмон";
 
-  /** Kept so "Аз нав бозӣ кардан" can replay the same set instead of
-   * silently spending another AI call. */
+  
   const [lastSet, setLastSet] = useState<LabQuestion[]>([]);
 
   const [slotW, setSlotW] = useState(SLOT_W_DESKTOP);
@@ -66,7 +55,7 @@ export default function SecretLabGame({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // ---- Setup / brewing ----
+  
   if (game.phase === "setup" || game.phase === "brewing") {
     return (
       <LabScene>
@@ -85,7 +74,7 @@ export default function SecretLabGame({
     );
   }
 
-  // ---- Result ----
+  
   if (game.phase === "result") {
     return (
       <LabScene>
@@ -107,7 +96,7 @@ export default function SecretLabGame({
   const cfg = reactionConfig(game.round, game.totalRounds);
   const optionCount = q?.options.length ?? 0;
 
-  // Flask visual state follows the game phase.
+  
   const flaskState =
     game.phase === "pouring"
       ? "filling"
@@ -119,16 +108,14 @@ export default function SecretLabGame({
             : "fail"
           : "idle";
 
-  // Tint = the colour of whichever reagent went in. Falls back to the first
-  // colour before anything has been poured.
+  
+  
   const tint = REAGENT_COLORS[(game.picked ?? 0) % REAGENT_COLORS.length].liquid;
 
   const camera = game.phase === "roundIntro" ? "in" : game.phase === "finale" ? "out" : "idle";
   const flare = (game.phase === "reacting" && game.answerCorrect === true) || game.phase === "finale";
 
-  /** Where the bottle at `index` has to travel to reach the flask: the flask
-   * sits centred above the row, so the delta is the bottle's own offset from
-   * the row centre, negated, plus the rise. */
+  
   function flyTo(index: number) {
     const centre = (optionCount - 1) / 2;
     return { x: (centre - index) * slotW, y: -FLASK_RISE };
@@ -146,13 +133,9 @@ export default function SecretLabGame({
         scorePops={game.scorePops}
       />
 
-      {/* Column layout, not absolute positioning, for the three stacked
-          zones: the question panel reserves its own height at the top, the
-          flask takes whatever is left in the middle, and the bench sits at
-          the bottom. Floating the panel over the scene instead had it
-          landing on top of the flask whenever the question ran long. */}
+      {}
       <div className="relative flex h-full w-full flex-1 flex-col items-center overflow-hidden px-3 pb-24 pt-8 sm:pb-28 sm:pt-12">
-        {/* ---- "Таҷрибаи нав!" banner ---- */}
+        {}
         {game.phase === "roundIntro" && (
           <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
             <span
@@ -164,7 +147,7 @@ export default function SecretLabGame({
           </div>
         )}
 
-        {/* ---- Question panel ---- floating glass, the focus of the screen. */}
+        {}
         {q && game.phase !== "roundIntro" && (
           <div
             className="pointer-events-none z-30 flex w-full shrink-0 justify-center"
@@ -182,7 +165,7 @@ export default function SecretLabGame({
           </div>
         )}
 
-        {/* ---- Success banner ---- */}
+        {}
         {game.phase === "reacting" && game.answerCorrect === true && (
           <div className="pointer-events-none absolute inset-x-0 top-[42%] z-40 flex flex-col items-center gap-1.5 px-4">
             <span
@@ -203,17 +186,15 @@ export default function SecretLabGame({
           </div>
         )}
 
-        {/* Elastic spacer: soaks up whatever height is left between the
-            question panel and the bench, so the bench group below keeps its
-            natural size instead of being squeezed. */}
+        {}
         <div className="min-h-0 flex-1" />
 
-        {/* ---- The flask, standing on the bench ---- */}
+        {}
         <div className="relative z-20 flex shrink-0 origin-bottom flex-col items-center [@media(max-height:760px)]:scale-[0.7]">
           <ReactionFlask state={flaskState} config={cfg} tint={tint} />
         </div>
 
-        {/* ---- Prompt above the reagents ---- */}
+        {}
         {game.phase === "question" && (
           <p
             className="relative z-20 mb-1.5 mt-1.5 shrink-0 text-[11px] font-black uppercase tracking-widest text-cyan-200/90 sm:text-sm"
@@ -223,7 +204,7 @@ export default function SecretLabGame({
           </p>
         )}
 
-        {/* ---- The reagent bottles: one per answer option ---- */}
+        {}
         {q && game.phase !== "finale" && (
           <div className="relative z-20 flex shrink-0 origin-bottom items-end justify-center gap-2 sm:gap-4 [@media(max-height:760px)]:scale-[0.78]">
             {q.options.map((opt, i) => (
@@ -235,8 +216,8 @@ export default function SecretLabGame({
                 flying={game.picked === i && game.phase === "pouring"}
                 dimmed={game.picked !== null && game.picked !== i && game.phase !== "question"}
                 reveal={
-                  // Once the reaction has played, the bench itself shows the
-                  // verdict: the right bottle greens, a wrong pick reds.
+                  
+                  
                   game.phase === "reacting" || game.phase === "explaining"
                     ? i === q.correctIndex
                       ? "correct"
@@ -252,7 +233,7 @@ export default function SecretLabGame({
           </div>
         )}
 
-        {/* ---- Finale ---- */}
+        {}
         {game.phase === "finale" && (
           <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-2">
             <span className="text-5xl" style={{ animation: "mbox-trophy-in 0.9s cubic-bezier(0.3,1.4,0.6,1)" }}>
@@ -267,7 +248,7 @@ export default function SecretLabGame({
           </div>
         )}
 
-        {/* ---- Explanation ---- wrong answers only. */}
+        {}
         {game.phase === "explaining" && q && (
           <ExplanationCard question={q} picked={game.picked} onContinue={game.next} />
         )}

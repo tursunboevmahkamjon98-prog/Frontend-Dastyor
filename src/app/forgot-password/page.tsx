@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
         <div className="mb-8 lg:text-left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {}
           <img src="/logo.png" alt="Dastyor" className="mb-4 h-11 w-11 lg:hidden" />
           <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">{t("forgot.title")}</h1>
           <p className="mt-1.5 text-sm text-text-secondary">

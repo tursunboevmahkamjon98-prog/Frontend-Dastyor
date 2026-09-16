@@ -4,8 +4,7 @@ import { Heart, Star } from "lucide-react";
 import { STARTING_LIVES, STATIONS, stationForRound } from "./types";
 import type { ScorePop } from "./useLabGame";
 
-/** Small glass chip — the HUD's only container shape, so every readout looks
- * like part of one set rather than four different panels. */
+
 function Chip({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
@@ -16,9 +15,7 @@ function Chip({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
-/** The gameplay HUD: compact glass chips pinned to the very top, and the
- * station journey along the bottom. Nothing sits in the middle band, so the
- * bench and glassware — the actual game — are never covered. */
+
 export default function LabHUD({
   playerName,
   round,
@@ -28,7 +25,7 @@ export default function LabHUD({
   scorePops,
 }: {
   playerName: string;
-  round: number; // 0-based
+  round: number; 
   totalRounds: number;
   score: number;
   lives: number;
@@ -39,7 +36,7 @@ export default function LabHUD({
 
   return (
     <>
-      {/* ---- Top chips ---- */}
+      {}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-between gap-2 p-3 sm:p-4">
         <Chip>
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-[11px] font-black text-white ring-2 ring-white/30">
@@ -56,7 +53,7 @@ export default function LabHUD({
         </Chip>
 
         <div className="flex flex-col items-end gap-1.5">
-          {/* Score, with award pops flying out of it */}
+          {}
           <div className="relative">
             <Chip>
               <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />
@@ -87,8 +84,8 @@ export default function LabHUD({
                     animation: spent
                       ? "lab-life-lost 0.6s ease-out forwards"
                       : isLast
-                        ? // A hint that it's the last one, deliberately slow
-                          // and low-contrast so it never nags.
+                        ? 
+                          
                           "lab-life-last 2.2s ease-in-out infinite"
                         : undefined,
                   }}
@@ -99,7 +96,7 @@ export default function LabHUD({
         </div>
       </div>
 
-      {/* ---- Station journey ---- the path through the lab, not a list. */}
+      {}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-6 sm:pb-4">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-1.5 sm:gap-2">
           {STATIONS.map((name, i) => {
@@ -135,7 +132,7 @@ export default function LabHUD({
           })}
         </div>
 
-        {/* Thin overall bar under the journey */}
+        {}
         <div className="mx-auto mt-2 h-1 w-full max-w-2xl overflow-hidden rounded-full bg-white/10">
           <div
             className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-400 transition-all duration-700"

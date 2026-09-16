@@ -1,23 +1,3 @@
-# -*- coding: utf-8 -*-
-"""The лекция as a finished teaching document.
-
-A lecture used to be rendered by the konspekt's body renderer with a
-different masthead bolted on: the same numbered sections, the same
-bullets, the same wall of prose. It read as generated text, because
-structurally it WAS the same document wearing another hat.
-
-This module gives the лекция its own build:
-
-    cover page  ->  contents  ->  numbered sections with sub-headings,
-    definitions, worked callouts, figures and tables  ->  self-check
-    ->  conclusions  ->  sources
-
-and four genuinely different designs to print it in (see
-lecture_templates.py). Everything visual is dispatched through the five
-tables at the bottom of this file — _COVERS, _HEADINGS, _CALLOUTS,
-_TABLES, _DEFINITIONS — so a design is a set of five small functions
-rather than a copy of the builder.
-"""
 import io
 import re
 
@@ -50,10 +30,6 @@ RULE = '#D5DBE4'
 PAPER_SOFT = '#F6F8FA'
 
 
-# ── words ───────────────────────────────────────────────────────────────
-# Everything the document says in its own voice. A lecture is handed to
-# real students, so its furniture is written in the language the lecture
-# is in — never Russian chrome around Tajik content.
 L10N = {
     'Русский': {
         'tag': 'ЛЕКЦИЯ', 'contents': 'Содержание', 'objective': 'Цель лекции',
@@ -102,18 +78,13 @@ def _words(language: str) -> dict:
     return L10N.get(str(language or 'Русский'), L10N['Русский'])
 
 
-# ── one place that knows the design ─────────────────────────────────────
 class _Design:
-    """The resolved look: template knobs + the accent + the fonts."""
 
     def __init__(self, template, accent_hex: str, words: dict):
         self.t = template
         self.words = words
         self.accent = accent_hex
         self.quiet = template.colour == 'quiet'
-        # A quiet design still needs somewhere to spend the accent, or it
-        # reads as a fax. It gets the rules and the labels; the fills stay
-        # out of it.
         self.heading_ink = INK if self.quiet else accent_hex
         self.body_font = MATH_FONT if template.body_font == 'serif' else FONT_NAME
         self.body_bold = MATH_FONT_BOLD if template.body_font == 'serif' else FONT_NAME_BOLD
@@ -123,7 +94,6 @@ class _Design:
         self.tint_soft = _pdf_light_tint_hex(accent_hex, amount=0.965)
         self.width = A4[0] - 2 * template.margin_x * cm
 
-    # styles used all over the body
     def body_style(self, name: str, **kw) -> ParagraphStyle:
         base = dict(fontName=self.body_font, fontSize=self.t.body_size,
                     leading=self.t.body_leading, textColor=HexColor(INK),
@@ -140,21 +110,12 @@ def _uid(prefix: str) -> str:
     return f'{prefix}{_STYLE_SEQ[0]}'
 
 
-# ════════════════════════════════════════════════════════════════════════
-# COVERS — drawn on the canvas, because a cover is composition, not flow
-# ════════════════════════════════════════════════════════════════════════
 def _cover_meta(content: dict, w: dict) -> list[tuple[str, str]]:
     rows = []
     if content.get('subject'):
         rows.append((w['subject'], str(content['subject'])))
     if content.get('grade'):
         grade = str(content['grade'])
-        # _format_grade, not "leave it alone if it already has letters":
-        # the create form ALWAYS sends the Russian "8 класс" whatever the
-        # material's language is, so the old any(isalpha) test was true
-        # every time and a Tajik lecture printed "8 класс" next to fully
-        # translated labels. _format_grade strips whichever grade-word
-        # arrived and re-suffixes with this document's own.
         rows.append((w['grade_suffix'].capitalize(),
                      _format_grade(grade, w['grade_suffix'])))
     duration_text = str(content.get('duration') or '').strip() or w.get('duration_value', '')
@@ -178,9 +139,6 @@ def _wrap_canvas_text(c, text: str, font: str, size: float, max_w: float) -> lis
 
 
 def _cover_classic(c, content, d: _Design):
-    """A university title page: everything centred between two rules, the
-    metadata in a block at the foot. No colour blocks at all — this is
-    the design that has to survive a black-and-white classroom printer."""
     w, W, H = d.words, A4[0], A4[1]
     mx = d.t.margin_x * cm
     c.setFillColor(HexColor(INK_SOFT))
@@ -231,9 +189,6 @@ def _cover_classic(c, content, d: _Design):
 
 
 def _cover_split(c, content, d: _Design):
-    """A modern textbook cover: a full-height accent panel down the left
-    third carrying the subject and the class, the title set large on the
-    white right-hand side."""
     w, W, H = d.words, A4[0], A4[1]
     panel_w = 6.6 * cm
     c.setFillColor(HexColor(d.accent))
@@ -245,9 +200,6 @@ def _cover_split(c, content, d: _Design):
     c.setFont(FONT_NAME_BOLD, 10)
     c.drawString(1.3 * cm, H - 3.0 * cm, '  '.join(w['tag']))
     c.setFont(MATH_FONT_BOLD, 46)
-    # The bare number — this draws it at 46pt with the grade WORD printed
-    # separately just below, so slicing the raw string ("8 класс"[:3] ->
-    # "8 к") put a stray Russian letter inside the big numeral.
     c.drawString(1.3 * cm, H - 6.4 * cm, _bare_grade(str(content.get('grade') or ''))[:3])
     c.setFont(FONT_NAME, 10.5)
     for i, line in enumerate(_wrap_canvas_text(c, w['grade_suffix'], FONT_NAME, 10.5, panel_w - 2.6 * cm)):
@@ -281,22 +233,14 @@ def _cover_split(c, content, d: _Design):
             c.drawString(tx, y, line)
             y -= 0.62 * cm
 
-    # The plan, previewed on the cover — the teacher sees the shape of the
-    # lesson before opening it. Starts just under the standfirst rather
-    # than at a fixed height, so a short subtitle does not leave a band of
-    # white across the middle of the page.
     _cover_plan(c, content, d, tx, min(y - 1.6 * cm, 11.0 * cm), tw, max_items=5)
     _cover_facts(c, content, d, tx, 3.4 * cm, tw,
                  str(content.get('language') or 'Русский'))
 
 
 def _cover_banner(c, content, d: _Design):
-    """Editorial: a deep accent banner across the top third with the title
-    reversed out of it, the standfirst and the metadata below on white."""
     w, W, H = d.words, A4[0], A4[1]
     mx = d.t.margin_x * cm
-    # The band is as deep as its own title needs. Fixed at 11.4cm it left
-    # a slab of flat colour under a one-line title.
     _n_title = len(_wrap_canvas_text(c, content.get('title', ''), MATH_FONT_BOLD, 29, W - 2 * mx)[:4])
     band_h = 6.4 * cm + _n_title * 1.15 * cm
     c.setFillColor(HexColor(d.accent))
@@ -330,8 +274,6 @@ def _cover_banner(c, content, d: _Design):
     py = _cover_plan(c, content, d, mx, H - band_h - 4.2 * cm, W - 2 * mx,
                      rule=True, numbers='padded', max_items=6)
 
-    # The aim, set as a standfirst under the plan — an editorial cover
-    # carries a paragraph, and this is the paragraph the document is for.
     objective = str(content.get('objective') or '').strip()
     if objective:
         c.setFillColor(HexColor(d.accent))
@@ -353,8 +295,6 @@ def _cover_banner(c, content, d: _Design):
 
 
 def _cover_worksheet(c, content, d: _Design):
-    """A sheet to be worked on: a ruled frame, the title inside it, and
-    real fields for a name, a class and a date at the foot."""
     w, W, H = d.words, A4[0], A4[1]
     mx = 1.7 * cm
     c.setStrokeColor(HexColor(d.accent))
@@ -364,8 +304,6 @@ def _cover_worksheet(c, content, d: _Design):
     c.setLineWidth(0.7)
     c.rect(mx + 0.28 * cm, 1.98 * cm, W - 2 * mx - 0.56 * cm, H - 3.96 * cm, stroke=1, fill=0)
 
-    # The band sits ON the inner frame's top edge, not floating below it —
-    # the gap between the two read as a printing error.
     band_h = 1.15 * cm
     band_y = H - 1.98 * cm - band_h
     c.setFillColor(HexColor(d.accent))
@@ -409,9 +347,6 @@ def _cover_worksheet(c, content, d: _Design):
             c.drawString(mx + 1.6 * cm, ly, line)
             ly -= 0.5 * cm
 
-    # The fields are laid out against the space that actually exists
-    # between the frame's sides — hard-coded widths ran the date's rule
-    # off the edge of the page.
     c.setStrokeColor(HexColor(RULE))
     c.setFillColor(HexColor(INK_SOFT))
     fy = 4.8 * cm
@@ -435,13 +370,6 @@ def _cover_worksheet(c, content, d: _Design):
 
 def _cover_plan(c, content, d: _Design, x, y, width, *, rule=False, numbers='plain',
                max_items=5, ink=INK, label_ink=None):
-    """The lecture's plan, printed on the cover.
-
-    Every cover has empty middle ground once the title is set, and the
-    plan is the one thing a teacher wants to see before opening the
-    document — it is what tells them whether this lecture is the one they
-    need. Wrapped to two lines rather than clipped: a plan item cut off
-    mid-word ("...основания на") reads as a bug, not as a summary."""
     plan = [str(p).strip() for p in (content.get('lecture_plan') or []) if str(p).strip()]
     if not plan:
         return y
@@ -467,8 +395,6 @@ def _cover_plan(c, content, d: _Design, x, y, width, *, rule=False, numbers='pla
     return y
 
 
-# Nouns for the counts on the cover strip, in the three grammatical
-# numbers Russian and Tajik need. English uses one plural form.
 _COUNT_WORDS = {
     'Русский': {'sections': ('раздел', 'раздела', 'разделов'),
                 'terms': ('термин', 'термина', 'терминов'),
@@ -487,8 +413,6 @@ _COUNT_WORDS['Английский'] = _COUNT_WORDS['English']
 
 
 def _plural(n: int, forms: tuple) -> str:
-    """Russian needs three forms and gets them wrong-looking otherwise:
-    1 раздел, 2 раздела, 5 разделов."""
     n = abs(int(n))
     if n % 10 == 1 and n % 100 != 11:
         return forms[0]
@@ -499,11 +423,6 @@ def _plural(n: int, forms: tuple) -> str:
 
 def _cover_facts(c, content, d: _Design, x, y, width, language: str,
                  ink=INK, muted=INK_SOFT):
-    """What is actually inside this lecture, as four counts.
-
-    The bottom of a cover is where a designer puts the "what you get"
-    line. It is also the honest answer to why the page was empty: there
-    was nothing there to read."""
     words = _COUNT_WORDS.get(str(language or 'Русский'), _COUNT_WORDS['Русский'])
     plan = len(content.get('lecture_plan') or [])
     terms = len(content.get('key_terms') or []) + len(content.get('key_concepts') or [])
@@ -533,15 +452,10 @@ _COVERS = {
 }
 
 
-# ════════════════════════════════════════════════════════════════════════
-# SECTION HEADINGS
-# ════════════════════════════════════════════════════════════════════════
 _ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
 
 def _heading_smallcaps(label: str, number: int, d: _Design) -> list:
-    """"III.  КЛЮЧЕВЫЕ ПОНЯТИЯ" over a hairline — a printed handout's own
-    heading, carried by letterspacing rather than by any fill."""
     text = f"{_ROMAN[number] if number < len(_ROMAN) else number}.&nbsp;&nbsp;&nbsp;{label.upper()}"
     head = Paragraph(text, ParagraphStyle(
         name=_uid('HeadSC'), fontName=d.head_font, fontSize=11.5, leading=15,
@@ -556,8 +470,6 @@ def _heading_smallcaps(label: str, number: int, d: _Design) -> list:
 
 
 def _heading_ghost(label: str, number: int, d: _Design) -> list:
-    """An oversized pale numeral with the heading set against it — the
-    section number becomes the page's landmark instead of a bullet."""
     num = Paragraph(f'{number:02d}', ParagraphStyle(
         name=_uid('HeadGhostN'), fontName=FONT_NAME_BOLD, fontSize=30, leading=30,
         textColor=HexColor(_pdf_light_tint_hex(d.accent, amount=0.62)), alignment=TA_LEFT))
@@ -575,8 +487,6 @@ def _heading_ghost(label: str, number: int, d: _Design) -> list:
 
 
 def _heading_band(label: str, number: int, d: _Design) -> list:
-    """The heading reversed out of a solid accent band — the editorial
-    look, where a new section is a visible break in the page."""
     head = Paragraph(f'{number:02d}&nbsp;&nbsp;&nbsp;{label.upper()}', ParagraphStyle(
         name=_uid('HeadBand'), fontName=d.head_font, fontSize=12.5, leading=16,
         textColor=colors.white))
@@ -590,8 +500,6 @@ def _heading_band(label: str, number: int, d: _Design) -> list:
 
 
 def _heading_boxed(label: str, number: int, d: _Design) -> list:
-    """A numbered square beside the heading — the worksheet's own marker,
-    the same shape as the tick boxes further down the page."""
     num = Paragraph(str(number), ParagraphStyle(
         name=_uid('HeadBoxN'), fontName=FONT_NAME_BOLD, fontSize=13, leading=16,
         textColor=colors.white, alignment=TA_CENTER))
@@ -611,12 +519,6 @@ def _heading_boxed(label: str, number: int, d: _Design) -> list:
 
 
 def _heading_runin(label: str, number: int, d: _Design) -> list:
-    """"3. КЛЮЧЕВЫЕ ПОНЯТИЯ" set small over a hairline.
-
-    The plan-konspekt's heading: it marks the section and takes as little
-    vertical space as a heading can while still being one. No numeral
-    block, no band, no colour behind it — those are for a document meant
-    to be looked at, and this one is meant to be worked from."""
     head = Paragraph(
         f'{number}.&nbsp;&nbsp;{label.upper()}',
         ParagraphStyle(name=_uid('HeadRunIn'), fontName=FONT_NAME_BOLD, fontSize=10,
@@ -638,21 +540,13 @@ _HEADINGS = {
 
 
 def _subheading(text: str, d: _Design) -> list:
-    """A sub-topic inside the lecture body. Same in every template — it is
-    the level BELOW the one the templates differentiate, and giving it a
-    second personality per design made the page noisy."""
     return [Spacer(1, 8), Paragraph(text, ParagraphStyle(
         name=_uid('SubHead'), fontName=d.body_bold, fontSize=d.t.body_size + 1.4,
         leading=d.t.body_leading + 1, textColor=HexColor(d.heading_ink),
         spaceBefore=2, spaceAfter=4))]
 
 
-# ════════════════════════════════════════════════════════════════════════
-# CALLOUTS — «Важно», «Запомни», «Пример», «Совет»
-# ════════════════════════════════════════════════════════════════════════
 def _callout_colour(kind: str, d: _Design) -> str:
-    """Each kind keeps its own hue so a reader learns them by colour:
-    warnings warm, examples in the subject's accent, tips green."""
     return {
         'important': '#B4232A', 'remember': d.accent,
         'example': d.accent, 'tip': '#1F7A4D',
@@ -732,8 +626,6 @@ def _callout_dashed(kind: str, label: str, text: str, d: _Design):
     t = Table([[tag], [body]], colWidths=[d.width])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), HexColor(PAPER_SOFT)),
-        # A dashed border reads as "cut here / write here", which is
-        # exactly the register of a worksheet.
         ('BOX', (0, 0), (-1, -1), 0.9, HexColor(colour), None, (2.5, 2.5)),
         ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12),
         ('TOPPADDING', (0, 0), (0, 0), 8), ('BOTTOMPADDING', (0, 0), (0, 0), 0),
@@ -743,10 +635,6 @@ def _callout_dashed(kind: str, label: str, text: str, d: _Design):
 
 
 def _callout_inline(kind: str, label: str, text: str, d: _Design):
-    """A margin remark: the label and the note on the same line.
-
-    A filled card costs four lines of height for one sentence. In a
-    working document that sentence is a remark, and it is set as one."""
     colour = _callout_colour(kind, d)
     body = Paragraph(
         f'<font color="{colour}"><b>{label}.</b></font>&nbsp;&nbsp;{text}',
@@ -769,11 +657,7 @@ _CALLOUTS = {
 }
 
 
-# ════════════════════════════════════════════════════════════════════════
-# DEFINITIONS
-# ════════════════════════════════════════════════════════════════════════
 def _split_definition(item) -> tuple[str, str]:
-    """"Хлоропласт: органоид…" -> ("Хлоропласт", "органоид…")."""
     text = str(item or '').strip()
     for sep in (' — ', ': ', ' – ', ' - '):
         if sep in text:
@@ -784,8 +668,6 @@ def _split_definition(item) -> tuple[str, str]:
 
 
 def _definitions_runin(items: list, d: _Design) -> list:
-    """Term in bold, definition running on from it — the way a printed
-    glossary sets one, with a hanging indent so the terms line up."""
     out = []
     for item in items:
         term, body = _split_definition(item)
@@ -798,8 +680,6 @@ def _definitions_runin(items: list, d: _Design) -> list:
 
 
 def _definitions_cards(items: list, d: _Design) -> list:
-    """Two per row, each in its own tinted card with the term as a
-    heading — the textbook's "new words" spread."""
     cards = []
     for item in items:
         term, body = _split_definition(item)
@@ -837,8 +717,6 @@ def _definitions_cards(items: list, d: _Design) -> list:
 
 
 def _definitions_quote(items: list, d: _Design) -> list:
-    """The term set large in the heading face with the definition beneath
-    it and a rule between entries — an editorial glossary."""
     out = []
     for i, item in enumerate(items):
         term, body = _split_definition(item)
@@ -855,8 +733,6 @@ def _definitions_quote(items: list, d: _Design) -> list:
 
 
 def _definitions_framed(items: list, d: _Design) -> list:
-    """One framed box per term, stacked — a worksheet's "write it here"
-    register, with the term on a tinted strip at the top of each box."""
     out = []
     for item in items:
         term, body = _split_definition(item)
@@ -884,9 +760,6 @@ _DEFINITIONS = {
 }
 
 
-# ════════════════════════════════════════════════════════════════════════
-# TABLES
-# ════════════════════════════════════════════════════════════════════════
 def _table_styles(kind: str, d: _Design, n_rows: int) -> TableStyle:
     common = [
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -912,7 +785,7 @@ def _table_styles(kind: str, d: _Design, n_rows: int) -> TableStyle:
             ('LINEBELOW', (0, 0), (-1, 0), 2.0, HexColor(d.accent)),
             ('LINEBELOW', (0, 1), (-1, -1), 0.5, HexColor(RULE)),
         ])
-    return TableStyle(common + [                      # grid
+    return TableStyle(common + [
         ('GRID', (0, 0), (-1, -1), 0.7, HexColor(RULE)),
         ('BACKGROUND', (0, 0), (-1, 0), HexColor(d.tint)),
     ])
@@ -936,18 +809,12 @@ def _lecture_table(headers: list, rows: list, d: _Design, title: str = '') -> li
     for row in rows:
         data.append([Paragraph(str(c), cell_style) for c in row])
     n_cols = max(1, len(headers))
-    # Widths follow what each column actually holds. Splitting the page
-    # evenly broke short cells onto two lines while a one-word column sat
-    # half empty ("Вкус/Свойст во" next to "Кислый"), and letting
-    # reportlab size them automatically pushes the table past the margin.
     weights = []
     for col in range(n_cols):
         longest = len(str(headers[col]))
         for row in rows:
             if col < len(row):
                 longest = max(longest, len(str(row[col])))
-        # Square-rooted: a cell with a sentence in it needs more room than
-        # a one-word cell, but not five times more.
         weights.append(max(1.0, longest) ** 0.5)
     total = sum(weights)
     widths = [d.width * wgt / total for wgt in weights]
@@ -963,12 +830,6 @@ def _lecture_table(headers: list, rows: list, d: _Design, title: str = '') -> li
 
 
 def _form_header(content: dict, d: _Design) -> list:
-    """The plan-konspekt's opening block, in place of a cover page.
-
-    A lesson plan starts with the facts of the lesson — topic, subject,
-    class, date, duration — laid out like the form a teacher fills in,
-    then the aim, then straight into the content. Spending a whole sheet
-    of paper on a title is exactly what this format exists not to do."""
     w = d.words
     title = Paragraph(str(content.get('title') or ''), ParagraphStyle(
         name=_uid('FormTitle'), fontName=FONT_NAME_BOLD, fontSize=15, leading=19,
@@ -987,8 +848,6 @@ def _form_header(content: dict, d: _Design) -> list:
     grade = str(content.get('grade') or '')
     if grade:
         grade = _format_grade(grade, w['grade_suffix'])
-    # A konspekt carries a real duration ("45 минут"); a lecture does not
-    # and gets the fixed one-hour placeholder from its own word table.
     duration_text = str(content.get('duration') or '').strip() or w.get('duration_value', '')
     cells = [(w['subject'], str(content.get('subject') or '—')),
              (w['grade_suffix'].capitalize(), grade or '—'),
@@ -1013,24 +872,11 @@ def _form_header(content: dict, d: _Design) -> list:
     return out
 
 
-# ════════════════════════════════════════════════════════════════════════
-# THE DOCUMENT
-# ════════════════════════════════════════════════════════════════════════
 class _LectureDoc(BaseDocTemplate):
-    """Carries the contents page's entries.
-
-    ReportLab can only number a table of contents on a second pass — the
-    page a section lands on is not known until the first pass has laid it
-    out. multiBuild runs both; this class is what reports each heading's
-    final page number into the TOC between them."""
 
     def __init__(self, *args, page_offset: int = 0, **kwargs):
         super().__init__(*args, **kwargs)
         self._toc_entries = []
-        # A cover page is page 1 of the PDF but page 0 of the document —
-        # the numbering a reader sees starts after it. A design with no
-        # cover has no offset, and printing "0" in its footer was the
-        # visible half of the same bug.
         self.page_offset = page_offset
 
     def afterFlowable(self, flowable):
@@ -1040,7 +886,6 @@ class _LectureDoc(BaseDocTemplate):
 
 
 def _tag_for_toc(flowables: list, label: str):
-    """Marks the first flowable of a heading so afterFlowable sees it."""
     for f in flowables:
         if isinstance(f, Table):
             f._toc_label = label
@@ -1050,13 +895,6 @@ def _tag_for_toc(flowables: list, label: str):
 
 
 def _split_main_content(text: str) -> list[tuple[str, list[str]]]:
-    """The lecture body split into its sub-topics.
-
-    The model writes the body as "1. Question heading" followed by the
-    prose that answers it. Kept as (heading, paragraphs) pairs so the
-    renderer can put a real sub-heading on each one and drop a callout
-    between them — instead of printing eight paragraphs in a row, which
-    is the "wall of text" a teacher sees and closes."""
     raw = str(text or '').strip()
     if not raw:
         return []
@@ -1080,11 +918,6 @@ def _split_main_content(text: str) -> list[tuple[str, list[str]]]:
 
 
 def _queue_callouts(content: dict, w: dict) -> list[tuple[str, str, str]]:
-    """(kind, label, text) for every callout the lecture has to place.
-
-    Ordered so the strongest ones land earliest in the body: a lesson
-    that opens with its warning and its first worked example reads as
-    taught, not as dumped."""
     queue = []
     for text in (content.get('key_ideas') or [])[:4]:
         if str(text).strip():
@@ -1098,7 +931,6 @@ def _queue_callouts(content: dict, w: dict) -> list[tuple[str, str, str]]:
     for text in (content.get('teacher_tips') or [])[:3]:
         if str(text).strip():
             queue.append(('tip', w['tip'], str(text).strip()))
-    # Interleave the kinds instead of printing four warnings in a row.
     by_kind: dict[str, list] = {}
     for item in queue:
         by_kind.setdefault(item[0], []).append(item)
@@ -1111,7 +943,6 @@ def _queue_callouts(content: dict, w: dict) -> list[tuple[str, str, str]]:
 
 
 def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.BytesIO:
-    """The whole лекция: cover, contents, body, self-check, conclusions."""
     w = _words(language)
     tmpl = get_lecture_template(content.get('template'))
     accent = get_subject_accent_hex(content.get('subject'))
@@ -1125,7 +956,6 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
                       page_offset=0 if tmpl.cover == 'none' else 1)
 
     def _furniture(canvas_obj, doc_obj):
-        """The running head and foot on every page after the cover."""
         canvas_obj.saveState()
         canvas_obj.setFont(FONT_NAME, 8)
         canvas_obj.setFillColor(HexColor('#A8B0BB'))
@@ -1150,7 +980,7 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
         canvas_obj.saveState()
         try:
             _COVERS.get(tmpl.cover, _cover_split)(canvas_obj, content, d)
-        except Exception as e:                        # a cover must never cost the document
+        except Exception as e:
             logger.warning(f'lecture cover failed ({tmpl.cover}): {e}')
         canvas_obj.restoreState()
 
@@ -1159,16 +989,12 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
     cover_frame = Frame(mx, 2 * cm, A4[0] - 2 * mx, A4[1] - 4 * cm, id='cover')
     page_templates = [PageTemplate(id='body', frames=[frame], onPage=_furniture)]
     if tmpl.cover != 'none':
-        # First in the list is what page 1 uses, so a design without a
-        # cover simply never registers one.
         page_templates.insert(0, PageTemplate(id='cover', frames=[cover_frame],
                                               onPage=_paint_cover))
     doc.addPageTemplates(page_templates)
 
     story: list = [NextPageTemplate('body')]
     if tmpl.cover == 'none':
-        # The document starts on page 1 with its own header block: this
-        # format does not spend a sheet on a title.
         story.extend(_form_header(content, d))
     else:
         story.extend([Spacer(1, 1), PageBreak()])
@@ -1180,7 +1006,6 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
         _tag_for_toc(flowables, f'{section_no[0]}.  {label}')
         return flowables
 
-    # ── contents ────────────────────────────────────────────────────────
     if tmpl.contents:
         story.append(Paragraph(w['contents'].upper(), ParagraphStyle(
             name=_uid('TocTitle'), fontName=d.head_font, fontSize=14, leading=18,
@@ -1194,24 +1019,18 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
             firstLineIndent=0, leftIndent=0, rightIndent=6)]
         toc.dotsMinLevel = 0
         story.append(toc)
-        # No page break: a nine-line contents list followed by two thirds
-        # of an empty page is the single most "generated" thing a document
-        # can do. The first section starts right under it.
         story.append(Spacer(1, 18))
 
-    # ── objective ───────────────────────────────────────────────────────
     objective = str(content.get('objective') or '').strip()
     if objective:
         story.extend(section(w['objective']))
         story.append(_objective_block(objective, d))
 
-    # ── plan ────────────────────────────────────────────────────────────
     plan = [str(p).strip() for p in (content.get('lecture_plan') or []) if str(p).strip()]
     if plan:
         story.extend(section(w['plan']))
         story.extend(_plan_block(plan, d))
 
-    # ── concepts and glossary ───────────────────────────────────────────
     definer = _DEFINITIONS.get(tmpl.definition, _definitions_cards)
     concepts = [c for c in (content.get('key_concepts') or []) if str(c).strip()]
     if concepts:
@@ -1222,7 +1041,6 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
         story.extend(section(w['terms']))
         story.extend(definer(terms, d))
 
-    # ── the lecture itself ──────────────────────────────────────────────
     parts = _split_main_content(content.get('main_content'))
     images = list(content.get('lesson_images') or [])
     visuals = list(content.get('visual_blocks') or [])
@@ -1236,10 +1054,6 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
                 story.extend(_subheading(head, d))
             for para in paragraphs:
                 story.append(Paragraph(para, body_style))
-            # One callout after each sub-topic, so the reader never gets
-            # more than a few paragraphs without a visual break — and the
-            # callouts land where they are relevant rather than in a heap
-            # at the end of the lecture.
             if callouts and i < len(parts) - 1:
                 kind, label, text = callouts.pop(0)
                 story.extend(callout_render(kind, label, text, d))
@@ -1254,20 +1068,17 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
     for block in visuals:
         story.extend(_visual(block, d))
 
-    # ── formulas ────────────────────────────────────────────────────────
     formulas = [f for f in (content.get('formulas') or []) if isinstance(f, dict)]
     if formulas:
         story.extend(section(w['formulas']))
         for item in formulas:
             story.extend(_formula_block(item, d))
 
-    # ── self-check ──────────────────────────────────────────────────────
     checks = [q for q in (content.get('quick_check') or []) if q]
     if checks:
         story.extend(section(w['selfcheck']))
         story.extend(_selfcheck_block(checks, d))
 
-    # ── conclusions ─────────────────────────────────────────────────────
     summary = str(content.get('summary') or '').strip()
     if summary:
         story.extend(section(w['summary']))
@@ -1287,9 +1098,7 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
     return buf
 
 
-# ── the blocks the body is made of ──────────────────────────────────────
 def _objective_block(text: str, d: _Design):
-    """The aim, set apart — it is the one sentence a teacher reads first."""
     body = Paragraph(text, ParagraphStyle(
         name=_uid('Obj'), fontName=d.body_font, fontSize=d.t.body_size + 0.6,
         leading=d.t.body_leading + 1.4, textColor=HexColor(INK), alignment=TA_JUSTIFY))
@@ -1310,8 +1119,6 @@ def _objective_block(text: str, d: _Design):
 
 
 def _plan_block(plan: list, d: _Design) -> list:
-    """The plan as a numbered list with the numbers in the accent — this
-    is the document's own table of contents for the body below."""
     out = []
     for i, item in enumerate(plan, 1):
         num = Paragraph(f'{i:02d}', ParagraphStyle(
@@ -1334,8 +1141,6 @@ def _plan_block(plan: list, d: _Design) -> list:
 
 
 def _formula_block(item: dict, d: _Design) -> list:
-    """The formula as vector art on its own line, with its reading under
-    it — the same treatment a textbook gives a boxed rule."""
     formula = str(item.get('formula') or '').strip()
     if not formula:
         return []
@@ -1357,12 +1162,6 @@ def _formula_block(item: dict, d: _Design) -> list:
 
 
 def _selfcheck_block(checks: list, d: _Design) -> list:
-    """The questions a student answers to know whether they followed.
-
-    On a worksheet the answer space is ruled and the answer itself is
-    dropped — a sheet that prints the answers under the questions is not
-    a self-check. Every other design keeps the answer, small and muted,
-    because those are read by the teacher."""
     worksheet = d.t.callout == 'dashed'
     out = []
     for i, item in enumerate(checks, 1):
@@ -1407,7 +1206,6 @@ def _summary_block(text: str, d: _Design):
 
 
 def _figure(image: dict, d: _Design) -> list:
-    """One Commons illustration, with its reading instruction under it."""
     body = _pdf_illustration_image(
         image.get('path', ''), '', image.get('credit', ''), max_w=330, max_h=225)
     if not body:
@@ -1423,7 +1221,6 @@ def _figure(image: dict, d: _Design) -> list:
 
 
 def _visual(block: dict, d: _Design) -> list:
-    """A comparison/table block, drawn in this template's table style."""
     btype = str(block.get('type') or '')
     data = block.get('data') or {}
     title = str(block.get('title') or '')
@@ -1440,8 +1237,6 @@ def _visual(block: dict, d: _Design) -> list:
         rows = [[str(c) for c in row] for row in (data.get('rows') or [])]
         if headers and rows:
             return _lecture_table(headers, rows, d, title)
-    # Anything else keeps the shared renderer — charts and timelines are
-    # drawn the same way in every document in this app.
     try:
         return _pdf_visual_block(block, d.accent, d.quiet)
     except Exception as e:

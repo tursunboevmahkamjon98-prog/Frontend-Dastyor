@@ -1,36 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Slide compositions — the part that stops every slide being the same slide.
-
-The problem this solves
------------------------
-Before this module a deck was: header, a grid of bullet cards, a grey
-paragraph. Ten times. The subject changed the palette, the motif and the
-card silhouette, but the SKELETON was identical, and that is what makes
-two decks read as one template in two colours no matter how different the
-decoration is.
-
-Here a slide picks a composition from its own content. A slide naming
-four parts of something becomes a central object with the parts around
-it. A slide describing a sequence becomes a flow with arrows. A slide
-whose point is one number sets that number huge. A slide with a picture
-lets the picture own half the slide, bled to the edge, instead of sitting
-in a box beside a list.
-
-Contract
---------
-A layout owns the area BELOW the header: x 0.9"–12.4", y 1.55"–6.95" on
-a 13.333×7.5" slide. It draws everything it needs and returns True. The
-header, footer, progress bar, speaker notes and transition are the
-caller's (build_presentation_pptx) — a layout never touches those.
-
-Returning False means "not for this slide after all", and the caller
-falls through to its own long-standing bullets/picture/formula path,
-which stays the safety net for anything unusual.
-
-Imports of export_builder are deliberately late (inside functions):
-export_builder imports this module, so a module-level import would be a
-cycle. By the time any layout runs, export_builder is fully loaded.
-"""
 
 from __future__ import annotations
 
@@ -46,8 +13,6 @@ from pptx.util import Inches, Pt
 from app import pptx_shapes, slide_characters
 
 
-# The box a layout may draw in. Anything outside belongs to the header,
-# the footer rule or the margins the whole deck shares.
 TOP_IN = 1.55
 BOTTOM_IN = 6.95
 LEFT_IN = 0.9
@@ -59,9 +24,6 @@ SLIDE_H_IN = 7.5
 
 @dataclass
 class Ctx:
-    """Everything a layout needs to draw itself, resolved once per slide by
-    build_presentation_pptx so no layout has to re-derive a colour or a
-    font and get it subtly different."""
     slide: object
     accent: RGBColor
     accent_dark: RGBColor
@@ -73,24 +35,17 @@ class Ctx:
     title_font: str
     body_font: str
     template_id: str
-    grade_tier: str            # "junior" | "middle" | "senior"
+    grade_tier: str
     language: str
     index: int
     total: int
     image_path: str | None = None
     image_credit: str = ""
     character_prop: str = "pointer"
-    # The figure is drawn in `accent`; its prop needs a colour that
-    # actually reads against that. See SubjectTemplate.prop_color.
     prop_color: RGBColor | None = None
-    # The deck's own topic — the hub label for the central layout. The
-    # first cut used the SLIDE title there and got "Растительна я и
-    # животная к…" wrapped inside a circle, directly under a header that
-    # already said the same words.
     topic: str = ""
 
 
-# ── small shared pieces ──────────────────────────────────────────────────
 
 
 def _text(ctx, x, y, w, h, s, size, bold=False, color=None, align=PP_ALIGN.LEFT,
@@ -132,9 +87,6 @@ def _lines(s, width_in, pt):
 
 
 def _fit(s, width_in, sizes, max_h_in):
-    """The largest size in `sizes` at which `s` fits `max_h_in`. Shrinking
-    beats truncating — a sentence that stops mid-thought is a worse slide
-    than the same sentence a point smaller."""
     for pt in sizes:
         h = _lines(s, width_in, pt) * pt * 1.34 / 72.0
         if h <= max_h_in:
@@ -144,12 +96,6 @@ def _fit(s, width_in, sizes, max_h_in):
 
 
 def _character(ctx, x, y, h, pose):
-    """Place a figure, if this deck's audience wants one there.
-
-    Age decides: the youngest classes get a figure on most slides because
-    a person pointing at the thing IS the explanation at that age; the
-    oldest get them rarely, because at that age the same device reads as
-    talking down. Everyone in between gets them on roughly half."""
     if ctx.grade_tier == "senior" and ctx.index % 4 != 1:
         return
     if ctx.grade_tier == "middle" and ctx.index % 2 == 1:
@@ -159,11 +105,6 @@ def _character(ctx, x, y, h, pose):
                           pose=pose, prop=ctx.character_prop)
 
 
-# ── callouts ─────────────────────────────────────────────────────────────
-#
-# Each kind has its own silhouette, not just its own word: a rule the
-# brief is explicit about. "Важно" is a solid bar you cannot skim past,
-# "Формула" is a panel, "Факт" is a soft aside.
 
 _CALLOUT_LABEL = {
     "important": {"Русский": "ВАЖНО", "Таджикский": "МУҲИМ", "English": "IMPORTANT",
@@ -180,7 +121,6 @@ _CALLOUT_LABEL = {
 
 
 def draw_callout(ctx, kind, text, x, y, w) -> float:
-    """One callout. Returns the height it used."""
     kind = str(kind or "important").lower()
     label = _CALLOUT_LABEL.get(kind, _CALLOUT_LABEL["important"]).get(
         ctx.language, _CALLOUT_LABEL.get(kind, _CALLOUT_LABEL["important"])["Русский"])
@@ -209,9 +149,6 @@ def draw_callout(ctx, kind, text, x, y, w) -> float:
 
 
 def _callout_of(sd):
-    """The slide's callout, if the model wrote one: {"kind": ..., "text":
-    ...}. Optional everywhere — a deck generated before this field
-    existed, or a slide that simply didn't need one, renders unchanged."""
     c = sd.get("callout")
     if not isinstance(c, dict):
         return None
@@ -223,9 +160,6 @@ def _callout_of(sd):
 
 
 def _callout(ctx, sd, x, y, w) -> float:
-    """Draw the slide's callout at (x, y) if there is one AND it fits.
-    Returns the height used, 0 if nothing was drawn — a callout is the
-    first thing to give way when a slide is full."""
     found = _callout_of(sd)
     if not found:
         return 0.0
@@ -234,15 +168,9 @@ def _callout(ctx, sd, x, y, w) -> float:
     return draw_callout(ctx, found[0], found[1], x, y, w)
 
 
-# ── layouts ──────────────────────────────────────────────────────────────
 
 
 def _hero(ctx, sd) -> bool:
-    """Giant typography. One idea, set as large as it will go, with the
-    supporting sentence under it and a figure presenting it.
-
-    For the slides that carry a single thought — an opening, a closing —
-    where a grid of cards would be four boxes of nothing."""
     body = _clean(sd.get("body"))
     bullets = _strings(sd.get("bullet_points"))
     lead = bullets[0] if bullets else body
@@ -269,23 +197,12 @@ def _hero(ctx, sd) -> bool:
 
 
 def _central(ctx, sd) -> bool:
-    """One object in the middle, its parts named around it.
-
-    This is the composition the brief asks for by name: blood in the
-    centre, plasma/erythrocytes/leukocytes/platelets around it; the cell
-    as a big central object with its structures labelled. Anything that
-    is "X consists of A, B, C, D" is this shape, and a vertical list is
-    the wrong shape for it."""
     bullets = _strings(sd.get("bullet_points"))
     if not (3 <= len(bullets) <= 6):
         return False
 
     cx, cy = 6.55, (TOP_IN + BOTTOM_IN) / 2
     core_d = 2.3
-    # The hub names the THING the parts belong to. That is the deck's
-    # topic, not the slide's title: the title is already set in the header
-    # directly above, and repeating a full sentence inside a circle is how
-    # "Растительна я и животная к…" happened.
     hub = _shorten(ctx.topic or sd.get("title") or "", 22)
 
     _shape(ctx, MSO_SHAPE.OVAL, cx - core_d / 2 - 0.22, cy - core_d / 2 - 0.22,
@@ -300,15 +217,10 @@ def _central(ctx, sd) -> bool:
     n = len(bullets)
     rx, ry = 4.35, 2.0
     node_w, node_h = 2.75, 0.86
-    # An even number of nodes started at the top puts one straight down,
-    # where it collided with the footer rule. Offsetting even counts by
-    # half a step lands them on the diagonals instead, which also uses the
-    # slide's width rather than its height — and the slide is wide.
     start = -math.pi / 2 + (math.pi / n if n % 2 == 0 else 0)
     for i, bp in enumerate(bullets):
         a = start + i * (2 * math.pi / n)
         px, py = cx + rx * math.cos(a), cy + ry * math.sin(a)
-        # A connector from the hub edge to the node, drawn first.
         ex, ey = cx + (core_d / 2 + 0.1) * math.cos(a), cy + (core_d / 2 + 0.1) * math.sin(a)
         length = math.hypot(px - ex, py - ey)
         ang = math.degrees(math.atan2(py - ey, px - ex))
@@ -326,30 +238,16 @@ def _central(ctx, sd) -> bool:
 
 
 def _flow(ctx, sd) -> bool:
-    """A → B → C. The composition for anything that happens in order:
-    photosynthesis, a reaction, an algorithm, the steps of a solution.
-
-    Chevrons rather than boxes, because the shape itself says "and then"."""
     bullets = _strings(sd.get("bullet_points"))
     if not (3 <= len(bullets) <= 5):
         return False
 
     n = len(bullets)
     gap = 0.22
-    # Every chevron after the first is drawn 0.18" wider so its point
-    # overlaps its neighbour. That overhang has to come OUT of the
-    # available width, or the last chevron's point runs off the right
-    # edge of the slide — which it did, by exactly 0.18".
     point = 0.18
     step_w = (WIDTH_IN - point - gap * (n - 1)) / n
-    # 2.25" left most of the chevron empty under a two-word step. The
-    # step is only as tall as it needs to be, and the block is centred in
-    # the space instead of hugging the header.
     step_h = 1.7
     body_probe = _clean(sd.get("body"))
-    # The steps and the paragraph under them are ONE block, and the block
-    # is centred in the space below the header. Hanging it off the header
-    # left three inches of nothing under the last chevron.
     body_h_probe = 0.0
     if body_probe:
         _, body_h_probe = _fit(body_probe, WIDTH_IN - 3.0, (15, 14, 13, 12), 2.0)
@@ -380,10 +278,6 @@ def _flow(ctx, sd) -> bool:
 
 
 def _bignumber(ctx, sd) -> bool:
-    """One number, set enormous, with what it means beside it.
-
-    Only when the slide really does turn on a figure — a date, a count, a
-    percentage. Pulled from the bullets rather than invented."""
     bullets = _strings(sd.get("bullet_points"))
     num, rest = _extract_number(bullets)
     if not num:
@@ -407,13 +301,6 @@ def _bignumber(ctx, sd) -> bool:
 
 
 def _split_image(ctx, sd) -> bool:
-    """The picture owns half the slide, bled to the edge, with the text in
-    the other half.
-
-    The brief's complaint about "[текст] [обычная прямоугольная картинка]"
-    is this layout's whole reason for existing: a picture that runs off
-    the edge of the slide reads as a designed composition, one floating in
-    a box reads as a 2010 school deck."""
     if not ctx.image_path:
         return False
     from PIL import Image as PILImage
@@ -423,20 +310,16 @@ def _split_image(ctx, sd) -> bool:
     img_x = SLIDE_W_IN - half_w if on_right else 0.0
     band_top, band_h = 1.5, SLIDE_H_IN - 1.5 - 0.55
 
-    # A tinted panel behind the picture, so a portrait image that cannot
-    # fill the half still reads as a deliberate block rather than a gap.
     _shape(ctx, MSO_SHAPE.RECTANGLE, img_x, band_top, half_w, band_h, ctx.accent_soft)
     try:
         with PILImage.open(ctx.image_path) as im:
             iw, ih = im.size
-        scale = max(half_w / iw, band_h / ih)      # cover, not contain
+        scale = max(half_w / iw, band_h / ih)
         tw, th = iw * scale, ih * scale
-        # Centre the overflow, then let the panel clip it visually by
-        # sitting flush to the slide edge.
         px = img_x + (half_w - tw) / 2
         py = band_top + (band_h - th) / 2
         if tw > half_w * 1.6 or th > band_h * 1.6:
-            scale = min(half_w / iw, band_h / ih)   # too extreme a crop
+            scale = min(half_w / iw, band_h / ih)
             tw, th = iw * scale, ih * scale
             px, py = img_x + (half_w - tw) / 2, band_top + (band_h - th) / 2
         ctx.slide.shapes.add_picture(ctx.image_path, Inches(px), Inches(py),
@@ -469,16 +352,11 @@ def _split_image(ctx, sd) -> bool:
 
 
 def _timeline(ctx, sd) -> bool:
-    """Events on a spine. History's natural shape, and the right one for
-    any "first… then… finally" slide."""
     bullets = _strings(sd.get("bullet_points"))
     if not (3 <= len(bullets) <= 5):
         return False
 
     y = (TOP_IN + BOTTOM_IN) / 2
-    # The spine is the subject of this layout, so it is drawn in the
-    # accent. In accent_soft it was a barely-there hairline and the cards
-    # read as floating rather than as hung off a chronology.
     _shape(ctx, MSO_SHAPE.RECTANGLE, LEFT_IN, y, WIDTH_IN, 0.035, ctx.accent)
     n = len(bullets)
     step = WIDTH_IN / n
@@ -486,9 +364,6 @@ def _timeline(ctx, sd) -> bool:
         cx = LEFT_IN + step * (i + 0.5)
         above = i % 2 == 0
         _shape(ctx, MSO_SHAPE.OVAL, cx - 0.15, y - 0.15 + 0.017, 0.3, 0.3, ctx.accent)
-        # Longer stems and taller cards: the first cut used barely half
-        # the vertical space it had, which read as a small diagram
-        # stranded in the middle of an empty slide.
         stem_h = 0.85
         _shape(ctx, MSO_SHAPE.RECTANGLE, cx - 0.016,
                y - stem_h if above else y + 0.035, 0.032, stem_h, ctx.accent)
@@ -506,7 +381,6 @@ def _timeline(ctx, sd) -> bool:
 
 
 def _comparison(ctx, sd) -> bool:
-    """Two things side by side, with the divider doing the comparing."""
     bullets = _strings(sd.get("bullet_points"))
     if len(bullets) not in (2, 4):
         return False
@@ -514,15 +388,8 @@ def _comparison(ctx, sd) -> bool:
     left, right = bullets[:half], bullets[half:]
 
     col_w = (WIDTH_IN - 0.9) / 2
-    # The two things being compared, taken from the title: "Растительная и
-    # животная клетка" captions the columns "Растительная" / "животная".
-    # Without them the reader has to infer which column is which from the
-    # bullets, which is the one thing a comparison must not make them do.
     caps = _split_on_vs(sd.get("title"))
 
-    # Height follows the content. A full-height column holding two short
-    # bullets is two-thirds empty box, which reads as unfinished rather
-    # than as roomy.
     measured = []
     for items in (left, right):
         h_items = 0.0
@@ -553,7 +420,6 @@ def _comparison(ctx, sd) -> bool:
             _text(ctx, x + 0.68, y, col_w - 0.9, bh + 0.3, bp, bpt, False, ctx.ink)
             y += bh + 0.42
 
-    # The divider, with the comparison mark in it.
     mid = LEFT_IN + col_w + 0.45
     _shape(ctx, MSO_SHAPE.RECTANGLE, mid - 0.012, top + 0.2, 0.024, h - 0.4,
            ctx.accent_soft)
@@ -565,9 +431,6 @@ def _comparison(ctx, sd) -> bool:
 
 
 def _magazine(ctx, sd) -> bool:
-    """An editorial spread: a drop cap, the paragraph set in two columns,
-    a pull quote. For the senior classes, where a grid of cards reads as
-    a worksheet rather than as a text worth reading."""
     body = _clean(sd.get("body"))
     if len(body) < 180:
         return False
@@ -575,7 +438,6 @@ def _magazine(ctx, sd) -> bool:
 
     col_w = (WIDTH_IN - 0.7) / 2
     top = TOP_IN + 0.35
-    # Split the paragraph at a sentence boundary near the middle.
     cut = _split_sentences(body)
     first, second = cut
 
@@ -605,16 +467,6 @@ def _magazine(ctx, sd) -> bool:
 
 
 def _code(ctx, sd) -> bool:
-    """A real terminal-style code panel — dark background, monospace,
-    line numbers, traffic-light dots — with the explanation and a
-    figure beside it.
-
-    Only runs when the model actually wrote a `code` field (see
-    _presentation_prompt's rule): this composition exists because
-    Informatics/Python decks had NOTHING code-specific before it —
-    every "for loop" or "if/else" slide got the same generic bullets
-    every other subject's slide would, which is exactly the "AI took
-    one template and put text in it" the brief calls out by name."""
     code = sd.get("code")
     if not isinstance(code, dict):
         return False
@@ -636,10 +488,6 @@ def _code(ctx, sd) -> bool:
     dark = RGBColor(0x1E, 0x1E, 0x2E)
     _shape(ctx, MSO_SHAPE.ROUNDED_RECTANGLE, LEFT_IN, top, panel_w, panel_h, dark, adjust=0.04)
 
-    # Traffic-light dots + language tag, same furniture the informatics
-    # template's cover terminal window already uses (slide_decor's
-    # "terminal" composition) — the code panel and the cover now read as
-    # the same object.
     for n, c in enumerate((RGBColor(0xEF, 0x44, 0x44), RGBColor(0xEA, 0xB3, 0x08),
                            RGBColor(0x22, 0xC5, 0x5E))):
         _shape(ctx, MSO_SHAPE.OVAL, LEFT_IN + pad + n * 0.22, top + 0.17, 0.11, 0.11, c)
@@ -674,13 +522,9 @@ def _code(ctx, sd) -> bool:
 
 
 def _cards(ctx, sd) -> bool:
-    """Not implemented here on purpose — the caller's existing bullet grid
-    IS this layout, and it is the one piece of the old renderer worth
-    keeping exactly as it is. Returning False hands the slide back."""
     return False
 
 
-# ── helpers ──────────────────────────────────────────────────────────────
 
 
 def _strings(value) -> list[str]:
@@ -699,8 +543,6 @@ def _clean(value) -> str:
 
 
 def _shorten(s, n):
-    """Trim to `n` characters at a WORD boundary. Cutting mid-word puts a
-    broken syllable in the middle of a design element."""
     s = _clean(s)
     if len(s) <= n:
         return s
@@ -712,7 +554,6 @@ def _shorten(s, n):
 
 
 def _split_sentences(body):
-    """Two roughly equal halves, cut at a sentence end."""
     parts = re.split(r"(?<=[.!?])\s+", body)
     if len(parts) < 2:
         return body, ""
@@ -725,18 +566,10 @@ def _split_sentences(body):
     return " ".join(parts[: i + 1]), " ".join(parts[i + 1:])
 
 
-# Titles that name two things being set against each other. Deliberately
-# conservative: "и" joins far more than it contrasts, so it only counts
-# when the bullets ALSO split evenly in two.
 _VS_WORDS = (" vs ", " и ", " или ", " ва ", " ё ", " versus ")
 
 
 def _split_on_vs(title):
-    """The two sides of a contrasting title, or None.
-
-    "Растительная и животная клетка" -> ("Растительная", "животная"): the
-    shared noun after the second side is dropped, because it is the thing
-    BOTH columns are, not what tells them apart."""
     t = _clean(title)
     if not t:
         return None
@@ -749,8 +582,6 @@ def _split_on_vs(title):
         right = t[i - 1 + len(w):].strip(" ,")
         if not left or not right:
             continue
-        # Drop the trailing shared noun from the right-hand side, and any
-        # leading article-ish word from the left.
         rw = right.split()
         if len(rw) > 1:
             right = " ".join(rw[:-1])
@@ -772,16 +603,11 @@ _NUM_RE = re.compile(r"^[^\d]{0,12}?(\d[\d\s.,]{0,9}\s*%?)\s*(.*)$")
 
 
 def _extract_number(bullets):
-    """A bullet that is essentially one figure, split into the figure and
-    what it means. Returns ("", []) when no bullet qualifies — a slide
-    without a real number must not get the big-number layout."""
     for i, bp in enumerate(bullets):
         m = _NUM_RE.match(bp)
         if not m:
             continue
         num = m.group(1).strip()
-        # Guard against grabbing a year out of the middle of a sentence,
-        # or a bullet that merely starts with a digit.
         if len(bp) > 42 or not num or len(num) > 7:
             continue
         rest = [b for j, b in enumerate(bullets) if j != i]
@@ -793,11 +619,7 @@ def _extract_number(bullets):
     return "", []
 
 
-# ── choosing ─────────────────────────────────────────────────────────────
 
-# What each slide KIND naturally wants, best first. The model already
-# tags every slide (see ai_service._presentation_prompt's "kind"), and
-# until now the renderer used exactly one of those tags.
 _BY_KIND = {
     "intro":       ("split_image", "hero", "magazine"),
     "concepts":    ("central", "split_image", "comparison"),
@@ -807,8 +629,6 @@ _BY_KIND = {
     "summary":     ("timeline", "central", "hero"),
 }
 
-# Some subjects lean on a composition harder than the kind alone implies:
-# history teaches in periods, geography in maps, maths in worked steps.
 _BY_SUBJECT = {
     "history":       ("timeline",),
     "history_world": ("timeline",),
@@ -836,15 +656,6 @@ _LAYOUTS = {
 
 
 def draw(ctx: Ctx, sd: dict, last_layout: str | None) -> str | None:
-    """Pick a composition for this slide and draw it.
-
-    Returns the name of the layout that drew, or None if none applied and
-    the caller should fall back to its own bullets path.
-
-    `last_layout` is what the previous slide used. Two identical
-    compositions in a row is the single most template-looking thing a
-    deck can do, so a candidate that just ran is tried last rather than
-    first — it can still win if it is the only one that fits."""
     kind = str(sd.get("kind") or "").strip().lower()
 
     order: list[str] = []
@@ -854,38 +665,23 @@ def draw(ctx: Ctx, sd: dict, last_layout: str | None) -> str | None:
     for name in _BY_KIND.get(kind, ()):
         if name not in order:
             order.append(name)
-    # Everything else, so an untagged slide still gets a real composition.
     for name in ("split_image", "central", "flow", "comparison", "timeline",
                  "bignumber", "magazine", "hero"):
         if name not in order:
             order.append(name)
 
-    # A slide whose point IS a figure belongs in the big-number layout
-    # whatever its kind says — "13 климатических поясов" came out as step
-    # one of a three-step flow, which says nothing. _extract_number is
-    # strict, so this only fires when a bullet really is one number.
     if _extract_number(_strings(sd.get("bullet_points")))[0] and "bignumber" in order:
         order.remove("bignumber")
         order.insert(0, "bignumber")
 
-    # A slide that is literally about two things belongs in the two-column
-    # layout whatever its kind says. Without this the anti-repeat rule
-    # below could bump comparison down and a "Растительная и животная
-    # клетка" slide came out as a radial diagram, which is the wrong
-    # shape for a contrast.
     if _looks_like_comparison(sd) and "comparison" in order:
         order.remove("comparison")
         order.insert(0, "comparison")
 
-    # A picture is a strong enough signal to lead with, whatever the kind.
     if ctx.image_path and "split_image" in order:
         order.remove("split_image")
         order.insert(0, "split_image")
 
-    # A slide carrying real code outranks everything — a "for loop" slide
-    # with an actual runnable snippet on it is a completely different
-    # (and far better) slide than the same content squeezed into a
-    # generic bullet grid.
     if isinstance(sd.get("code"), dict) and str(sd["code"].get("snippet") or "").strip():
         order = ["code"] + [n for n in order if n != "code"]
 
@@ -893,9 +689,6 @@ def draw(ctx: Ctx, sd: dict, last_layout: str | None) -> str | None:
         order.remove(last_layout)
         order.append(last_layout)
 
-    # Senior classes get the editorial treatment ahead of the diagrammatic
-    # ones; juniors the opposite. Same catalogue, different priorities —
-    # which is what "design adapts to the age" has to mean in practice.
     if ctx.grade_tier == "senior" and "magazine" in order:
         order.remove("magazine")
         order.insert(1 if ctx.image_path else 0, "magazine")
@@ -912,16 +705,11 @@ def draw(ctx: Ctx, sd: dict, last_layout: str | None) -> str | None:
             if fn(ctx, sd):
                 return name
         except Exception:
-            # A layout that fails mid-draw may have left partial shapes;
-            # the caller still has its own path, and a slide with one
-            # stray rule on it beats a failed export.
             continue
     return None
 
 
 def grade_tier(grade) -> str:
-    """1-4 junior, 5-9 middle, 10-11 senior. `grade` arrives as "8",
-    "8 класс", "8-синф" — the first run of digits decides."""
     m = re.search(r"\d+", str(grade or ""))
     if not m:
         return "middle"

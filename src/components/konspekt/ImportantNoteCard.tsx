@@ -1,11 +1,6 @@
 import MathText from "./MathText";
 
-/** A single "pay attention" callout for a konspekt's `important_notes`
- * entries — visually distinct from a regular bullet (left accent bar +
- * tinted background) so it reads as a genuine highlight, matching the
- * same treatment given to it in the docx/pdf exports (see
- * docx_builder.py's _add_important_note / export_builder.py's
- * _pdf_important_note). */
+
 export default function ImportantNoteCard({ text }: { text: string }) {
   return (
     <div className="mb-3 flex items-start gap-2.5 rounded-xl border-l-[3px] border-primary bg-primary-50 px-3.5 py-2.5">

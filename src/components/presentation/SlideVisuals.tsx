@@ -16,17 +16,17 @@ export interface VisualBlock {
     shape?: string;
     values?: string[];
   };
-  // A figure_builder drawing (see ai_service.py's _render_slide_figures)
-  // stamps these two directly onto the visual, not into `data` — mirrors
-  // how a konspekt's `content.figures` entries carry "image"/"caption"
-  // alongside "shape"/"values" rather than nested inside them.
+  
+  
+  
+  
   image?: string;
   caption?: string;
 }
 
-// n distinguishable shades of one accent color for chart wedges/bars —
-// mirrors export_builder.py's _chart_color_shades so the in-app preview's
-// palette matches the real PPTX chart's palette.
+
+
+
 export function chartShade(accentHex: string, i: number, n: number): string {
   const hex = accentHex.replace("#", "");
   const r = parseInt(hex.slice(0, 2), 16);
@@ -39,19 +39,19 @@ export function chartShade(accentHex: string, i: number, n: number): string {
   return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
 }
 
-// Renders one slide's "visual" block (table/comparison/process/chart/
-// figure) identically wherever a slide is shown — the read-only viewer,
-// the fullscreen PresentMode, and the new 3-pane Slide Editor's canvas
-// all import this instead of each drawing their own copy.
+
+
+
+
 export default function VisualBlockView({ visual, accent }: { visual: VisualBlock; accent: string }) {
   const { type, data } = visual;
 
   if (type === "figure") {
-    // A figure_builder line drawing (cube, parabola, atom model, circuit
-    // — see ai_service.py's _render_slide_figures), same PNG the PPTX/PDF
-    // export embeds. No image means the render failed server-side and
-    // the "visual" key was dropped entirely, so this only ever sees one
-    // that actually exists.
+    
+    
+    
+    
+    
     if (!visual.image) return null;
     return (
       <div className="my-2 flex flex-col items-center rounded-xl border border-border-light bg-surface p-3">
@@ -74,11 +74,11 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
 
     if (chartType === "pie") {
       const total = values.reduce((a, b) => a + b, 0) || 1;
-      // Cumulative sums computed as their own pass (not a mutable `acc`
-      // closed over by .map's callback) — a variable reassigned from
-      // inside a render-time .map is exactly the kind of stateful mutation
-      // React's compiler/lint rules flag, since a future React optimization
-      // is allowed to re-run or memoize that callback independently.
+      
+      
+      
+      
+      
       const cumulative = values.reduce<number[]>((sums, v, i) => {
         sums.push((sums[i - 1] ?? 0) + v);
         return sums;
@@ -110,11 +110,11 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
       );
     }
 
-    // "bar" and "line" both render as simple horizontal bars here — this is
-    // just the in-app preview (the real PPTX export draws an actual native
-    // bar/line chart, see export_builder.py), so a lightweight, dependable
-    // representation of the same numbers is enough rather than pulling in
-    // a charting library just for this preview.
+    
+    
+    
+    
+    
     const max = Math.max(...values, 1);
     return (
       <div className="my-2 space-y-1.5">
@@ -136,12 +136,12 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
   if (type === "process") {
     const steps = data.steps ?? [];
     if (!steps.length) return null;
-    // Conspect notes, matching what the PPTX now draws (see
-    // export_builder.py's "process" branch): a numbered heading with its
-    // explanation under it, down the slide. The tinted cards with
-    // circled numbers that used to be here were dropped on both sides —
-    // three real sentences never fitted the three-across strip, so the
-    // text spilled out of its boxes.
+    
+    
+    
+    
+    
+    
     return (
       <div className="my-2 space-y-2.5">
         {steps.map((step, i) => (
@@ -194,10 +194,10 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
   );
 }
 
-// The per-slide header treatment for the 5 mockup "header" styles a deck
-// template can pick (bar/underline/smallcaps/numbered/serif) — shared so
-// the read-only card view and the editor's canvas render an identical
-// header for the same template.
+
+
+
+
 export function SlideHeader({
   index,
   title,
@@ -243,9 +243,9 @@ export function SlideHeader({
       </div>
     );
   }
-  // "numbered" (klassik) and "serif" (rasmiy) share the same layout, just
-  // differing by the parent's serif font swap above — the number gets its
-  // own filled badge so the slide reads as a slide, not a numbered list item.
+  
+  
+  
   return (
     <div className="flex items-start gap-2.5 px-4 pt-4">
       <span

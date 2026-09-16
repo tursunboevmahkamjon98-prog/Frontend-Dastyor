@@ -13,12 +13,7 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
-/** Renders children under a chosen UI language.
- *
- * Server-render and first client paint both use "ru" so the two agree —
- * reading localStorage during render would produce markup the server
- * cannot match and React would throw a hydration error. The stored (or
- * account) choice is applied in an effect immediately after mount. */
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("ru");
 
@@ -47,15 +42,12 @@ export function useLocale() {
   return ctx;
 }
 
-/** Shorthand for the common case of only needing the lookup function. */
+
 export function useT() {
   return useLocale().t;
 }
 
-/** Adopts the account's own language the first time a signed-in user is
- * seen, unless they already picked a UI language on this device — an
- * explicit choice in the browser should outrank the account default.
- * Call once, high in the tree, below both providers. */
+
 export function useAccountLocale(accountLanguage: string | null | undefined) {
   const { setLocale } = useLocale();
   useEffect(() => {

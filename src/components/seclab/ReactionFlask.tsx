@@ -2,20 +2,11 @@
 
 import { ReactionConfig } from "./types";
 
-/** The big conical flask at the centre of the bench — the thing every
- * reagent gets poured into and the thing that visibly reacts.
- *
- * `state` drives what it's doing:
- *  - idle:     resting, faint glow
- *  - filling:  a reagent is being poured in, liquid level climbs
- *  - success:  blooms with light, bubbles hard, throws sparks
- *  - fail:     shakes softly and dims — never a harsh effect
- *  - finale:   the closing experiment, everything at once
- */
+
 export default function ReactionFlask({
   state,
   config,
-  /** Liquid colour, taken from whichever reagent went in last. */
+  
   tint,
 }: {
   state: "idle" | "filling" | "success" | "fail" | "finale";
@@ -35,14 +26,14 @@ export default function ReactionFlask({
 
   return (
     <div className="relative flex flex-col items-center" style={{ animation }}>
-      {/* Halo */}
+      {}
       <span
         className="pointer-events-none absolute -inset-6 rounded-full blur-2xl transition-all duration-500"
         style={{ background: glowColor, opacity: glowOpacity }}
         aria-hidden
       />
 
-      {/* Sparks flying out of a successful reaction */}
+      {}
       {reacting &&
         Array.from({ length: config.sparks }, (_, i) => {
           const angle = (i / config.sparks) * Math.PI * 2;
@@ -62,7 +53,7 @@ export default function ReactionFlask({
           );
         })}
 
-      {/* Escaping vapour while reacting */}
+      {}
       {reacting && (
         <span
           className="pointer-events-none absolute -top-8 h-16 w-16 rounded-full blur-xl"
@@ -71,11 +62,11 @@ export default function ReactionFlask({
         />
       )}
 
-      {/* ---- Flask body: a glass cone ---- */}
+      {}
       <span className="relative block">
-        {/* neck */}
+        {}
         <span className="mx-auto block h-5 w-5 rounded-t-md border-x border-t border-white/40 bg-white/15 sm:h-6 sm:w-6" />
-        {/* cone */}
+        {}
         <span
           className="relative block h-[92px] w-[104px] overflow-hidden border border-white/35 shadow-[inset_0_-10px_20px_rgba(0,0,0,0.35),0_10px_26px_rgba(0,0,0,0.5)] sm:h-[116px] sm:w-[128px]"
           style={{
@@ -84,7 +75,7 @@ export default function ReactionFlask({
             borderRadius: "0 0 22px 22px",
           }}
         >
-          {/* liquid — level climbs while filling, then stays */}
+          {}
           <span
             className="absolute inset-x-0 bottom-0 transition-[height] duration-700 ease-out"
             style={{
@@ -96,7 +87,7 @@ export default function ReactionFlask({
             <span className="absolute inset-x-0 top-0 h-2 bg-white/45" />
           </span>
 
-          {/* bubbles — many more once a reaction is under way */}
+          {}
           {Array.from({ length: reacting ? config.bubbles : 4 }, (_, i) => (
             <span
               key={i}
@@ -112,12 +103,12 @@ export default function ReactionFlask({
             />
           ))}
 
-          {/* glass shine */}
+          {}
           <span className="absolute bottom-3 left-5 h-12 w-2.5 rounded-full bg-white/40 blur-[1px] sm:left-6 sm:h-14" />
         </span>
       </span>
 
-      {/* Bench shadow, anchoring the flask to the worktop */}
+      {}
       <span className="pointer-events-none mt-0.5 h-2 w-20 rounded-[50%] bg-black/55 blur-[5px] sm:h-2.5 sm:w-24" aria-hidden />
     </div>
   );

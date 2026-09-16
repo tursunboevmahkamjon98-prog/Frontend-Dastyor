@@ -38,9 +38,6 @@ async def get_admin_stats(
     )
 
 
-# sort= values the users list accepts, each mapped to the column/expression
-# it orders by. "materials" sorts by the SAME sum the row displays
-# (konspekt+test+presentation counts) rather than adding a 4th subquery.
 _USER_SORTS = {
     "created_desc": lambda k, t, p: User.created_at.desc(),
     "created_asc": lambda k, t, p: User.created_at.asc(),
@@ -63,11 +60,6 @@ async def list_users(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """One row per user with their material counts — correlated subqueries
-    rather than a JOIN+GROUP BY across three different tables (each user's
-    konspekts/tests/presentations are separate tables, not a single
-    joinable one), same pattern materials.py's per-type list endpoints
-    already use elsewhere in this codebase."""
     k_count = (
         select(func.count()).select_from(Konspekt).where(Konspekt.owner_id == User.id).scalar_subquery()
     )
@@ -114,10 +106,6 @@ async def count_users(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Total matching rows for the SAME filters list_users takes — a
-    separate cheap query rather than folding a window function into the
-    paginated one above, so the frontend can show "N of M" and disable
-    "next page" without over-fetching the actual rows."""
     query = select(func.count()).select_from(User)
     if q:
         query = query.where(
@@ -142,9 +130,6 @@ async def update_user_role(
     if data.role not in ("user", "admin"):
         raise HTTPException(status_code=400, detail="role must be 'user' or 'admin'")
     if user_id == admin.id and data.role != "admin":
-        # Without this, the last admin could demote themselves, lock
-        # themselves out of /admin, and there'd be no UI left to promote
-        # anyone back — only a direct DB edit could recover from that.
         raise HTTPException(status_code=400, detail="You can't remove your own admin role")
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -174,10 +159,6 @@ async def set_premium(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually flips is_premium — currently unused by routers/materials.py's
-    _check_can_generate (the free-tier gate is now purely per-type-count +
-    balance, see add_balance below), kept for a possible future all-you-
-    can-generate tier."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
@@ -205,27 +186,10 @@ async def add_balance(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manual top-up — see schemas.AdminBalanceTopUp's docstring. A teacher
-    pays outside the app (Telegram/WhatsApp/phone contact, see the
-    mobile app's "insufficient balance" screen), then an admin finds them
-    here (by phone/email/name/id — the same `q` search as GET /users) and
-    credits what was paid."""
     amount_dirams = round(data.amount_somoni * 100)
     if amount_dirams <= 0:
         raise HTTPException(status_code=400, detail="amount_somoni must be positive")
 
-    # One statement, and the new balance comes back from that same
-    # statement. A SELECT-then-assign would let two admins crediting the
-    # same teacher at the same moment each read the old balance and each
-    # write old+their own amount, losing one of the two payments — a
-    # teacher who paid twice would see one credit.
-    #
-    # `user_id` comes from the URL, but the ROLE that permits this call
-    # comes from get_current_admin reading the database row behind the
-    # bearer token, never from anything the client sent. There is no
-    # request field here that sets a balance directly: the only shape
-    # this endpoint accepts is "add this bounded amount", so
-    # `balance = 999999` is not expressible.
     new_balance = (await db.execute(
         text(
             "UPDATE users SET balance_dirams = balance_dirams + :amt "
@@ -236,8 +200,6 @@ async def add_balance(
     if new_balance is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Same transaction as the credit itself, so the ledger can never be
-    # missing a row for money that moved.
     db.add(BalanceTransaction(
         id=str(uuid.uuid4()),
         user_id=user_id,
@@ -281,25 +243,10 @@ async def delete_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Konspekt/Test/Presentation cascade via the ORM relationship cascade
-    # on User (models.py), and RefreshToken via a real DB
-    # ondelete="CASCADE" — both fire correctly on a plain db.delete(user).
-    #
-    # BalanceTransaction rows do NOT cascade — their user_id is
-    # ondelete="SET NULL", deliberately, so this endpoint can never erase
-    # the record of real money a teacher paid. Delete the account and the
-    # ledger rows survive with user_id=NULL, findable by an admin who
-    # still has the reason/amount/date to go on even after the account
-    # itself is gone.
     await db.delete(user)
     logger.info(f"Admin {admin.email} deleted user {user.email}")
 
 
-# ── Materials browser ────────────────────────────────────────────────────
-# Same MaterialType strings the rest of the app already keys off of
-# (routers/materials.py's LIST_PATH) — kept identical rather than inventing
-# new ones so the frontend's existing MaterialType type/icons/labels
-# (lib/material-types.ts) can be reused as-is for this admin view too.
 _MATERIAL_MODELS = {
     "konspekt": Konspekt,
     "lektsiya": Lecture,
@@ -312,11 +259,6 @@ _MATERIAL_MODELS = {
 
 async def _query_materials(db: AsyncSession, type: str | None, q: str | None,
                            owner_id: str | None = None):
-    """Yields (material_type, row) across whichever table(s) are in scope
-    for this request — one real SELECT per table (6 tables total, small
-    tables, admin-only endpoint) rather than a raw UNION across
-    differently-typed ORM models, which SQLAlchemy makes awkward and a
-    plain Python merge doesn't."""
     if type is not None and type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {type}")
     types = [type] if type else list(_MATERIAL_MODELS.keys())
@@ -326,10 +268,6 @@ async def _query_materials(db: AsyncSession, type: str | None, q: str | None,
         query = select(model.id, model.title, model.subject, model.grade, model.owner_id, model.created_at)
         if q:
             query = query.where(model.title.ilike(f"%{q}%") | model.subject.ilike(f"%{q}%"))
-        # Narrow to one teacher. Added so an admin can answer "what has
-        # THIS account actually produced" — previously the only way was
-        # to eyeball the all-teachers list, which is the wrong tool the
-        # moment there is more than a handful of them.
         if owner_id:
             query = query.where(model.owner_id == owner_id)
         rows = (await db.execute(query)).all()
@@ -347,13 +285,6 @@ async def list_materials(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Every generated material across every teacher, newest first — the
-    pilot had no way to spot-check real AI output or clean up test/junk
-    material without a direct DB query; per-user counts on /users told an
-    admin HOW MANY but never WHAT. Sorted/paginated in Python after
-    fetching all matching rows from each of the (small, pilot-scale)
-    tables rather than a cross-table SQL ORDER BY/LIMIT, which would need
-    a real UNION ALL — simpler and fast enough at this scale."""
     tagged = await _query_materials(db, type, q, owner_id=user_id)
     tagged.sort(key=lambda pair: pair[1].created_at, reverse=True)
     total = len(tagged)
@@ -383,10 +314,6 @@ async def delete_material(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """The ownership-checked per-type deletes in routers/materials.py are
-    for a teacher deleting their OWN material; this is the admin
-    equivalent with no ownership check at all, for cleaning up someone
-    else's junk/test material from the browser above."""
     model = _MATERIAL_MODELS.get(type)
     if model is None:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {type}")
@@ -398,7 +325,6 @@ async def delete_material(
     logger.info(f"Admin {admin.email} deleted {type} {item_id}")
 
 
-# ── Balance history ──────────────────────────────────────────────────────
 
 @router.get("/users/{user_id}/balance-history", response_model=list[BalanceTransactionOut])
 async def balance_history(
@@ -408,15 +334,6 @@ async def balance_history(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Every movement on this account's balance, newest first — who
-    credited it and why, and what each generation cost.
-
-    The one question the balance column alone could never answer. Joined
-    to the acting admin so the row reads as a name rather than a UUID;
-    LEFT join because a charge has no actor (the teacher spent it
-    themselves) and because BalanceTransaction.actor_id is deliberately
-    SET NULL rather than CASCADE, so history survives the admin account
-    that made it being deleted."""
     actor = aliased(User)
     rows = (await db.execute(
         select(BalanceTransaction, actor.full_name)

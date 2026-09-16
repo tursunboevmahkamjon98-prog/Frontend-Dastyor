@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Build the brief's five reference decks and render every slide to PNG.
-
-    venv313/Scripts/python.exe tests/preview_decks.py [subject-id ...]
-
-There is no assertion here on purpose. This is the tool for looking at
-the result the way a designer would — the checks live in
-test_presentation_templates.py. Rendering goes through LibreOffice, which
-is also what renders the in-app preview (app/pptx_pdf.py), so what comes
-out of here is what a teacher sees on their phone.
-
-Output: tests/_decks/png/<id>-NN.png, one per slide.
-"""
 import io
 import os
 import shutil
@@ -24,16 +11,14 @@ try:
 except Exception:
     pass
 
-from pptx import Presentation                                     # noqa: E402
-from app.export_builder import build_presentation_pptx            # noqa: E402
-from app import pptx_pdf                                          # noqa: E402
+from pptx import Presentation
+from app.export_builder import build_presentation_pptx
+from app import pptx_pdf
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_decks")
 PNG = os.path.join(OUT, "png")
 
 
-# The five the brief names, with content shaped the way the model really
-# writes it: a kind on every slide, short bullet fragments, a paragraph.
 DECKS = {
     "biology": {
         "title": "Строение клетки", "subject": "Биология", "grade": "8 класс",

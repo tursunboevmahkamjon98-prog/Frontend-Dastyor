@@ -5,10 +5,10 @@ import { useEffect, useRef, useState } from "react";
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 
-// Minimal typing for the slice of the Google Identity Services global API
-// this component actually calls — the real script attaches this to
-// `window.google` at runtime; there's no @types package worth pulling in
-// for three methods.
+
+
+
+
 interface GoogleIdApi {
   accounts: {
     id: {
@@ -59,12 +59,7 @@ function loadGoogleScript(): Promise<void> {
   return scriptLoadPromise;
 }
 
-/** Renders Google's own "Sign in with Google" button and, once a teacher
- * completes that flow, hands the resulting ID token off to `onCredential`
- * (both /login and /register wire this straight to
- * useAuth().loginWithGoogle — see its doc comment for why one flow covers
- * both pages). Silently renders nothing if NEXT_PUBLIC_GOOGLE_CLIENT_ID
- * isn't configured, rather than showing a button that can only ever fail. */
+
 export default function GoogleSignInButton({
   onCredential,
   onError,
@@ -105,7 +100,7 @@ export default function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onCredential/onError are expected to be stable per page
+    
   }, []);
 
   if (!CLIENT_ID || failed) return null;
@@ -113,11 +108,7 @@ export default function GoogleSignInButton({
   return (
     <>
       <div ref={containerRef} className="flex justify-center" />
-      {/* The "or" rule belongs to the button, not to the page: when it used
-          to sit in login/register directly, an unconfigured (or failed)
-          Google button left a divider stranded above the form separating
-          nothing from nothing. Rendering it here means the two always
-          appear and disappear together. */}
+      {}
       <div className="my-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
         <span className="text-xs text-text-tertiary">или</span>

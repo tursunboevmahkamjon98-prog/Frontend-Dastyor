@@ -1,15 +1,3 @@
-"""Extracts plain text from a teacher-uploaded source document (.pdf/.docx/
-.txt) so it can be fed to the AI as the primary source for a "book-based"
-konspekt (see ai_service.py's generate_konspekt_stream / _konspekt_prompt's
-source_text argument).
-
-Kept stateless and file-agnostic on purpose: nothing here writes to disk or
-the database — the router that calls extract_source_text() hands the
-resulting string straight back to the caller, who holds onto it client-side
-and resubmits it with the generation request. The .docx branch is also used
-by routers/curriculum.py's /parse-docx (topic-list upload) — this module is
-the single place that logic lives now, instead of being duplicated there.
-"""
 
 import io
 
@@ -18,19 +6,10 @@ from app.logger import get_logger
 
 logger = get_logger(__name__)
 
-# A sane upper bound on how much of an uploaded document is even worth
-# holding onto client-side — not the AI prompt budget itself anymore
-# (see ai_service.py's _select_relevant_excerpt, which windows this down
-# further to whatever actually fits the model's prompt, centered on the
-# topic instead of always keeping just the start of the document).
 MAX_SOURCE_CHARS = 60000
 
 
 def extract_text_from_docx(raw: bytes) -> str:
-    """Pulls every paragraph and table cell out of a .docx, in document
-    order. Same extraction shape routers/curriculum.py's /parse-docx always
-    used (paragraphs first, then table cells) — moved here so both callers
-    share one implementation instead of drifting apart."""
     from docx import Document as DocxDocument
 
     doc = DocxDocument(io.BytesIO(raw))
@@ -44,9 +23,6 @@ def extract_text_from_docx(raw: bytes) -> str:
 
 
 def extract_text_from_pdf(raw: bytes) -> str:
-    """Page-by-page text extraction via pypdf. Scanned/image-only PDFs with
-    no embedded text layer will yield an empty string here — the caller
-    treats that the same as any other empty document."""
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(raw))
@@ -55,8 +31,6 @@ def extract_text_from_pdf(raw: bytes) -> str:
         try:
             text = page.extract_text() or ""
         except Exception as e:
-            # A single malformed page shouldn't sink the whole document —
-            # skip it and keep going.
             logger.warning(f"PDF page extraction failed, skipping page: {e}")
             text = ""
         if text.strip():
@@ -65,17 +39,11 @@ def extract_text_from_pdf(raw: bytes) -> str:
 
 
 def extract_text_from_txt(raw: bytes) -> str:
-    """Decodes a plain-text upload, trying UTF-8 first (the overwhelming
-    common case) and falling back to legacy Cyrillic/Latin encodings a
-    teacher's older document might actually be saved in, before giving up."""
     for encoding in ("utf-8", "cp1251", "latin-1"):
         try:
             return fix_legacy_tajik_glyphs(raw.decode(encoding))
         except UnicodeDecodeError:
             continue
-    # Last resort: decode with replacement characters rather than fail
-    # outright — the caller's empty-text check still catches a truly
-    # unreadable file.
     return fix_legacy_tajik_glyphs(raw.decode("utf-8", errors="replace"))
 
 
@@ -87,10 +55,6 @@ _EXTRACTORS = {
 
 
 def extract_source_text(filename: str, raw: bytes) -> tuple[str, bool]:
-    """Dispatches to the right extractor by extension, then trims to
-    MAX_SOURCE_CHARS. Returns (text, was_truncated). Raises ValueError (the
-    router turns this into a 400/422) for an unsupported extension or a
-    document with no extractable text — e.g. a scanned image-only PDF."""
     name = (filename or "").lower()
     ext = next((e for e in _EXTRACTORS if name.endswith(e)), None)
     if ext is None:

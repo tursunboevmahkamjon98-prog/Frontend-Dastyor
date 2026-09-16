@@ -36,10 +36,10 @@ export default function DashboardHome() {
     materialsApi.stats().then(setStats).catch(() => {});
     materialsApi
       .search("")
-      // Games are played in the moment, not browsed later (see
-      // lib/material-types.ts's LIBRARY_TYPES) — dropped here so one
-      // doesn't bump an actually-revisitable material out of the
-      // 3-item "recent" list right after it was played.
+      
+      
+      
+      
       .then((items) => setRecent(items.filter((i) => i.type !== "igra").slice(0, 3)))
       .catch(() => {});
   }, []);
@@ -53,9 +53,7 @@ export default function DashboardHome() {
         <p className="mt-0.5 text-sm text-text-secondary">{t("home.prompt")}</p>
       </div>
 
-      {/* Stats — grid-cols-2 on mobile / 4 on desktop. LIBRARY_TYPES, not
-          MATERIAL_TYPES: "igra" has no count here since a game isn't a
-          library entry a teacher revisits (see lib/material-types.ts). */}
+      {}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {LIBRARY_TYPES.map((type, i) => {
           const { icon: Icon, bg, color } = MATERIAL_TYPE_CONFIG[type];
@@ -76,11 +74,7 @@ export default function DashboardHome() {
         })}
       </div>
 
-      {/* Всё сразу highlight — one topic, all four material types at once
-          (POST /materials/generate-all). Same visual weight as the
-          curriculum highlight right below it since both are one-tap
-          shortcuts to a multi-material generation flow, just different
-          axes (all types for one topic here vs. one type per day there). */}
+      {}
       <Link
         href="/dashboard/create?type=all"
         className="mb-3 flex items-center gap-4 rounded-2xl bg-primary p-5 text-white shadow-md shadow-primary/20 transition hover:-translate-y-0.5 hover:bg-primary-dark"
@@ -95,7 +89,7 @@ export default function DashboardHome() {
         <ChevronRight className="h-5 w-5 shrink-0 text-white/70" />
       </Link>
 
-      {/* Recent activity */}
+      {}
       {recent.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
@@ -128,7 +122,7 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* Quick create */}
+      {}
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-tertiary">{t("home.quickCreate")}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {CREATABLE_TYPES.map((type) => {

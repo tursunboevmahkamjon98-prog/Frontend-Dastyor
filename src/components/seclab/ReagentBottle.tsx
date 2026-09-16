@@ -3,18 +3,7 @@
 import { OPTION_LETTERS, REAGENT_COLORS } from "./types";
 import { labSfx } from "./sounds";
 
-/** One reagent bottle on the bench — the answer buttons of this game, drawn
- * as real glassware rather than rectangles. Glass body, coloured liquid with
- * a meniscus, rising bubbles, a cork, a label carrying the option text, and
- * a lettered tag.
- *
- * State it can be in:
- *  - idle: bobbing gently, hoverable
- *  - flying: the player picked it, so it arcs to the flask and tips over
- *  - dimmed: another bottle was picked
- *  - revealed correct/wrong: after the reaction, so the bench itself shows
- *    which one was right — feedback lives on the objects, not only in a card
- */
+
 export default function ReagentBottle({
   index,
   label,
@@ -23,7 +12,7 @@ export default function ReagentBottle({
   flying,
   dimmed,
   reveal,
-  /** Delta to the flask, in px — drives the flight path. */
+  
   flyTo,
 }: {
   index: number;
@@ -53,7 +42,7 @@ export default function ReagentBottle({
         transition: "opacity 0.4s ease, filter 0.4s ease",
       }}
     >
-      {/* Wrapper carries the motion so the layout slot never moves. */}
+      {}
       <div
         className={`relative transition-transform duration-200 ${
           interactive ? "group-hover:-translate-y-2 group-hover:scale-[1.07] group-active:scale-95" : ""
@@ -66,8 +55,7 @@ export default function ReagentBottle({
             : "lab-bottle-idle 3.4s ease-in-out infinite",
         }}
       >
-        {/* Glow behind the glass — brightens on hover, and turns green/red
-            once the answer is revealed so the bench carries the verdict. */}
+        {}
         <span
           className="pointer-events-none absolute -inset-2 rounded-[26px] blur-lg transition-opacity duration-300"
           style={{
@@ -77,26 +65,26 @@ export default function ReagentBottle({
           aria-hidden
         />
 
-        {/* ---- Bottle ---- */}
+        {}
         <span className="relative block">
-          {/* cork */}
+          {}
           <span className="mx-auto block h-3 w-5 rounded-t-md bg-gradient-to-b from-amber-600 to-amber-800 shadow-sm" />
-          {/* neck */}
+          {}
           <span className="mx-auto block h-3.5 w-4 bg-white/25" />
-          {/* body */}
+          {}
           <span
             className="relative mx-auto block h-[62px] w-[48px] overflow-hidden rounded-b-[18px] rounded-t-lg border border-white/40 shadow-[inset_0_-8px_14px_rgba(0,0,0,0.35),0_8px_18px_rgba(0,0,0,0.45)] sm:h-[80px] sm:w-[58px]"
             style={{ background: "linear-gradient(115deg, rgba(255,255,255,0.28), rgba(255,255,255,0.06))" }}
           >
-            {/* liquid */}
+            {}
             <span
               className="absolute inset-x-0 bottom-0 h-[62%]"
               style={{ background: `linear-gradient(to bottom, ${c.liquid}, ${c.deep})` }}
             >
-              {/* meniscus highlight */}
+              {}
               <span className="absolute inset-x-0 top-0 h-1.5 bg-white/40" />
             </span>
-            {/* bubbles rising inside the liquid */}
+            {}
             {[0, 1, 2, 3].map((b) => (
               <span
                 key={b}
@@ -111,11 +99,11 @@ export default function ReagentBottle({
                 aria-hidden
               />
             ))}
-            {/* glass shine */}
+            {}
             <span className="absolute inset-y-2 left-2 w-2 rounded-full bg-white/45 blur-[1px]" />
           </span>
 
-          {/* Liquid stream, only while tipped over the flask. */}
+          {}
           {flying && (
             <span
               className="absolute left-1/2 top-full h-16 w-2 origin-top -translate-x-1/2 rounded-full"
@@ -128,7 +116,7 @@ export default function ReagentBottle({
           )}
         </span>
 
-        {/* Letter tag on the bottle's shoulder */}
+        {}
         <span
           className="absolute -right-1 top-6 flex h-6 w-6 items-center justify-center rounded-lg text-xs font-black text-white shadow-md ring-1 ring-white/40"
           style={{ background: c.deep }}
@@ -137,11 +125,7 @@ export default function ReagentBottle({
         </span>
       </div>
 
-      {/* ---- Label under the bottle: the actual answer text ----
-          Fixed height, not auto: a two-line answer next to a four-line one
-          would otherwise make the buttons different heights, and `items-end`
-          on the row would leave the bottles floating at different levels
-          instead of standing on one bench. */}
+      {}
       <span
         className={`mt-2 flex h-12 w-full items-center justify-center rounded-xl border px-1.5 py-1 text-center text-[10px] font-bold leading-tight transition sm:h-14 sm:text-[11px] ${
           reveal === "correct"
@@ -151,9 +135,7 @@ export default function ReagentBottle({
               : "border-white/20 bg-white/10 text-white/90 backdrop-blur-sm group-hover:border-cyan-300/60 group-hover:bg-white/20"
         }`}
       >
-        {/* line-clamp, not overflow-hidden: a long answer ends in an
-            ellipsis instead of being sliced through mid-word. The full text
-            stays available to screen readers via the button's aria-label. */}
+        {}
         <span className="line-clamp-3">{label}</span>
       </span>
     </button>

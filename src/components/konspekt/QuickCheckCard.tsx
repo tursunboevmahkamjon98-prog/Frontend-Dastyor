@@ -1,10 +1,4 @@
-/** One question+answer pair from a konspekt's `quick_check` list — a
- * short comprehension check a teacher can fire off right after teaching
- * the section. Same tinted-callout-box family as ImportantNoteCard (a
- * left accent bar + tint) but using the app's --color-success token
- * rather than the primary/red brand color, so it doesn't read as a
- * warning — matching the docx/pdf exports' _add_quick_check /
- * _pdf_quick_check green treatment. */
+
 import MathText from "./MathText";
 
 export default function QuickCheckCard({ question, answer }: { question: string; answer?: string }) {

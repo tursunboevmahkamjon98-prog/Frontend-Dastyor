@@ -1,13 +1,13 @@
-// Tiny synthesized sound effects via WebAudio — no asset files to fetch/host,
-// so the game has audio feedback from the first click with zero network
-// dependency. One shared AudioContext, created lazily on the first call
-// (never at module load) so it's always created inside a real user gesture
-// and browsers' autoplay-blocking never triggers.
+
+
+
+
+
 let ctx: AudioContext | null = null;
 
-// Global mute gate — one flag for every sfx.* call across the game engine
-// AND the Random Wheel, backed by localStorage so "🔊 Звук: ВЫКЛ" survives
-// a refresh instead of resetting every time a teacher reopens the wheel.
+
+
+
 const SOUND_PREF_KEY = "dastyor_sound_enabled";
 let soundEnabled = true;
 if (typeof window !== "undefined") {
@@ -76,20 +76,20 @@ export const sfx = {
   lose: () => {
     [392, 349, 294, 262].forEach((f, i) => tone(f, i * 0.14, 0.3, "sine", 0.18));
   },
-  // Random Wheel — a single rapid tick per detent the pointer crosses while
-  // spinning (pitch/gain passed in by the caller so it can fade as the
-  // wheel decelerates, matching a real prize wheel's clatter).
+  
+  
+  
   wheelTick: (gain: number) => tone(1200, 0, 0.025, "square", Math.max(0.02, gain * 0.14)),
   wheelStop: () => {
     tone(392, 0, 0.1, "triangle", 0.18);
     tone(523, 0.08, 0.22, "triangle", 0.2);
   },
-  // BoxGame's jester — five "ha" syllables, each one a real pitch-drop
-  // (starts bright, slides down) rather than a flat tone, which is what
-  // actually reads as a voice/laugh instead of a chime: a buzzy sawtooth
-  // for vocal texture, louder than the other one-shot effects since this
-  // one is meant to carry the room, and a slightly widening gap between
-  // the last couple of "ha"s the way a real laugh trails off.
+  
+  
+  
+  
+  
+  
   laugh: () => {
     if (!soundEnabled) return;
     const c = getCtx();
@@ -112,17 +112,17 @@ export const sfx = {
       osc.stop(t0 + 0.2);
     });
   },
-  // A quick, soft "whoosh" for each shuffle swap — distinct from click/tick
-  // so a run of them reads as playful shuffling, not button-mashing.
+  
+  
   shuffleSwap: () => tone(300 + Math.random() * 200, 0, 0.08, "triangle", 0.12),
-  // "Қуттиҳои сеҳрнок" box-opening pop — a fast rising three-note sparkle,
-  // distinct from correct/levelUp so opening a box reads as its own small
-  // event rather than borrowing the "you got it right" sound before the
-  // question has even appeared.
+  
+  
+  
+  
   boxOpen: () => {
     [700, 950, 1300].forEach((f, i) => tone(f, i * 0.05, 0.1, "triangle", 0.16));
   },
-  // One earned star — a single bright, short chime, cheap enough to fire
-  // once per star without ever feeling like a duplicate of `correct`.
+  
+  
   star: () => tone(1567, 0, 0.14, "sine", 0.16),
 };

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-"""End-to-end checks against a running server: the guards have to hold on
-the wire, not just in the functions."""
 import os
 import asyncio
 import sys
@@ -32,16 +29,6 @@ async def make_user(role="user", balance=0, free_used=True) -> str:
                 " balance_dirams, free_generation_used, phone_verified, is_premium, "
                 " free_konspekt_used, free_lektsiya_used, free_test_used, "
                 " free_prezentatsiya_used, free_amaliy_used, free_igra_used, created_at) "
-                # The six per-type columns are INTEGER counters now (see
-                # models.py) — "false" here is a type error against them.
-                # free_generation_used is still the legacy BOOLEAN.
-                #
-                # free_used=True means "no free generations left", which
-                # is the default this helper wants: these tests are about
-                # guards (auth, roles, size caps), and an account with a
-                # free allowance would sail past the paywall checks they
-                # are trying to reach. So it maps to the full allowance,
-                # not to 1.
                 "VALUES (:id, 'guard test', :pw, 'Русский', :role, :bal, :free, "
                 "        false, false, :spent, :spent, :spent, :spent, :spent, :spent, now())"
             ),

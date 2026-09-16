@@ -20,8 +20,7 @@ const SUBJECTS = [
 
 const GRADES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
-/** `value` is the key the backend prompt expects (ai_service level_map);
- * `label` is what the player reads. */
+
 const LEVELS = [
   { value: "Лёгкий", label: "Осон" },
   { value: "Средний", label: "Миёна" },
@@ -30,10 +29,7 @@ const LEVELS = [
 
 const COUNTS = [5, 10, 15];
 
-/** Настройки + the brewing scene. The whole question set is generated HERE,
- * before the lab is ever entered, and handed to the game as a finished list —
- * nothing is generated later, so the question a player is answering can never
- * change under them. */
+
 export default function LabSetupScreen({
   defaultSubject,
   defaultTopic,
@@ -69,8 +65,8 @@ export default function LabSetupScreen({
         subject,
         grade,
         level,
-        // Must be a key of the backend's LANGUAGE_NAMES map — the Tajik
-        // endonym is not one, and would be rejected there.
+        
+        
         language: "Таджикский",
         count,
       });
@@ -177,13 +173,12 @@ export default function LabSetupScreen({
   );
 }
 
-/** Shown while the AI writes the questions — a small lab animation rather
- * than a spinner and the word "Loading". */
+
 function BrewingScene() {
   return (
     <div className="flex h-full w-full flex-1 flex-col items-center justify-center px-6">
       <div className="relative flex h-40 w-40 items-center justify-center">
-        {/* orbiting molecules */}
+        {}
         {[0, 1, 2].map((i) => (
           <span
             key={i}
@@ -199,7 +194,7 @@ function BrewingScene() {
         ))}
         <span className="absolute inset-4 rounded-full bg-cyan-400/20 blur-2xl" aria-hidden />
         <FlaskConical className="relative h-16 w-16 text-cyan-200" style={{ animation: "lab-bottle-idle 2s ease-in-out infinite" }} />
-        {/* rising bubbles */}
+        {}
         {[0, 1, 2, 3, 4].map((i) => (
           <span
             key={i}
@@ -217,7 +212,7 @@ function BrewingScene() {
       <p className="mt-4 text-lg font-black text-white">Саволҳо омода мешаванд...</p>
       <p className="mt-1 text-xs font-medium text-cyan-200/70">Лаборатория тайёр карда мешавад</p>
 
-      {/* Indeterminate sweep — honest about not knowing the duration. */}
+      {}
       <div className="mt-5 h-1.5 w-56 overflow-hidden rounded-full bg-white/10">
         <div
           className="h-full w-1/3 rounded-full bg-gradient-to-r from-cyan-300 to-violet-400"

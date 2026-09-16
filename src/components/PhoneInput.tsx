@@ -1,11 +1,6 @@
 "use client";
 
-/** A Tajik phone number field: a fixed "+992" prefix badge plus a 9-digit
- * numeric input for the local part — matches the backend's canonical
- * "+992XXXXXXXXX" shape (see backend/app/schemas.py's _NormalizedPhone),
- * so callers always send/receive just the 9 local digits and prepend
- * "+992" themselves when calling the API. Shared by login/register/
- * forgot-password so the three pages don't each reimplement this. */
+
 export default function PhoneInput({
   value,
   onChange,

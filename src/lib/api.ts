@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api";
-// avatar_url from the backend is a root-relative path (/uploads/avatars/...)
-// served outside the /api prefix — strip /api to get the host to prepend.
+
+
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 const TOKEN_KEY = "teachai_web_token";
@@ -27,24 +27,14 @@ export function setRefreshToken(token: string) {
   localStorage.setItem(REFRESH_TOKEN_KEY, token);
 }
 
-/** Clears both session tokens — use this (not clearToken alone) anywhere a
- * session is ending, or a stale refresh token would just sit in storage
- * ready to mint new access tokens for a "logged out" session.
- *
- * Deliberately leaves DEVICE_TOKEN_KEY alone: that is not a session
- * credential (see getDeviceToken) and wiping it on logout would send the
- * user back to waiting on an SMS every single time they sign in, which is
- * exactly what the trusted-device flow exists to avoid. */
+
 export function clearToken() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
-/** Proof this browser already passed an SMS code for the account, so login
- * can skip the code here (backend: models.TrustedDevice). On its own it
- * grants nothing — it only waives the second factor for a login that still
- * has to pass the password check. */
+
 export function getDeviceToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(DEVICE_TOKEN_KEY);
@@ -55,19 +45,18 @@ export function setDeviceToken(token: string) {
   localStorage.setItem(DEVICE_TOKEN_KEY, token);
 }
 
-/** Drops this browser's verified status, so the next login here has to pass
- * a fresh SMS code again. */
+
 export function forgetDevice() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(DEVICE_TOKEN_KEY);
 }
 
 export class ApiError extends Error {
-  // Set only for real HTTP error responses (status code present); left
-  // undefined for the fetch()-level "couldn't reach the server at all"
-  // case (line ~145 below throws before any response exists). Callers
-  // that need to tell "the token is actually invalid" apart from "the
-  // network hiccuped" — see auth-context.tsx's mount check — rely on this.
+  
+  
+  
+  
+  
   status?: number;
   constructor(message: string, status?: number) {
     super(message);
@@ -75,15 +64,7 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * FastAPI's `detail` is a plain string for our own HTTPExceptions, but a
- * *list* of Pydantic validation-error objects for 422s
- * (`[{"loc": [...], "msg": "...", "type": "..."}]`). React throws
- * ("Objects are not valid as a React child") if that list/object is
- * rendered directly — the exact bug class fixed in the Flutter app's
- * ApiService after a real 422 crashed a generation form. Always
- * collapse to a plain string here so it can never happen on this side.
- */
+
 function extractError(detail: unknown): string {
   if (detail == null) return "Ошибка сервера";
   if (typeof detail === "string") return detail;
@@ -99,12 +80,12 @@ function extractError(detail: unknown): string {
   return String(detail);
 }
 
-// Trades the stored refresh token for a new access+refresh pair on a 401 —
-// lets a session survive past the 24h access token's expiry without
-// bouncing the teacher to /login mid-workday. Concurrent 401s (several
-// requests in flight when the token expires) share one in-flight refresh
-// call instead of each racing to rotate the same refresh token, which
-// would make every request but the first lose the race and fail.
+
+
+
+
+
+
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function refreshTokens(): Promise<boolean> {
@@ -154,21 +135,21 @@ async function request<T>(
       signal,
     });
   } catch (err) {
-    // A caller-triggered abort (e.g. the "Отменить" button during
-    // generation) must not be reported as "couldn't reach the server" —
-    // rethrow it as-is so callers can tell a user cancel apart from a real
-    // connectivity failure with `err instanceof DOMException && err.name
-    // === "AbortError"` (or just `signal?.aborted`).
+    
+    
+    
+    
+    
     if (signal?.aborted) throw err;
     throw new ApiError("Не удалось подключиться к серверу");
   }
 
-  // A 401 on an authenticated call almost always means the access token
-  // expired mid-session (it's normally 24h) — try one silent refresh and
-  // replay the request before giving up, so that doesn't cost the teacher
-  // their place in whatever they were doing. _isRetry stops this from
-  // looping if the refresh itself doesn't fix it (e.g. refresh token also
-  // expired/revoked).
+  
+  
+  
+  
+  
+  
   if (response.status === 401 && auth && !_isRetry) {
     const refreshed = await refreshTokens();
     if (refreshed) return request<T>(path, options, true);
@@ -185,14 +166,14 @@ async function request<T>(
 export interface UserOut {
   id: string;
   full_name: string;
-  // Nullable — phone (below) is the login identifier now; email only
-  // survives on accounts that predate the phone switch.
+  
+  
   email: string | null;
   phone: string | null;
   phone_verified: boolean;
-  // Free tier: 1 free konspekt/test/presentation/lecture; a 2nd of any one
-  // type needs this to be true. No payment gateway wired up yet — only an
-  // admin can flip it today (see adminApi.setPremium).
+  
+  
+  
   is_premium: boolean;
   balance_somoni: number;
   avatar_url: string | null;
@@ -206,9 +187,9 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   user: UserOut;
-  // Only set on the response that just verified an SMS code (backend
-  // routers/auth.py's login_verify) — store it and this browser skips the
-  // code on later logins. Null everywhere else.
+  
+  
+  
   device_token?: string | null;
 }
 
@@ -234,24 +215,16 @@ export interface MaterialOut {
   tasks_json?: string | null;
   game_json?: string | null;
   is_favorite: boolean;
-  /** Konspekt only — true when a previous content snapshot exists to
-   * revert to (see materialsApi.undoKonspektContent). Always false/absent
-   * for the other material types, which don't support undo. */
+  
   has_undo?: boolean;
-  /** Test only — per-question countdown for online play (see
-   * components/TestPlayer.tsx); null/absent means untimed. */
+  
   time_limit_seconds?: number | null;
   created_at: string;
   updated_at: string;
 }
 
-/** One saved play-through of a game (see components/game/GameEngine.tsx) —
- * NOT a cross-student leaderboard entry: this app has no student
- * login/roster, every attempt on one game is the same account replaying
- * it, so the UI shows this as "your own best runs," never as "other
- * players." */
-/** One AI-written question for the magic-box game's AI mode (see
- * materialsApi.generateQuizSet). Mirrors backend QuizSetQuestion. */
+
+
 export interface QuizSetQuestion {
   question: string;
   options: string[];
@@ -295,8 +268,8 @@ export interface GenerateResult {
 
 export interface GenerateAllResult {
   status: string;
-  // Present only for types that actually got generated+saved — absent
-  // (not null) for anything in `skipped` or that failed AI-side.
+  
+  
   ids: Partial<Record<MaterialType, string>>;
   content: {
     konspekt?: Record<string, unknown> | null;
@@ -306,8 +279,8 @@ export interface GenerateAllResult {
     amaliy?: Record<string, unknown> | null;
     errors?: Partial<Record<MaterialType, string>> | null;
   };
-  // Types already at the free-tier's 1-per-type limit — skipped before
-  // any AI call was made for them (see routers/materials.py's /generate-all).
+  
+  
   skipped?: MaterialType[] | null;
 }
 
@@ -320,11 +293,11 @@ const LIST_PATH: Record<MaterialType, string> = {
   igra: "/materials/games",
 };
 
-// Which MaterialOut field holds a given type's JSON content blob — mirrors
-// the same map the material viewer page keeps locally (see
-// dashboard/materials/[type]/[id]/page.tsx's CONTENT_FIELD), duplicated
-// here rather than imported because a page-local const isn't exported and
-// materialsApi.duplicate() (below) needs it too.
+
+
+
+
+
 const CONTENT_FIELD_BY_TYPE: Record<MaterialType, "content" | "slides_json" | "questions_json" | "tasks_json" | "game_json"> = {
   konspekt: "content",
   lektsiya: "content",
@@ -342,10 +315,10 @@ export const materialsApi = {
     return request<MaterialOut[]>(`${LIST_PATH[type]}${qs}`);
   },
   get: (type: MaterialType, id: string) => request<MaterialOut>(`${LIST_PATH[type]}/${id}`),
-  // "content" is konspekt/test's field name for the JSON blob; presentations
-  // store the same kind of blob under "slides_json" instead (see backend's
-  // PresentationUpdate vs KonspektUpdate) — both accepted here so callers
-  // don't need to know which material type uses which name.
+  
+  
+  
+  
   update: (
     type: MaterialType,
     id: string,
@@ -361,19 +334,15 @@ export const materialsApi = {
     }>
   ) => request<MaterialOut>(`${LIST_PATH[type]}/${id}`, { method: "PUT", body: data }),
   remove: (type: MaterialType, id: string) => request<void>(`${LIST_PATH[type]}/${id}`, { method: "DELETE" }),
-  // Generic POST to the same LIST_PATH the type's own CRUD row lives at —
-  // every material type's create endpoint (create_presentation,
-  // create_konspekt, ...) takes a body shaped like its own *Create schema,
-  // which varies by type (see backend/app/schemas.py), so callers pass
-  // exactly what that type's create endpoint expects rather than this
-  // trying to union all six shapes together.
+  
+  
+  
+  
+  
+  
   create: (type: MaterialType, data: Record<string, unknown>) =>
     request<MaterialOut>(LIST_PATH[type], { method: "POST", body: data }),
-  /** Clones an existing material into a brand-new row the teacher can edit
-   * independently — fetches the current content and re-POSTs it under a
-   * "(копия)"-suffixed title. No dedicated backend endpoint: every
-   * material type's create_* endpoint already accepts exactly this shape,
-   * so duplicating is just a GET + a create() with the same content. */
+  
   duplicate: async (type: MaterialType, id: string): Promise<MaterialOut> => {
     const source = await materialsApi.get(type, id);
     const field = CONTENT_FIELD_BY_TYPE[type];
@@ -386,33 +355,19 @@ export const materialsApi = {
     if (value !== undefined) body[field] = value;
     return materialsApi.create(type, body);
   },
-  /** Reverts a konspekt's or лекция's content to whatever it was right
-   * before the last change (e.g. a section regeneration) — one step, not a
-   * full history. Both share the same undo mechanics server-side (see
-   * app/models.py's Lecture.previous_content, mirroring Konspekt's). */
+  
   undoKonspektContent: (id: string, type: "konspekt" | "lektsiya" = "konspekt") =>
     request<MaterialOut>(`${LIST_PATH[type]}/${id}/undo`, { method: "POST" }),
-  /** Retries the real-world photo (or, for География, the map) the
-   * original generation asked for but didn't get — see backend
-   * routers/materials.py's retry_konspekt_image/retry_lecture_image.
-   * 404s when there's nothing to retry (no query was ever made, or one
-   * already succeeded) — callers should treat that as "nothing to do",
-   * not a real error. */
+  
   fetchMissingImage: (id: string, type: "konspekt" | "lektsiya" = "konspekt") =>
     request<MaterialOut>(`${LIST_PATH[type]}/${id}/fetch-image`, { method: "POST" }),
-  /** Swaps ONE lesson_images entry (by its index in that array — 0 or 1)
-   * for a different Commons result on the same query — for when a
-   * picture is already there but the teacher just doesn't like it,
-   * unlike fetchMissingImage above which only fires on an empty slot.
-   * See backend routers/materials.py's replace_konspekt_lesson_image. */
+  
   replaceLessonImage: (id: string, index: number, type: "konspekt" | "lektsiya" = "konspekt") =>
     request<MaterialOut>(`${LIST_PATH[type]}/${id}/replace-image`, {
       method: "POST",
       body: { index },
     }),
-  /** Rewrites ONE section of an already-generated konspekt/лекция (e.g. just
-   * "main_content") instead of the whole material — the teacher keeps
-   * everything else (including any edits they'd already made). */
+  
   regenerateKonspektSection: (
     body: {
       topic: string;
@@ -429,8 +384,7 @@ export const materialsApi = {
       method: "POST",
       body: { material_type: materialType, item_index: 0, existing_items: [], ...body },
     }),
-  /** Rewrites ONE slide of an already-generated presentation instead of
-   * the whole deck — the teacher keeps every other slide untouched. */
+  
   regeneratePresentationSlide: (body: {
     topic: string;
     subject: string;
@@ -444,9 +398,7 @@ export const materialsApi = {
       method: "POST",
       body: { material_type: "prezentatsiya", ...body },
     }),
-  /** Rewrites ONE question of an already-generated test instead of the
-   * whole set — same regenerate-item endpoint prezentatsiya/konspekt
-   * already use, just keyed by question index. */
+  
   regenerateTestQuestion: (body: {
     topic: string;
     subject: string;
@@ -460,11 +412,7 @@ export const materialsApi = {
       method: "POST",
       body: { material_type: "test", ...body },
     }),
-  /** Rewrites ONE practical task instead of the whole worksheet — `kind`
-   * picks which of the two differently-shaped arrays it belongs to (see
-   * backend ai_service.py's _regenerate_practical_task_prompt), reusing
-   * the same "section" field konspekt/лекция already pass their field
-   * name through. */
+  
   regeneratePracticalTask: (body: {
     topic: string;
     subject: string;
@@ -481,19 +429,11 @@ export const materialsApi = {
       body: { material_type: "amaliy", section: kind, ...rest },
     });
   },
-  /** A fresh 12-round set on the same topic/subject/grade an existing
-   * game already has, saved over the same row (see backend's
-   * POST /materials/games/{id}/reroll) — for replaying the same lesson's
-   * game with a different set of questions (e.g. a different pupil's
-   * turn) instead of creating a whole new material. */
+  
   rerollGame: (id: string, body: { language?: string; level?: string } = {}) =>
     request<MaterialOut>(`/materials/games/${id}/reroll`, { method: "POST", body }),
 
-  /** Ad-hoc 4-option questions (each with an explanation) for the
-   * "Қуттиҳои сеҳрнок" game's AI mode — the player picks the subject/topic/
-   * difficulty themselves rather than replaying a saved material's own
-   * questions. Stateless on the server: nothing is stored, the questions
-   * live only in the running game. */
+  
   generateQuizSet: (body: {
     topic: string;
     subject: string;
@@ -502,8 +442,7 @@ export const materialsApi = {
     language?: string;
     count?: number;
   }) => request<QuizSetResponse>("/materials/quiz-set", { method: "POST", body }),
-  /** Saves one completed online play-through of a game (see
-   * components/game/GameEngine.tsx's GameResult) — solo or duel. */
+  
   submitGameAttempt: (
     gameId: string,
     body: {
@@ -517,15 +456,9 @@ export const materialsApi = {
       max_streak?: number;
     }
   ) => request<GameAttemptOut>(`/materials/games/${gameId}/attempts`, { method: "POST", body }),
-  /** This account's own past attempts at one game, best score first —
-   * powers StartScreen's "Ваши лучшие результаты" list. Never other
-   * players' data (see GameAttemptOut's doc comment). */
+  
   listGameAttempts: (gameId: string) => request<GameAttemptOut[]>(`/materials/games/${gameId}/attempts`),
-  /** Free-text edit ("add 5 more questions", "make it shorter", ...)
-   * applied to a material's whole current content — returns the updated
-   * content only; the caller still has to persist it via update() itself
-   * (same two-step shape as regenerateKonspektSection/
-   * regeneratePresentationSlide above). */
+  
   chatEdit: (body: {
     material_type: MaterialType;
     topic: string;
@@ -549,18 +482,12 @@ export const materialsApi = {
     include_homework?: boolean;
     include_fun_facts?: boolean;
     include_assessment?: boolean;
-    // Presentation-only: which of the 5 PPTX/PDF export layouts (see
-    // lib/material-types.ts's KONSPEKT_TEMPLATES, reused as-is) this deck
-    // uses. Ignored by the backend for other material_types.
+    
+    
+    
     template?: string;
   }, signal?: AbortSignal) => request<GenerateResult>("/materials/generate", { method: "POST", body, signal }),
-  /** One topic → all four material types (konspekt/test/prezentatsiya/
-   * lektsiya) at once, generated in parallel server-side. `skipped` in
-   * the response lists any type a free-tier account had already used its
-   * one free slot on — that type's AI call never even ran; `content.errors`
-   * (if present) lists types the AI call itself failed for. Every other
-   * type in `ids` was generated AND already saved — no separate confirm
-   * step, unlike the single-type wizard which shows a preview first. */
+  
   generateAll: (body: {
     topic: string;
     subject: string;
@@ -570,17 +497,11 @@ export const materialsApi = {
     slide_count?: number;
     question_count?: number;
     test_type?: string;
-    /** Which types to make. Omitted means all five, which is what the
-     * endpoint has always done; the create screen sends the teacher's
-     * selection so one request covers "just a konspekt" as well as
-     * "everything at once". */
+    
     types?: MaterialType[];
   }) =>
     request<GenerateAllResult>("/materials/generate-all", { method: "POST", body }),
-  /** Extracts text from an uploaded .pdf/.docx/.txt for "book mode" konspekt
-   * generation (see streamGenerateKonspekt's source_text) — stateless on the
-   * server, the extracted text is handed straight back and resubmitted with
-   * the generation request. Same FormData upload pattern as uploadAvatar. */
+  
   uploadSource: async (file: File): Promise<{ status: string; text: string; truncated: boolean; filename: string }> => {
     const token = getToken();
     const form = new FormData();
@@ -594,11 +515,7 @@ export const materialsApi = {
     if (!response.ok) throw new ApiError(extractError(data.detail));
     return data;
   },
-  /** Places a teacher's OWN photo/diagram into a konspekt/лекция's
-   * lesson_images at `index` — the one way to get a picture that isn't
-   * whatever Commons search returned (fetchMissingImage/replaceLessonImage
-   * above only ever pick from Commons). Same FormData pattern as
-   * uploadSource. Max 8MB, enforced server-side too. */
+  
   uploadLessonImage: async (
     id: string,
     index: number,
@@ -619,8 +536,7 @@ export const materialsApi = {
   },
 };
 
-/** One parsed SSE event from POST /materials/generate-konspekt-stream — see
- * ai_service.py's generate_konspekt_stream for the authoritative shapes. */
+
 export type KonspektStreamEvent =
   | { stage: string; status: "start" | "done"; [key: string]: unknown }
   | { type: "token"; delta: string }
@@ -639,20 +555,12 @@ export interface GenerateKonspektStreamBody {
   include_assessment: boolean;
   generation_mode: "ai" | "source";
   source_text?: string | null;
-  // Which of the 5 PDF/DOCX export layouts (see
-  // lib/material-types.ts's KONSPEKT_TEMPLATES) this konspekt uses.
+  
+  
   template?: string;
 }
 
-/**
- * Streams a konspekt's real-time generation progress + live AI output.
- * EventSource can't be used here (POST body + Authorization header aren't
- * supported by it) — instead this reads the response body as a stream
- * directly and splits it into SSE `data: {...}` frames itself, calling
- * onEvent for each one as it arrives. Pass an AbortSignal to let the caller
- * cancel mid-generation (the backend stops and never saves a partial
- * result — see routers/materials.py's generate-konspekt-stream-endpoint).
- */
+
 export async function streamGenerateKonspekt(
   body: GenerateKonspektStreamBody,
   onEvent: (event: KonspektStreamEvent) => void,
@@ -689,9 +597,9 @@ export async function streamGenerateKonspekt(
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      // SSE frames are separated by a blank line; a frame may itself carry
-      // multiple "data: " lines, but this backend only ever sends one JSON
-      // payload per frame.
+      
+      
+      
       let sepIndex: number;
       while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
         const frame = buffer.slice(0, sepIndex);
@@ -703,8 +611,8 @@ export async function streamGenerateKonspekt(
         try {
           onEvent(JSON.parse(payload) as KonspektStreamEvent);
         } catch {
-          // A malformed frame is skipped rather than aborting the whole
-          // stream — the next frame might be fine.
+          
+          
         }
       }
     }
@@ -721,25 +629,14 @@ const DOWNLOAD_EXT: Record<string, string> = {
   txt: "txt",
 };
 
-/**
- * Downloads a material file and saves it via the browser (no server-side
- * filename parsing needed — falls back to a generic name since the
- * Content-Disposition header parsing isn't worth the extra complexity for
- * files that are about to be renamed by the user's browser save dialog anyway).
- */
+
 export type ExportBody = {
   material_type: MaterialType;
   content: Record<string, unknown>;
   language?: string;
 };
 
-/** Renders a material through the backend's exporter and hands back the raw
- * bytes, without saving anything.
- *
- * Split out of downloadMaterial so the PDF preview can show the very same
- * file the download button produces — building the preview from the
- * material JSON separately would mean maintaining a second renderer that
- * drifts from export_builder.py's real output. */
+
 export async function fetchMaterialExport(
   format: keyof typeof DOWNLOAD_EXT,
   body: ExportBody
@@ -775,11 +672,7 @@ export async function downloadMaterial(
   URL.revokeObjectURL(url);
 }
 
-/** Bundles whichever of the four generate-all results actually came back
- * into one .zip (POST /materials/download-zip) — each material in its
- * native export format (docx for konspekt/test/lektsiya, pptx for
- * prezentatsiya). Pass exactly what GenerateAllResult.content gave back;
- * omitted/null types are simply left out of the zip. */
+
 export async function downloadAllZip(body: {
   topic: string;
   language?: string;
@@ -814,8 +707,8 @@ export async function downloadAllZip(body: {
 }
 
 export const authApi = {
-  // Registration is two steps — sendRegisterCode fires the SMS, register
-  // (below) only then creates the account once that code is verified.
+  
+  
   sendRegisterCode: (phone: string) =>
     request<{ status: string; message: string }>("/auth/register/send-code", {
       method: "POST",
@@ -824,35 +717,35 @@ export const authApi = {
     }),
   register: (full_name: string, phone: string, code: string, password: string) =>
     request<TokenResponse>("/auth/register", { method: "POST", body: { full_name, phone, code, password }, auth: false }),
-  // Direct phone+password login with NO second factor. Kept because the
-  // endpoint still exists, but the UI signs in through loginSendCode /
-  // loginVerify below instead — going straight through here would mean the
-  // website quietly had no OTP at all while the phone app does.
+  
+  
+  
+  
   login: (phone: string, password: string) =>
     request<TokenResponse>("/auth/login", { method: "POST", body: { phone, password }, auth: false }),
-  // Step 1 of the real login: checks phone+password, then either returns
-  // tokens right away — bypass/admin account, or this browser is already a
-  // trusted device (see getDeviceToken) — or answers {status:"otp_required"}
-  // after texting a code. Callers tell the two apart by `access_token`.
+  
+  
+  
+  
   loginSendCode: (phone: string, password: string) =>
     request<TokenResponse | { status: string; message: string }>("/auth/login/send-code", {
       method: "POST",
       body: { phone, password, device_token: getDeviceToken() },
       auth: false,
     }),
-  // Step 2 — trades the texted code for tokens, plus a device_token that
-  // lets this browser skip the code next time.
+  
+  
   loginVerify: (phone: string, code: string) =>
     request<TokenResponse>("/auth/login/verify", { method: "POST", body: { phone, code }, auth: false }),
-  // Email+password — no OTP step, account is created immediately (see
-  // backend schemas.EmailRegister's docstring).
+  
+  
   registerEmail: (full_name: string, email: string, password: string) =>
     request<TokenResponse>("/auth/register-email", { method: "POST", body: { full_name, email, password }, auth: false }),
   loginEmail: (email: string, password: string) =>
     request<TokenResponse>("/auth/login-email", { method: "POST", body: { email, password }, auth: false }),
-  // `credential` is the ID token JWT Google Identity Services hands back
-  // via its own callback (see components/GoogleSignInButton.tsx) — the
-  // backend decodes and verifies it, we never touch its contents here.
+  
+  
+  
   google: (credential: string) =>
     request<TokenResponse>("/auth/google", { method: "POST", body: { credential }, auth: false }),
   me: () => request<UserOut>("/auth/me"),
@@ -887,12 +780,12 @@ export const authApi = {
     return data;
   },
   deleteAvatar: () => request<UserOut>("/auth/avatar", { method: "DELETE" }),
-  // Best-effort server-side revocation of the refresh token, so a device
-  // that's been "logged out" can't silently mint new access tokens with
-  // it afterward. logout() (auth-context.tsx) clears local storage either
-  // way, so this failing (offline, token already gone, ...) shouldn't
-  // block it — hence auth: false rather than requiring a still-valid
-  // access token that may itself be the thing that just expired.
+  
+  
+  
+  
+  
+  
   logout: (refresh_token: string) =>
     request<{ status: string }>("/auth/logout", { method: "POST", body: { refresh_token }, auth: false }),
 };
@@ -911,15 +804,15 @@ export interface AdminUserOut {
   email: string | null;
   phone: string | null;
   role: string;
-  // Free-tier gate (see backend/app/routers/materials.py's
-  // _check_free_limit) — no payment gateway wired up yet, so this is only
-  // ever flipped here, by an admin, once a teacher has paid some other way.
+  
+  
+  
   is_premium: boolean;
-  // Wallet balance in somoni — 1 konspekt/test/presentation/lecture past
-  // that type's one free slot costs 50 dirams (see backend/app/routers/
-  // materials.py's _check_can_generate). Topped up here, by hand, once a
-  // teacher pays via the contact info the mobile app's "insufficient
-  // balance" screen shows (Telegram/WhatsApp/phone).
+  
+  
+  
+  
+  
   balance_somoni: number;
   language: string;
   created_at: string;
@@ -941,9 +834,9 @@ export interface AdminListUsersParams {
   offset?: number;
 }
 
-// One row per generated material across EVERY teacher — see
-// backend/app/routers/admin.py's list_materials doc comment. `type` is the
-// same MaterialType string the rest of the app already uses.
+
+
+
 export interface AdminMaterialOut {
   id: string;
   type: MaterialType;
@@ -963,24 +856,24 @@ export interface AdminMaterialsPage {
 
 export interface BalanceTransactionOut {
   id: string;
-  /** "topup" | "charge" | "refund" | "free" */
+  
   kind: string;
   amount_somoni: number;
   balance_before_somoni: number;
   balance_after_somoni: number;
-  /** The admin who made a top-up; null for the user's own generations. */
+  
   actor_name: string | null;
   reason: string | null;
   material_type: string | null;
   created_at: string;
 }
 
-// `object` rather than Record<string, ...>: TypeScript does not consider a
-// declared interface assignable to an index-signature type (only type
-// aliases get an implicit index signature), so the previous signature made
-// every named params interface — AdminListUsersParams among them — a
-// compile error at the call site. Narrowing per entry inside keeps this
-// just as safe, since every value is stringified anyway.
+
+
+
+
+
+
 function qs(params: object): string {
   const parts = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== "")
@@ -988,9 +881,9 @@ function qs(params: object): string {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-// Uses the same bearer token as every other authenticated call — gated
-// server-side by User.role == "admin" (see backend/app/auth.py's
-// get_current_admin), not a separate admin credential/session system.
+
+
+
 export const adminApi = {
   stats: () => request<AdminDashboardStats>("/admin/stats"),
   listUsers: (params: AdminListUsersParams = {}) =>
@@ -1006,24 +899,24 @@ export const adminApi = {
       method: "PUT",
       body: { amount_somoni, reason },
     }),
-  // Every movement on one account's balance, newest first — see
-  // backend/app/models.py's BalanceTransaction.
+  
+  
   balanceHistory: (userId: string, params: { limit?: number; offset?: number } = {}) =>
     request<BalanceTransactionOut[]>(`/admin/users/${userId}/balance-history${qs(params)}`),
   removeUser: (userId: string) => request<void>(`/admin/users/${userId}`, { method: "DELETE" }),
-  // user_id narrows the list to one teacher — what the "materials" button
-  // on an admin/users row opens.
+  
+  
   listMaterials: (params: { type?: MaterialType; q?: string; user_id?: string; limit?: number; offset?: number } = {}) =>
     request<AdminMaterialsPage>(`/admin/materials${qs(params)}`),
   removeMaterial: (type: MaterialType, id: string) =>
     request<void>(`/admin/materials/${type}/${id}`, { method: "DELETE" }),
 };
 
-// The balance a teacher has left. There is no top-up call here on
-// purpose: topping up happens by contacting an administrator, who
-// credits the balance from the admin panel (adminApi.addBalance above).
-// The card-payment client this replaced is gone from the UI by an
-// explicit decision.
+
+
+
+
+
 export const billingApi = {
   balance: () => request<{ balance_somoni: number }>("/billing/balance"),
 };

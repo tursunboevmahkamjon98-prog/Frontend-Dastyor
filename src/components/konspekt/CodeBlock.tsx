@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
-/** A real syntax-editor-styled code card for a konspekt's `code_blocks`
- * entries (Информатика/programming topics — see ai_service.py's
- * _CODE_SUBJECTS) — dark monospaced body, a language badge, a copy
- * button, and the plain-language explanation below. Previously a code
- * snippet had nowhere to go but plain proportional-font prose inside
- * main_content; this is the web-viewer counterpart to docx_builder.py's
- * _add_code_card / export_builder.py's _pdf_code_card. */
+
 export default function CodeBlock({
   code,
   language,
@@ -27,8 +21,8 @@ export default function CodeBlock({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard permission denied/unavailable in this browser context —
-      // not worth surfacing an error for a convenience button.
+      
+      
     }
   }
 

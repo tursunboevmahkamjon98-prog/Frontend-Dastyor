@@ -5,27 +5,22 @@ import { useRouter } from "next/navigation";
 import { BOX_THEME } from "./MagicBox";
 import { magicSfx } from "./sounds";
 
-/** One entry in the gallery. Only one template exists today; the shape is
- * here so adding a second is a matter of appending to TEMPLATES rather than
- * restructuring the page. `available: false` renders a "coming soon" tile
- * instead of a fake button that leads nowhere. */
+
 interface GameTemplate {
   id: string;
   emoji: string;
   title: string;
   description: string;
   available: boolean;
-  /** Mini-scene shown on the card — a real preview built from the game's
-   * own parts, not unrelated stock art. */
+  
   preview: React.ReactNode;
 }
 
-/** A miniature of the actual game: the real classroom art, the real clown,
- * and three boxes in the game's real (identical) colour. */
+
 function MagicBoxPreview() {
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- static art asset, not a Next/Image candidate */}
+      {}
       <img
         src="/game-backgrounds/classroom.png"
         alt=""
@@ -33,7 +28,7 @@ function MagicBoxPreview() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#2e1065]/45 via-[#4c1d95]/35 to-[#1b0f3a]/80" />
 
-      {/* Floating question marks */}
+      {}
       <span className="absolute left-4 top-4 text-lg font-black text-amber-200/80" style={{ animation: "mbox-float 3s ease-in-out infinite" }}>
         ?
       </span>
@@ -47,7 +42,7 @@ function MagicBoxPreview() {
         ✦
       </span>
 
-      {/* eslint-disable-next-line @next/next/no-img-element -- static art asset, not a Next/Image candidate */}
+      {}
       <img
         src="/game-backgrounds/jester.png"
         alt=""
@@ -55,7 +50,7 @@ function MagicBoxPreview() {
         style={{ animation: "mascot-bob 2.8s ease-in-out infinite" }}
       />
 
-      {/* Three boxes — all one colour, exactly as in the game itself. */}
+      {}
       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-end gap-3.5">
         {[0, 1, 2].map((i) => (
           <span key={i} className="relative" style={{ animation: `mbox-float 3s ease-in-out ${i * 0.3}s infinite` }}>
@@ -77,9 +72,7 @@ function MagicBoxPreview() {
   );
 }
 
-/** A miniature of the lab: the lit room, the bench, glowing glassware. Built
- * from the same gradients the real scene uses, so the card promises exactly
- * what the game delivers. */
+
 function SecretLabPreview() {
   return (
     <>
@@ -90,7 +83,7 @@ function SecretLabPreview() {
             "radial-gradient(120% 80% at 50% 0%, #1e3a5f 0%, #12203c 42%, #0a1226 72%, #070c1a 100%)",
         }}
       />
-      {/* lamp cone */}
+      {}
       <div
         className="absolute left-1/2 top-0 h-28 w-28 -translate-x-1/2"
         style={{
@@ -99,7 +92,7 @@ function SecretLabPreview() {
           animation: "lab-lamp-flare 3s ease-in-out infinite",
         }}
       />
-      {/* floating particles */}
+      {}
       {[15, 34, 58, 78, 90].map((left, i) => (
         <span
           key={left}
@@ -108,9 +101,9 @@ function SecretLabPreview() {
           aria-hidden
         />
       ))}
-      {/* bench */}
+      {}
       <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-slate-400 to-[#0c1526]" />
-      {/* glassware */}
+      {}
       <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 items-end gap-3">
         {["#38bdf8", "#a855f7", "#34d399", "#fb923c"].map((c, i) => (
           <span key={c} className="relative" style={{ animation: `lab-bottle-idle 3.4s ease-in-out ${i * 0.2}s infinite` }}>
@@ -121,7 +114,7 @@ function SecretLabPreview() {
           </span>
         ))}
       </div>
-      {/* big flask */}
+      {}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 translate-y-[-46px]">
         <span className="absolute -inset-3 rounded-full bg-cyan-300/40 blur-xl" aria-hidden />
         <span
@@ -162,10 +155,7 @@ const TEMPLATES: GameTemplate[] = [
   },
 ];
 
-/** "Шаблонҳои бозӣ" — the first screen of Сохтан → Бозӣ. The teacher picks
- * WHICH game to run before being asked anything about its content, so the
- * question-settings form only ever appears in the context of a chosen
- * template. */
+
 export default function GameTemplateGallery({ onPick }: { onPick: (templateId: string) => void }) {
   const router = useRouter();
 
@@ -219,8 +209,7 @@ export default function GameTemplateGallery({ onPick }: { onPick: (templateId: s
           </button>
         ))}
 
-        {/* An honest placeholder: says more templates are coming rather than
-            padding the grid with tiles that pretend to be games. */}
+        {}
         <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-surface-muted p-6 text-center">
           <span className="text-3xl opacity-40">✨</span>
           <p className="mt-2 text-sm font-bold text-text-secondary">Шаблонҳои нав</p>

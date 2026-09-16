@@ -17,38 +17,16 @@ const FIELD =
   "w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary outline-none focus:border-primary";
 const SELECT = `${FIELD} appearance-none`;
 
-/** The five types this screen can make, in the order they are offered.
- *
- * Must stay in step with _GENERATE_ALL_TYPES in the backend's
- * routers/materials.py — that list decides what the server will actually
- * generate, and anything missing here is simply never offered. "igra" is
- * not among them: a game is played in the moment, not prepared ahead of a
- * lesson, and the backend has no free slot for it either.
- */
+
 type CreatableType = Exclude<MaterialType, "igra">;
 const TYPES: CreatableType[] = ["konspekt", "lektsiya", "test", "prezentatsiya", "amaliy"];
 
-/** Slide/question counts offered as one tap, with a free field for the rest.
- * Three chips cover almost every real lesson; the input is there so the
- * choice is never a cage. */
+
 const COUNT_PRESETS = [5, 10, 15];
 
 const RESULT_STORAGE_KEY = "dastyor:create:result";
 
-/** Clicking into a fresh material and pressing that page's back button
- * remounts this one through history, and plain useState would land the
- * teacher back on an empty form as if the work had been thrown away —
- * confirmed live: generate a batch, open one, press Back, watch the whole
- * batch vanish behind a blank form.
- *
- * Restored only on an actual back/forward navigation — arriving here
- * fresh (typing the topic again on purpose, or the sidebar link) must
- * start blank, not resurrect a stale result from an earlier visit. See
- * back-navigation.ts for how that's actually detected now; the original
- * check here (Performance Navigation Timing) looked plausible but never
- * fired for Next's client-side routing, so this restore path was dead
- * code from the day it was written — every Back press hit the `null`
- * fallback below regardless of what sessionStorage held. */
+
 function loadPersistedResult(): { topic: string; result: GenerateAllResult } | null {
   if (typeof window === "undefined") return null;
   try {
@@ -60,19 +38,7 @@ function loadPersistedResult(): { topic: string; result: GenerateAllResult } | n
   }
 }
 
-/** One screen for making anything.
- *
- * This replaced four: a tile menu, a 594-line per-type wizard, a separate
- * "everything at once" form, and a game page. They all asked the same
- * three questions — what topic, which class, which subject — and then
- * differed only in which type came out the end, so the teacher had to
- * decide the type before being allowed to type the topic.
- *
- * Here the topic comes first and the type is a choice at the bottom, one
- * or several or all five. Everything goes through POST
- * /materials/generate-all with a `types` list, so a single konspekt is
- * billed, templated and saved exactly like one made as part of a set.
- */
+
 export default function CreatePage() {
   const t = useT();
   const router = useRouter();
@@ -83,20 +49,20 @@ export default function CreatePage() {
   const [grade, setGrade] = useState(CLASSES[6]);
   const [subject, setSubject] = useState(SUBJECTS[0]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
-  // The dashboard's quick-create tiles link here with ?type=konspekt (or
-  // ?type=all) so a teacher who already knows what they want lands on it
-  // preselected. Read through useSearchParams rather than window.location
-  // in an effect: the server sees the same value, so there is no flash of
-  // the wrong selection and no hydration mismatch to work around.
-  //
-  // A plain visit (sidebar "Сохтан", no ?type=) starts with NOTHING
-  // checked — it used to silently preselect "konspekt", so a teacher who
-  // meant to make only, say, an "Amaliy" and never noticed the
-  // already-ticked Konspekt tile got billed for and generated a konspekt
-  // they never asked for. The submit button is already disabled while
-  // `selected` is empty, so this doesn't newly allow submitting nothing —
-  // it just stops choosing FOR the teacher what "nothing chosen yet"
-  // should default to.
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   const [selected, setSelected] = useState<CreatableType[]>(() => {
     const wanted = params.get("type");
     if (wanted === "all") return [...TYPES];
@@ -105,8 +71,8 @@ export default function CreatePage() {
   });
   const [slideCount, setSlideCount] = useState(10);
   const [questionCount, setQuestionCount] = useState(10);
-  // "mixed" asks the model for a spread of question shapes, which is what
-  // most teachers want and what the backend defaults to.
+  
+  
   const [testType, setTestType] = useState("mixed");
 
   const [submitting, setSubmitting] = useState(false);
@@ -139,12 +105,12 @@ export default function CreatePage() {
         subject,
         language,
         grade,
-        // Difficulty is no longer asked for — the prompts still take it, so
-        // the middle value goes every time rather than the field coming
-        // back as a question nobody wanted to answer.
+        
+        
+        
         level: LEVELS[1],
-        // Only meaningful for their own type; sending them regardless is
-        // harmless and keeps the request shape constant.
+        
+        
         slide_count: slideCount,
         question_count: questionCount,
         test_type: testType,
@@ -154,8 +120,8 @@ export default function CreatePage() {
       try {
         sessionStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify({ topic, result: res }));
       } catch {
-        // Storage full or unavailable — the result still shows now, it just
-        // will not survive a later back-navigation.
+        
+        
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.error"));
@@ -259,7 +225,7 @@ export default function CreatePage() {
             try {
               sessionStorage.removeItem(RESULT_STORAGE_KEY);
             } catch {
-              // Nothing to do — a stale entry only affects a back-navigation.
+              
             }
           }}
           className="mt-6 w-full rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-text-primary transition hover:bg-surface-muted"
@@ -359,9 +325,7 @@ export default function CreatePage() {
         })}
       </div>
 
-      {/* Only shown for the types they belong to — a slide count means
-          nothing when no deck was asked for, and an always-visible field
-          is one more thing to read past. */}
+      {}
       {selected.includes("prezentatsiya") && (
         <CountPicker
           label="Слайдов в презентации"
@@ -415,9 +379,7 @@ export default function CreatePage() {
   );
 }
 
-/** Three common counts as chips plus a field for anything else. Kept in one
- * place because the slide and question pickers are the same control with a
- * different label. */
+
 function CountPicker({
   label, value, onChange,
 }: {
@@ -451,9 +413,9 @@ function CountPicker({
           value={custom ? value : ""}
           onChange={(e) => {
             const n = Number(e.target.value);
-            // Clamped rather than validated on submit: the backend caps
-            // these anyway, and a silent correction here beats a rejected
-            // request after a two-minute wait.
+            
+            
+            
             if (Number.isFinite(n) && n > 0) onChange(Math.min(60, Math.round(n)));
           }}
           placeholder="Своё"

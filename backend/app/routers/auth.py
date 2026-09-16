@@ -35,40 +35,13 @@ settings = get_settings()
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# __file__ is app/routers/auth.py, two levels below the backend root where
-# main.py mounts StaticFiles(UPLOAD_DIR="<root>/uploads") — this must land
-# in that same directory or uploaded avatars save successfully but then
-# 404 forever from the mounted /uploads/... URL (previously only went up
-# one level, landing in app/uploads/ instead, which nothing serves).
 AVATAR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "avatars")
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 
-# ── DB-backed rate limiter ───────────────────────────────────────────────
-# Was a handful of plain in-memory dicts — reset on every restart and
-# invisible to any other worker process/replica, so brute-force
-# protection quietly weakened itself exactly when scaling past one
-# process is what makes it matter. See models.RateLimitAttempt's
-# docstring. "purpose" strings below (register_code/login/login_verify/
-# email_login/forgot_password/verify_code) are what used to be six
-# separate dicts, now six independent counters in one table.
 _RATE_WINDOW = settings.RATE_WINDOW
 
 
 async def _check_sms_limits(db: AsyncSession, request: Request) -> bool:
-    """True if one more verification code may be sent.
-
-    Three checks, in the order of what they protect:
-
-    1. the DAILY BUDGET across every caller — the only limit that bounds
-       what this can cost, because an attacker with many addresses
-       defeats any per-address rule;
-    2. a burst window per address, which catches machine speed without
-       touching a school or a carrier's shared address (see config);
-    3. an hourly ceiling per address, for slow grinding.
-
-    The per-PHONE limiter at each call site is separate and unchanged —
-    that one is precise, and protects an individual number from being
-    flooded with texts no matter where the requests come from."""
     ip = _client_ip(request)
     if not await _check_rate_limit(db, "sms_ip_burst", ip,
                                    settings.MAX_SMS_PER_IP_BURST,
@@ -78,12 +51,6 @@ async def _check_sms_limits(db: AsyncSession, request: Request) -> bool:
                                    settings.MAX_SMS_PER_IP,
                                    settings.RATE_WINDOW_IP):
         return False
-    # The budget is charged LAST, and only by a request that has passed
-    # everything else. Charging it first meant a burst of 120 blocked
-    # requests still spent 120 of the day's 500 — an attacker could
-    # exhaust the budget with requests that never sent an SMS, and take
-    # the codes away from real users without paying for a single text.
-    # Measured; that is exactly what happened.
     if not await _check_rate_limit(db, "sms_global", "all",
                                    settings.MAX_SMS_PER_DAY, 86400):
         logger.error("SMS DAILY BUDGET REACHED — no further codes will be sent today. "
@@ -93,20 +60,6 @@ async def _check_sms_limits(db: AsyncSession, request: Request) -> bool:
 
 
 def _client_ip(request: Request) -> str:
-    """The caller's address, as far as it can be trusted.
-
-    Behind Cloudflare the socket address is Cloudflare's edge — every
-    user would share one address and one quota, which is precisely the
-    lock-out this must avoid. CF-Connecting-IP carries the real client
-    and is set by Cloudflare itself; X-Forwarded-For's first hop is the
-    fallback for a plain nginx in front.
-
-    Both headers are caller-supplied and therefore forgeable. That is
-    acceptable for throttling — a forger gets a fresh quota, i.e. the
-    position they would be in with no limit at all, while an ordinary
-    flood from one address is still stopped. It must never be used for
-    anything that grants access.
-    """
     cf = request.headers.get("cf-connecting-ip")
     if cf:
         return cf.strip()[:60]
@@ -119,20 +72,6 @@ def _client_ip(request: Request) -> str:
 
 async def _check_rate_limit(db: AsyncSession, purpose: str, key: str, max_attempts: int,
                             window: int | None = None) -> bool:
-    """True and records this attempt if (purpose, key) is still under
-    max_attempts within the last _RATE_WINDOW seconds; False (without
-    recording) if not — a rejected attempt shouldn't itself extend how
-    long the caller stays locked out.
-
-    Commits immediately rather than just flushing: this is called before
-    the caller's real work (e.g. checking a password), which routinely
-    ends by *raising* HTTPException for the totally expected "wrong
-    password" case — get_db's dependency rolls back the whole request's
-    transaction on any exception, which was silently wiping out every
-    recorded attempt for exactly the failed-login case rate limiting
-    exists to catch. Committing here first means the attempt record
-    survives regardless of what the rest of the request does.
-    """
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=window or _RATE_WINDOW)
     count = (await db.execute(
         select(func.count()).select_from(RateLimitAttempt).where(
@@ -148,19 +87,11 @@ async def _check_rate_limit(db: AsyncSession, purpose: str, key: str, max_attemp
     return True
 
 
-# ── Register (phone + SMS OTP) ────────────────────────────────────────────
-# Two steps: send-code sends the SMS and stores nothing user-facing yet;
-# register verifies that code and only THEN creates the User row — unlike
-# the old email flow there's never a "registered but unconfirmed" account
-# sitting in the users table.
 
 @router.post("/register/send-code")
 async def send_register_code(request: Request, data: SendRegisterCodeRequest,
                              db: AsyncSession = Depends(get_db)):
     try:
-        # Per-IP first: the phone-keyed check below is useless against a
-        # script that changes the number every request, and every request
-        # it lets through is a paid SMS.
         if not await _check_sms_limits(db, request):
             logger.warning(f"SMS rate limit exceeded for IP {_client_ip(request)}")
             raise HTTPException(status_code=429, detail=get_message("too_many_attempts"))
@@ -208,10 +139,6 @@ async def send_register_code(request: Request, data: SendRegisterCodeRequest,
 @router.post("/register", response_model=TokenResponse, status_code=201)
 async def register(request: Request, data: UserRegister, db: AsyncSession = Depends(get_db)):
     try:
-        # Accounts are what the free tier is attached to (one free
-        # konspekt, test, presentation and lecture each), so a script
-        # that registers in a loop gets unlimited free generations —
-        # which is AI spend, not just noise.
         if not await _check_rate_limit(db, "register_ip", _client_ip(request),
                                        settings.MAX_REGISTER_PER_IP, settings.RATE_WINDOW_IP):
             logger.warning(f"Registration rate limit exceeded for IP {_client_ip(request)}")
@@ -278,9 +205,6 @@ async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(ge
             logger.warning(f"Rate limit exceeded for login: {data.phone}")
             raise HTTPException(status_code=429, detail=get_message("too_many_attempts"))
 
-        # Checked BEFORE the password comparison and BEFORE the user
-        # lookup result is acted on, so a locked admin account gets the
-        # same answer whether or not the guessed password was right.
         if await admin_login_blocked(data.phone):
             logger.warning(f"Admin sign-in blocked (lockout active): {data.phone}")
             raise HTTPException(status_code=429, detail=get_message("admin_locked"))
@@ -289,13 +213,6 @@ async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(ge
         user = result.scalar_one_or_none()
         if not user or not verify_password(data.password, user.hashed_password):
             logger.warning(f"Failed login attempt for phone: {data.phone}")
-            # Recorded only for accounts that actually hold the admin
-            # role. Counting failures against every account would let
-            # anyone lock any teacher out of their own account just by
-            # guessing wrong at their number five times — a denial of
-            # service handed to the attacker. The admin panel is worth
-            # that trade; an ordinary account is not, and is already
-            # covered by the per-phone/per-IP throttles above.
             if user is not None and user.role == "admin":
                 await record_admin_login_failure(data.phone, _client_ip(request))
             raise HTTPException(status_code=401, detail=get_message("invalid_credentials"))
@@ -324,12 +241,6 @@ async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(ge
 
 @router.post("/login/send-code")
 async def login_send_code(request: Request, data: LoginSendCodeRequest, db: AsyncSession = Depends(get_db)):
-    """Step 1 of the mobile app's OTP login. Checks credentials exactly
-    like /login; on success either sends an SMS code (normal case) or —
-    for settings.OTP_BYPASS_PHONE only — returns real tokens right away,
-    same shape as /login, so a fixed test/demo account never has to wait
-    on a code. The frontend tells the two cases apart by whether the
-    response has `access_token`."""
     try:
         if not await _check_sms_limits(db, request):
             logger.warning(f"SMS rate limit exceeded for IP {_client_ip(request)}")
@@ -337,9 +248,6 @@ async def login_send_code(request: Request, data: LoginSendCodeRequest, db: Asyn
         if not await _check_rate_limit(db, "login", data.phone, settings.MAX_LOGIN_ATTEMPTS):
             logger.warning(f"Rate limit exceeded for login send-code: {data.phone}")
             raise HTTPException(status_code=429, detail=get_message("too_many_attempts"))
-        # Same admin lockout /login enforces — this endpoint checks the
-        # same password against the same account, so leaving it out here
-        # would just move the guessing one route over.
         if await admin_login_blocked(data.phone):
             logger.warning(f"Admin sign-in blocked (lockout active): {data.phone}")
             raise HTTPException(status_code=429, detail=get_message("admin_locked"))
@@ -352,17 +260,6 @@ async def login_send_code(request: Request, data: LoginSendCodeRequest, db: Asyn
                 await record_admin_login_failure(data.phone, _client_ip(request))
             raise HTTPException(status_code=401, detail=get_message("invalid_credentials"))
 
-        # Admin accounts skip SMS entirely, not just the one fixed demo
-        # number — they're hand-provisioned (see create_admin_*.py-style
-        # scripts / the admin panel), and an admin stuck waiting on SMS
-        # delivery to get into their own mobile app isn't the point of
-        # the OTP step, which exists to verify a *new* teacher's phone.
-        #
-        # A device that already passed an OTP for this account skips it
-        # too (see models.TrustedDevice): the code proves the person holds
-        # the number, and re-proving that to the same laptop on every
-        # single sign-in was the actual complaint — the password check
-        # above still has to pass either way.
         trusted = await is_trusted_device(db, user.id, data.device_token)
         bypass = settings.OTP_BYPASS_PHONE
         if (bypass and data.phone == bypass) or user.role == "admin" or trusted:
@@ -416,7 +313,6 @@ async def login_send_code(request: Request, data: LoginSendCodeRequest, db: Asyn
 
 @router.post("/login/verify", response_model=TokenResponse)
 async def login_verify(request: Request, data: LoginVerifyRequest, db: AsyncSession = Depends(get_db)):
-    """Step 2 — trades the code login_send_code sent for tokens."""
     try:
         if not await _check_rate_limit(db, "login_verify", data.phone, settings.MAX_VERIFY_ATTEMPTS):
             logger.warning(f"Rate limit exceeded for login verify: {data.phone}")
@@ -455,11 +351,6 @@ async def login_verify(request: Request, data: LoginVerifyRequest, db: AsyncSess
         refresh_token = await create_refresh_token(
             db, user.id, user_agent=user_agent, platform=platform,
         )
-        # This request just proved the person holds the number, so the
-        # device can be remembered and skip the code next time (see
-        # models.TrustedDevice). This is the ONLY place a device token is
-        # minted — the bypass path in login_send_code deliberately does
-        # not, since nothing was verified there.
         device_token = None
         if data.remember_device:
             device_token = await create_trusted_device(
@@ -481,8 +372,6 @@ async def login_verify(request: Request, data: LoginVerifyRequest, db: AsyncSess
 
 @router.post("/register-email", response_model=TokenResponse, status_code=201)
 async def register_email(request: Request, data: EmailRegister, db: AsyncSession = Depends(get_db)):
-    """Direct email+password registration, no OTP step — see
-    schemas.EmailRegister's docstring for why."""
     try:
         existing = await db.execute(select(User).where(User.email == data.email))
         if existing.scalar_one_or_none():
@@ -523,9 +412,6 @@ async def login_email(request: Request, data: EmailLogin, db: AsyncSession = Dep
             logger.warning(f"Rate limit exceeded for email login: {data.email}")
             raise HTTPException(status_code=429, detail=get_message("too_many_attempts"))
 
-        # The ADMIN_EMAIL-provisioned account (see main.py) is reachable
-        # through this route as well as the phone one, so it gets the
-        # same lockout, keyed on the email it was tried against.
         if await admin_login_blocked(data.email):
             logger.warning(f"Admin sign-in blocked (lockout active): {data.email}")
             raise HTTPException(status_code=429, detail=get_message("admin_locked"))
@@ -562,15 +448,6 @@ async def login_email(request: Request, data: EmailLogin, db: AsyncSession = Dep
 
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(request: Request, data: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
-    """Sign in (or silently register) via Google Identity Services. The
-    frontend never sees anything but the opaque `credential` JWT GIS hands
-    back — we're the only side that decodes it, and only after Google's
-    own tokeninfo endpoint has confirmed the signature/expiry are valid,
-    so nothing here trusts a claim the client could have forged.
-    google_id (Google's stable "sub" claim) is the actual match key, the
-    same role `phone` plays for the OTP flow above; email is a fallback
-    match only, for a Google sign-in from someone who already has a
-    phone+password account under that email."""
     try:
         async with httpx.AsyncClient(timeout=10.0, verify=SSL_CONTEXT) as client:
             resp = await client.get(
@@ -595,8 +472,6 @@ async def google_auth(request: Request, data: GoogleAuthRequest, db: AsyncSessio
         user = result.scalar_one_or_none()
 
         if user is None and email:
-            # Link to a pre-existing phone+password account with the same
-            # (Google-verified) email instead of creating a duplicate.
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
             if user is not None:
@@ -608,10 +483,6 @@ async def google_auth(request: Request, data: GoogleAuthRequest, db: AsyncSessio
                 email=email,
                 google_id=google_id,
                 avatar_url=payload.get("picture"),
-                # No password was ever set — a random, never-shown hash
-                # makes password login mathematically impossible for this
-                # account rather than leaving hashed_password blank
-                # (every other code path assumes it's always a string).
                 hashed_password=hash_password(secrets.token_urlsafe(32)),
             )
             db.add(user)
@@ -640,12 +511,6 @@ async def google_auth(request: Request, data: GoogleAuthRequest, db: AsyncSessio
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(request: Request, data: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    """Trades a still-valid refresh token for a new access token — what the
-    frontend's api.ts calls automatically on a 401 instead of bouncing the
-    teacher to /login just because the 24h access token expired mid-session.
-    No Authorization header needed/checked here on purpose: the access token
-    that just expired is exactly what a client in this situation no longer
-    has a valid one of."""
     rotated = await rotate_refresh_token(
         db, data.refresh_token, user_agent=request.headers.get("user-agent")
     )
@@ -669,18 +534,10 @@ async def refresh(request: Request, data: RefreshRequest, db: AsyncSession = Dep
 
 @router.post("/logout")
 async def logout(data: LogoutRequest, db: AsyncSession = Depends(get_db)):
-    """Revokes the refresh token server-side so it can't be used to mint
-    new access tokens after this device signs out — clearing it from
-    localStorage alone (what logout did before refresh tokens existed)
-    only stops *this* device from using it, not someone who copied it."""
     await revoke_refresh_token(db, data.refresh_token)
     return {"status": "ok"}
 
 
-# ── Linked devices (mobile app's Profile → Bog'langan qurilmalar) ─────────
-# One row per still-active *web* sign-in (QR or password) — see
-# RefreshToken.platform's docstring for why the phone's own session never
-# shows up in its own list here, same as WhatsApp's own such screen.
 
 @router.get("/sessions", response_model=list[SessionOut])
 async def get_sessions(
@@ -741,7 +598,6 @@ async def upload_avatar(
 
         os.makedirs(AVATAR_DIR, exist_ok=True)
 
-        # Remove old avatar file if exists
         if user.avatar_url:
             old_path = os.path.join(AVATAR_DIR, os.path.basename(user.avatar_url))
             if os.path.exists(old_path):
@@ -789,9 +645,6 @@ async def change_password(
     if not verify_password(data.current_password, user.hashed_password):
         logger.warning(f"Invalid password change attempt for user {user.id}")
         raise HTTPException(status_code=400, detail=get_message("invalid_current_password", user.language))
-    # Stricter minimum for an account that can credit balances, read every
-    # teacher's material and promote other admins. Applied when the
-    # password is SET, never at sign-in — see security.password_strength_error.
     if user.role == "admin":
         problem = password_strength_error(
             data.new_password, min_length=settings.ADMIN_MIN_PASSWORD_LENGTH
@@ -816,11 +669,6 @@ async def delete_account(
     return {"status": "ok", "message": get_message("account_deleted", user.language)}
 
 
-# ── Forgot / Reset Password (phone + SMS OTP) ────────────────────────────
-# Same verified->used two-step shape as the old email flow, just phone-
-# keyed and purpose="reset" scoped in PhoneVerificationCode so a code sent
-# here can never be replayed against the "register" purpose (or vice
-# versa) for the same phone number.
 
 @router.post("/forgot-password")
 async def forgot_password(request: Request, data: ForgotPasswordRequest,
@@ -836,7 +684,6 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest,
         result = await db.execute(select(User).where(User.phone == data.phone))
         user = result.scalar_one_or_none()
         if not user:
-            # Don't reveal whether this phone number is registered
             return {"status": "ok", "message": "If the phone number exists, a code has been sent"}
 
         await db.execute(
@@ -953,10 +800,6 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
         user.hashed_password = hash_password(data.new_password)
         await db.flush()
         await revoke_all_refresh_tokens(db, user.id)
-        # An account that just proved control of the number and set a new
-        # password is no longer the subject of an in-progress guessing
-        # attempt; leaving the lockout in place would keep the legitimate
-        # owner out of the panel they just recovered.
         if user.role == "admin":
             await clear_admin_login_failures(data.phone)
 

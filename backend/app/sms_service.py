@@ -11,19 +11,6 @@ ROBITA_SEND_URL = f"{ROBITA_BASE}/home?page=message&send=one_done"
 
 
 class RobitaClient:
-    """Talks to sms.robita.tj the same way a browser would — Robita has
-    no token-based REST API, only a session-cookie web portal (confirmed
-    by inspecting the live site: the login form at "/" posts to /auth
-    with fields login+password and no CSRF token, and the "Одиночная
-    отправка" form posts to /home?page=message&send=one_done with fields
-    customer+sender+text+plan, also no CSRF token — so a plain httpx
-    session that logs in once and reuses the cookie is enough).
-
-    Deliberately NOT a REST integration: if Robita ever changes this
-    portal's markup, sending silently starts failing and send_sms_code()
-    falls through to its console-print fallback (see below) rather than
-    breaking registration/login. Re-login is attempted once per process
-    lifetime and again automatically whenever a send looks logged-out."""
 
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
@@ -41,9 +28,6 @@ class RobitaClient:
                 ROBITA_LOGIN_URL,
                 data={"login": settings.ROBITA_LOGIN, "password": settings.ROBITA_PASSWORD},
             )
-            # The portal always answers 200 (it re-renders the page rather
-            # than returning a real HTTP error), so check for the
-            # dashboard's own markup instead of the status code.
             self._logged_in = resp.status_code < 400 and "Отправка SMS" in resp.text
             return self._logged_in
         except Exception as e:
@@ -56,7 +40,6 @@ class RobitaClient:
             return False
 
         client = await self._ensure_client()
-        # Robita numbers are local (no "+992" prefix) on this portal.
         customer = phone.lstrip("+").removeprefix("992")
 
         async def _post_once() -> httpx.Response:
@@ -72,7 +55,6 @@ class RobitaClient:
 
         try:
             resp = await _post_once()
-            # Session cookie expired mid-run — log in again and retry once.
             if resp.status_code >= 400 or "Одиночная отправка" not in resp.text and "успешно" not in resp.text.lower():
                 if await self._login():
                     resp = await _post_once()
@@ -88,11 +70,6 @@ class RobitaClient:
 _robita_client = RobitaClient()
 
 
-# OTP text per user.language (see app/i18n.py — same 3 codes: ru/en/tg).
-# Used to be hardcoded Tajik for every single user regardless of language,
-# which is what a teacher using the app in Russian/English would actually
-# see on their phone no matter what — now matches whichever language the
-# account (or, before an account exists, the request) is in.
 _OTP_TEXTS = {
     "ru": "Dastyor: код подтверждения — {code}. Действует 10 минут.",
     "en": "Dastyor: verification code — {code}. Valid for 10 minutes.",
@@ -135,18 +112,7 @@ async def _send_via_twilio(phone: str, code: str, language: str) -> bool:
 
 
 async def send_sms_code(phone: str, code: str, language: str = "ru") -> bool:
-    """Sends a 6-digit OTP code to `phone` (always "+992XXXXXXXXX" — see
-    schemas._NormalizedPhone). Tries Robita first (the actually-funded,
-    working account — see RobitaClient above), then Twilio if configured,
-    and finally falls back to printing the code to the server console so
-    registration/login/password-reset stay testable even with neither
-    provider set up. `language` picks the OTP text (see _OTP_TEXTS) —
-    callers pass the account's own User.language where one already exists
-    (login, password reset); registration has no account yet, so it falls
-    back to the "ru" default."""
     if settings.SMS_DRY_RUN:
-        # Checked before every provider: a dry run must never reach a real
-        # network, whatever is configured.
         print(f"[SMS DRY RUN] Would send code {code} to {phone} — nothing sent")
         return True
 

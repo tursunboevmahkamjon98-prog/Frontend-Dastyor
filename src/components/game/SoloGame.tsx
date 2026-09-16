@@ -7,17 +7,17 @@ import { Burst } from "./effects";
 import { SoloProgress, TemplateScene } from "./templates";
 import { sfx } from "./sound";
 
-const LEVEL_SIZE = 3; // rounds per difficulty tier — see the file doc below
+const LEVEL_SIZE = 3; 
 
-// A small "what kind of round is this" badge shown above every card — pure
-// flavor (no gameplay effect), but a bare white card with no framing reads
-// as a form, not a game; naming the round type with an icon is a cheap way
-// to make each one feel like its own little event.
-// Kahoot-style per-letter tile colors for multiple-choice options — always
-// on (not just on hover/select), same as the reference: the button's own
-// border/background still carries the correct/wrong signal once revealed
-// (see the quiz option button below), this badge is pure identity, not
-// feedback, so keeping it colored throughout doesn't compete with that.
+
+
+
+
+
+
+
+
+
 const OPTION_COLORS = ["bg-[#7c3aed]", "bg-[#16a34a]", "bg-[#2563eb]", "bg-[#ea580c]"];
 
 const ROUND_META: Record<Round["type"], { emoji: string; label: string }> = {
@@ -29,21 +29,7 @@ const ROUND_META: Record<Round["type"], { emoji: string; label: string }> = {
 };
 
 
-/** Solo campaign — one child plays against the clock/streak rather than a
- * simulated opponent (product decision: a fake "AI" answering alongside a
- * quiz format would just be theater, since there's nothing for it to
- * actually compete on). Difficulty is chosen once on the start screen
- * (lives/time budget/score multiplier, see DIFFICULTY_CONFIG) and then
- * ramps further every LEVEL_SIZE rounds within the run — shrinking the
- * answer window and raising the score multiplier — so the game gets
- * harder both by upfront choice and by simply playing longer.
- *
- * SoloGame owns only what survives across rounds (lives/score/streak/
- * badges). Everything scoped to a single round — the countdown, the
- * correct/wrong flash, the answer widget itself — lives in Stage below,
- * which is remounted fresh every round via `key={index}`; that remount IS
- * the reset, so there's no effect anywhere resyncing local state to a
- * prop change. */
+
 export default function SoloGame({
   rounds,
   difficulty,
@@ -71,10 +57,10 @@ export default function SoloGame({
   const levelTimeFactor = Math.max(0.55, 1 - (level - 1) * 0.08);
   const timeBudget = Math.round(BASE_TIME_SECONDS[round.type] * diff.timeMultiplier * levelTimeFactor);
 
-  // Play the level-up chime exactly once per new tier — a ref-guarded
-  // effect with no setState in it (just an external side effect, which is
-  // what effects are for); the toast's own visibility/timing below is
-  // handled by CSS off the `level` value directly, with no extra state.
+  
+  
+  
+  
   useEffect(() => {
     if (announcedLevel.current !== level) {
       announcedLevel.current = level;
@@ -88,13 +74,13 @@ export default function SoloGame({
 
   function handleResolved(correct: boolean, bonus: boolean) {
     const remainingLives = correct ? lives : lives - 1;
-    // Computed explicitly here (not read back out of state inside finish())
-    // because finish() only runs 1000ms later via setTimeout, by which
-    // point React has already re-rendered with the setState calls below
-    // applied — a finish() that instead closed over score/mistakeCount/
-    // maxStreak as outer-scope state would silently use this render's
-    // stale pre-update values, undercounting exactly the round that just
-    // triggered it (the one case that matters most: the final round).
+    
+    
+    
+    
+    
+    
+    
     let finalScore = score;
     let finalMaxStreak = maxStreak;
     let finalMistakeCount = mistakeCount;
@@ -154,14 +140,9 @@ export default function SoloGame({
 
   return (
     <TemplateScene template={template}>
-    {/* min-h-0 + the scrollable stage below: this container is exactly
-        the viewport height, and a long question with four long options
-        does not fit what is left after the HUD, the progress bar and the
-        round line on a 360x640 phone. Without a scroll the last option
-        is simply unreachable — the player can see three answers to a
-        four-answer question. */}
+    {}
     <div className="flex h-full w-full min-h-0 flex-col px-3 pb-4 pt-3 sm:px-8 sm:pb-6 sm:pt-4">
-      {/* HUD */}
+      {}
       <div className="mx-auto flex w-full max-w-md items-center justify-between text-white">
         <div className="flex items-center gap-1">
           {Array.from({ length: diff.lives }, (_, i) => (
@@ -196,12 +177,7 @@ export default function SoloGame({
         <span>Уровень {level}</span>
       </div>
 
-      {/* Keyed by `level` rather than toggled by state: remounting on every
-          new tier replays the animation from scratch, and the keyframe
-          itself (game-levelup-toast, globals.css) holds then fades to
-          opacity 0 and stays there — invisible and non-interactive
-          (pointer-events-none) for the rest of the run, no timer needed to
-          unmount it. */}
+      {}
       {level > 1 && (
         <div
           key={level}
@@ -213,8 +189,7 @@ export default function SoloGame({
         </div>
       )}
 
-      {/* Stage — key={index} is the reset: a fresh Stage instance per round
-          means no effect has to resync timeLeft/feedback to the new round. */}
+      {}
       <div className="relative mx-auto mt-4 w-full min-h-0 max-w-md flex-1 overflow-y-auto sm:mt-6">
         <Stage key={index} round={round} timeBudget={timeBudget} onResolve={handleResolved} />
       </div>
@@ -251,10 +226,10 @@ function TimerRing({ timeLeft, timeBudget, hard }: { timeLeft: number; timeBudge
   );
 }
 
-// One round's whole lifecycle: countdown, the answer widget for whichever
-// round.type this is, the correct/wrong flash, and the little celebration
-// burst — all local, because a fresh Stage exists for exactly one round
-// (see key={index} above) and disappears with it.
+
+
+
+
 function Stage({
   round,
   timeBudget,
@@ -268,10 +243,10 @@ function Stage({
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [picked, setPicked] = useState<number | boolean | null>(null);
   const resolvedRef = useRef(false);
-  // Lazy useState initializer, not useMemo: Stage mounts exactly once per
-  // round, so this is a one-time "when did this round start" timestamp —
-  // exactly what a lazy initializer is for, and unlike useMemo it isn't
-  // flagged as an impure render call since it only ever runs once.
+  
+  
+  
+  
   const [startedAt] = useState(() => Date.now());
 
   function settle(correct: boolean, bonus: boolean) {
@@ -290,8 +265,8 @@ function Stage({
     settle(correct, correct && elapsed < BASE_TIME_SECONDS[round.type] * 0.4);
   }
 
-  // Countdown — quiz/true_false auto-fail at 0; matching/order/speed just
-  // lose eligibility for the speed bonus, they're never forced to answer.
+  
+  
   useEffect(() => {
     if (feedback) return;
     if (timeLeft <= 0) {
@@ -301,13 +276,13 @@ function Stage({
     const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     if (timeLeft <= 3) sfx.tick();
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [timeLeft, feedback]);
 
-  // Keyboard is a first-class input here too, not just touch/click — Q/W/E/R
-  // pick quiz options 1-4 (Q/W double as Верно/Неверно for true_false), same
-  // P1 keymap DuelGame.tsx uses, so a keyboard-playing kid gets the same
-  // muscle memory in either mode.
+  
+  
+  
+  
   useEffect(() => {
     if (round.type !== "quiz" && round.type !== "true_false") return;
     function onKey(e: KeyboardEvent) {
@@ -321,14 +296,14 @@ function Stage({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [picked]);
 
   const hardTimer = round.type === "quiz" || round.type === "true_false";
   const urgent = hardTimer && !feedback && timeLeft <= 3;
-  // Cards for the two "real deadline" round types get a heartbeat pulse in
-  // the last 3 seconds — everything else (matching/order/speed) has no
-  // forced fail on timeout, so pulsing them would just be a false alarm.
+  
+  
+  
   const urgentStyle = urgent ? { animation: "game-urgent-pulse 0.6s ease-in-out infinite" } : undefined;
 
   return (
@@ -418,12 +393,12 @@ function Stage({
   );
 }
 
-// A matched pair's connector: a real drawn line between the two boxes
-// (per the reference product's "клик слева, клик справа, соединить их
-// линией" spec), not just two boxes independently turning green. Position
-// is computed from the two buttons' own bounding rects the instant a match
-// lands, relative to the shared container — no layout library, just
-// getBoundingClientRect and a bit of arithmetic.
+
+
+
+
+
+
 interface MatchLine {
   key: number;
   x1: number;
@@ -458,7 +433,7 @@ function MatchingStage({
       const elapsed = (Date.now() - startedAt) / 1000;
       onResolve(true, elapsed < BASE_TIME_SECONDS.matching * 0.6);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [done]);
 
   function drawLine(leftIndex: number, right: string) {
@@ -493,8 +468,7 @@ function MatchingStage({
   return (
     <div ref={containerRef} className="relative rounded-3xl bg-white/95 p-5 shadow-xl">
       {round.instructions && <p className="mb-3 text-center text-xs text-[#6d28d9]">{round.instructions}</p>}
-      {/* Connector lines live in their own SVG layer above the boxes but
-          below their text (pointer-events-none so clicks pass through). */}
+      {}
       <svg className="pointer-events-none absolute inset-0 h-full w-full">
         {lines.map((l) => (
           <line
@@ -564,9 +538,9 @@ function MatchingStage({
   );
 }
 
-// Shuffles, but never leaves the deck in the already-correct order — a
-// real risk with only 3-5 items, and it would make the round trivially
-// "solved" before the pupil dragged anything.
+
+
+
 function shuffleNotSolved<T>(items: T[]): T[] {
   const s = [...items].sort(() => Math.random() - 0.5);
   if (items.length > 1 && s.every((it, i) => it === items[i])) {
@@ -599,14 +573,14 @@ function OrderStage({
       const elapsed = (Date.now() - startedAt) / 1000;
       onResolve(true, elapsed < BASE_TIME_SECONDS.order * 0.6);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [correct]);
 
-  // Pointer Events (not native HTML5 drag-and-drop, which touch browsers
-  // don't fire at all) so the same handful of handlers drags with mouse,
-  // touch, or pen alike — this app is mobile-first, and a "reorder by
-  // dragging" round that only worked with a mouse would be a regression
-  // from the old tap-in-sequence version, not an upgrade.
+  
+  
+  
+  
+  
   function onPointerDown(e: React.PointerEvent, index: number) {
     if (correct) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -628,11 +602,11 @@ function OrderStage({
       const movingDown = i > drag.index && e.clientY > mid;
       const movingUp = i < drag.index && e.clientY < mid;
       if (movingDown || movingUp) {
-        // Capture the OLD index before mutating drag.index below — setItems'
-        // updater runs on React's schedule, not synchronously right here,
-        // so by the time it actually executes it would otherwise see
-        // drag.index already mutated to the NEW value and splice/re-insert
-        // the same item at the same spot (a silent no-op reorder).
+        
+        
+        
+        
+        
         const fromIndex = drag.index;
         setItems((prev) => {
           const next = [...prev];
@@ -690,10 +664,10 @@ function OrderStage({
   );
 }
 
-// Loose-enough equality for a typed short-answer: trims/lowercases/drops
-// punctuation, and accepts a typed answer that's a close-enough substring
-// of the expected one (catches "3" vs "3." or a missing trailing word)
-// without accepting an empty or wildly short guess.
+
+
+
+
 function normalizeAnswer(s: string): string {
   return s.trim().toLowerCase().replace(/[.,!?;:"'«»`]/g, "");
 }
@@ -705,13 +679,13 @@ function answersMatch(typed: string, expected: string): boolean {
   return b.length > 0 && b.includes(a) && a.length >= Math.max(2, Math.floor(b.length * 0.6));
 }
 
-// A real typed answer under a countdown (per the reference product's
-// "тренажер на скорость": keyboard input, timer, +1/-1 scoring) — replaces
-// the old single reveal-button, which asked nothing of the pupil beyond a
-// tap. Shares Stage's own countdown (`timeLeft` prop) rather than running
-// a second one, so time running out here auto-submits whatever's typed
-// instead of hanging the round forever waiting for a submit that never
-// comes.
+
+
+
+
+
+
+
 function SpeedStage({
   round,
   onResolve,
@@ -742,12 +716,12 @@ function SpeedStage({
     onResolve(ok, ok && elapsed < (round.time_limit_seconds ?? BASE_TIME_SECONDS.speed) * 0.4);
   }
 
-  // Auto-submits whatever's typed (even blank) once Stage's shared timer
-  // runs out — a speed round has to end somehow if the pupil never hits
-  // enter/the button.
+  
+  
+  
   useEffect(() => {
     if (timeLeft <= 0 && !resolvedRef.current) submit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [timeLeft]);
 
   return (

@@ -33,13 +33,13 @@ interface Slide {
   image_query?: string;
 }
 
-// The 3-pane AI presentation editor: LEFT thumbnails, CENTER the selected
-// slide (hand-editable), RIGHT AI/theme/export tools. A separate route
-// from the shared dashboard/materials/[type]/[id] viewer (which every
-// other material type also uses) — this layout has nothing in common
-// with that page's single-column card list, and threading a 3-pane mode
-// through a page shared by 6 material types would have meant a lot of
-// `type === "prezentatsiya"` branching for a layout only one type needs.
+
+
+
+
+
+
+
 export default function PresentationEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -72,21 +72,21 @@ export default function PresentationEditorPage() {
 
   const slides = (content.slides as Slide[] | undefined) ?? [];
   const accent = getSubjectAccent(content.subject as string | undefined);
-  // A deck generated now carries its SUBJECT's design id, not one of the
-  // six legacy theme ids — so the name has to be looked up in both lists.
-  // The old lone PRESENTATION_TEMPLATES lookup fell back to index 0 and
-  // labelled every new deck "Яркий блокнот" whatever it actually was.
+  
+  
+  
+  
   const deckDesignName = deckTemplateName(content.template as string | undefined);
   const deckDesign = templateById(content.template as string | undefined)
     ?? (PRESENTATION_TEMPLATES.some((t) => t.id === content.template)
-        ? undefined                      // a legacy theme: no subject preview to draw
+        ? undefined                      
         : subjectTemplateFor(content.subject as string | undefined));
 
-  // The editor's own slide canvas below still renders from the legacy
-  // `deck` switch-set. A deck built with a subject design has no entry
-  // there, so one is synthesised from it — otherwise the canvas would
-  // draw a biology deck in the notebook theme's cream paper, which is
-  // the same "preview lies about the export" problem in miniature.
+  
+  
+  
+  
+  
   const legacyTmpl = PRESENTATION_TEMPLATES.find((t) => t.id === content.template);
   const tmpl = legacyTmpl ?? {
     ...PRESENTATION_TEMPLATES[0],
@@ -110,13 +110,13 @@ export default function PresentationEditorPage() {
   };
   const presentTmpl = KONSPEKT_TEMPLATES.find((t) => t.id === content.template) ?? KONSPEKT_TEMPLATES[0];
 
-  // Debounced autosave: every mutation below calls this with the FULL next
-  // content object (never a partial patch — slides_json round-trips the
-  // whole JSON blob, see backend PresentationUpdate). Text edits (typing
-  // in a title/bullet) debounce so every keystroke doesn't fire a request;
-  // structural edits (delete/reorder/duplicate/theme) still go through
-  // this same path so "Saved" reflects them too, just with the timer
-  // effectively firing on the next tick since nothing else is typed.
+  
+  
+  
+  
+  
+  
+  
   function persist(next: Record<string, unknown>) {
     setContent(next);
     setSaveState("saving");
@@ -163,12 +163,12 @@ export default function PresentationEditorPage() {
     setSelected(index + 1);
   }
 
-  // Reuses the existing single-slide AI regenerate endpoint (see
-  // materialsApi.regeneratePresentationSlide) for BOTH "regenerate this
-  // slide" (index = the selected slide, replaces it) and "add a new
-  // slide" (index = one past the end — the prompt already builds a
-  // genuinely new slide idea told to avoid every existing title; see
-  // ai_service.py's _regenerate_slide_prompt) — no new backend endpoint.
+  
+  
+  
+  
+  
+  
   async function regenerateAt(index: number, replace: boolean) {
     if (!item) return;
     if (replace) setRegenerating(true);
@@ -192,7 +192,7 @@ export default function PresentationEditorPage() {
         setSelected(next.length - 1);
       }
     } catch {
-      // silent — same failure-visibility tradeoff as the existing viewer's regenerate handler
+      
     } finally {
       if (replace) setRegenerating(false);
       else setAddingSlide(false);
@@ -205,7 +205,7 @@ export default function PresentationEditorPage() {
       const language = typeof content.language === "string" ? content.language : "Русский";
       await downloadMaterial(format, { material_type: "prezentatsiya", content, language });
     } catch {
-      // silent — same as the shared viewer's download handler
+      
     } finally {
       setDownloading(null);
     }
@@ -222,7 +222,7 @@ export default function PresentationEditorPage() {
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col lg:h-dvh">
-      {/* Top bar */}
+      {}
       <div className="flex shrink-0 items-center justify-between border-b border-border-light bg-surface px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -245,7 +245,7 @@ export default function PresentationEditorPage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[220px_1fr_300px]">
-        {/* LEFT — thumbnails */}
+        {}
         <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-border-light bg-surface-muted p-3 lg:h-full lg:w-[220px] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:border-b-0 lg:border-r">
           {slides.map((slide, i) => (
             <div
@@ -269,12 +269,7 @@ export default function PresentationEditorPage() {
                   </p>
                 </div>
               </div>
-              {/* Was `hidden group-hover:flex`, which means these two
-                  buttons did not exist on any touch device: there is no
-                  hover on a phone or tablet, so reordering slides was
-                  simply unavailable there. Shown always on touch (where
-                  the pointer is coarse), hover-revealed on a real mouse
-                  where the uncluttered thumbnail is worth keeping. */}
+              {}
               <div className="absolute -top-1.5 -right-1.5 flex gap-0.5 [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:flex">
                 <button
                   title="Вверх"
@@ -338,7 +333,7 @@ export default function PresentationEditorPage() {
           </button>
         </div>
 
-        {/* CENTER — editable canvas */}
+        {}
         <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-8">
           {s ? (
             <div
@@ -349,7 +344,7 @@ export default function PresentationEditorPage() {
               <div className="relative">
                 <SlideHeader index={selected} title={s.title} accent={accent} header={tmpl.deck.header === "band" ? "bar" : tmpl.deck.header === "underline" ? "underline" : tmpl.deck.caps ? "smallcaps" : "numbered"} />
                 <div className="space-y-3 p-4 pt-3">
-                  {/* Title */}
+                  {}
                   <input
                     value={s.title}
                     onChange={(e) => updateSlide(selected, { title: e.target.value })}
@@ -357,7 +352,7 @@ export default function PresentationEditorPage() {
                     className="w-full rounded-lg border border-transparent bg-white/60 px-2 py-1 text-sm font-semibold text-text-primary outline-none focus:border-primary/40 focus:bg-white"
                   />
 
-                  {/* Bullets */}
+                  {}
                   <div className="space-y-1.5">
                     {(s.bullet_points ?? []).map((b, j) => (
                       <div key={j} className="flex items-center gap-2">
@@ -409,7 +404,7 @@ export default function PresentationEditorPage() {
                     </div>
                   )}
 
-                  {/* Body */}
+                  {}
                   <textarea
                     value={s.body ?? ""}
                     onChange={(e) => updateSlide(selected, { body: e.target.value })}
@@ -418,7 +413,7 @@ export default function PresentationEditorPage() {
                     className="w-full resize-none rounded-lg border border-transparent bg-white/50 px-2 py-1.5 text-xs text-text-secondary outline-none focus:border-primary/40 focus:bg-white"
                   />
 
-                  {/* Speaker notes */}
+                  {}
                   <div>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Заметки для учителя</p>
                     <textarea
@@ -437,7 +432,7 @@ export default function PresentationEditorPage() {
           )}
         </div>
 
-        {/* RIGHT — tools */}
+        {}
         <div className="shrink-0 space-y-4 border-t border-border-light bg-surface p-4 lg:h-full lg:w-[300px] lg:overflow-y-auto lg:border-l lg:border-t-0">
           <button
             onClick={() => regenerateAt(selected, true)}
@@ -457,15 +452,7 @@ export default function PresentationEditorPage() {
             На весь экран
           </button>
 
-          {/* No theme picker anymore — "Яркий блокнот" is the only design
-              a NEW presentation gets, per explicit request (same as the
-              create wizard right above, which no longer offers a choice
-              either — see its deckTemplate comment). PRESENTATION_TEMPLATES
-              itself keeps every design so a presentation already saved
-              under one of the other five still opens/exports exactly as
-              it looked when made; there's just nothing left to switch it
-              TO, hence a plain read-only line here instead of a dropdown
-              with only its own current value in it. */}
+          {}
           <div className="rounded-xl border border-border bg-surface p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
               Оформление

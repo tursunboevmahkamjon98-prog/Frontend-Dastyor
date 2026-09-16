@@ -1,17 +1,3 @@
-"""Generates a real, static map image (not a text description) for
-geography konspekts — geocodes place names via OpenStreetMap's Nominatim,
-picks a zoom level that fits the place's actual extent, stitches the needed
-OSM raster tiles into one composite image, and drops a marker on each
-location. Everything here talks to the public OSM infrastructure, so every
-function fails soft (returns None / skips a location) rather than raising —
-a map is a nice-to-have decoration on top of the konspekt, never something
-that should block the lesson content itself from being generated.
-
-Respects OSM's tile usage policy: a descriptive User-Agent, tiles are
-disk-cached so the same area is never re-fetched, and the composed image
-always carries the required "© OpenStreetMap contributors" attribution
-(added by the docx builder, not here, since attribution is a rendering
-concern)."""
 
 import io
 import math
@@ -65,7 +51,7 @@ async def _geocode(client: httpx.AsyncClient, place: str) -> dict | None:
 
 
 def _lonlat_to_pixel(lon: float, lat: float, zoom: int) -> tuple[float, float]:
-    lat = max(min(lat, 85.05112878), -85.05112878)  # web-mercator clamp
+    lat = max(min(lat, 85.05112878), -85.05112878)
     lat_rad = math.radians(lat)
     n = 2 ** zoom
     x = (lon + 180.0) / 360.0 * n * _TILE_SIZE
@@ -74,11 +60,7 @@ def _lonlat_to_pixel(lon: float, lat: float, zoom: int) -> tuple[float, float]:
 
 
 def _zoom_for_bboxes(points: list[tuple[float, float]], width_px: int, height_px: int) -> int:
-    """Largest zoom level at which every point still fits inside the target
-    canvas (with padding) — makes a country zoom out further than a city
-    automatically, instead of one fixed zoom looking wrong for half the
-    topics."""
-    pad = 0.85  # leave a margin so markers/labels aren't flush with the edge
+    pad = 0.85
     for zoom in range(_MAX_ZOOM, _MIN_ZOOM - 1, -1):
         xs, ys = [], []
         for lon, lat in points:
@@ -92,7 +74,7 @@ def _zoom_for_bboxes(points: list[tuple[float, float]], width_px: int, height_px
 
 async def _fetch_tile(client: httpx.AsyncClient, z: int, x: int, y: int) -> Image.Image | None:
     n = 2 ** z
-    x, y = x % n, y % n  # wrap horizontally/vertically instead of erroring at the edges
+    x, y = x % n, y % n
     cache_path = os.path.join(_TILE_CACHE_DIR, f"{z}_{x}_{y}.png")
     if os.path.exists(cache_path):
         try:
@@ -118,11 +100,6 @@ async def _fetch_tile(client: httpx.AsyncClient, z: int, x: int, y: int) -> Imag
 
 
 async def build_geography_map(place_names: list[str]) -> str | None:
-    """Geocodes up to 3 place names, composes one static OSM map covering
-    all of them with a marker each, saves it under uploads/maps/, and
-    returns the web-servable path (e.g. "/uploads/maps/<uuid>.png") — or
-    None if nothing could be geocoded, so callers can just skip the map
-    section entirely."""
     if not place_names:
         return None
     place_names = place_names[:3]
@@ -137,10 +114,6 @@ async def build_geography_map(place_names: list[str]) -> str | None:
         if not geocoded:
             return None
 
-        # Fit to each place's actual bounding box (its corners), not just its
-        # center point — a lone center point always trivially "fits" any
-        # canvas, which made this always zoom in to the max level regardless
-        # of whether the place was a whole country or a single street.
         fit_points = []
         for g in geocoded:
             west, south, east, north = g["bbox"]

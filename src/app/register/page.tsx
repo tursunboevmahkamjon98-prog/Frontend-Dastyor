@@ -10,15 +10,15 @@ import { useT } from "@/lib/i18n";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PhoneInput from "@/components/PhoneInput";
 
-// Sign-up is phone + SMS code, matching how the phone app creates accounts
-// and how /login now signs in. This page used to collect an email and call
-// /auth/register-email, which produced accounts with no phone at all —
-// they then could not sign in through the phone login this site uses.
-//
-// Two steps, because the account is only created once the code checks out
-// (see backend routers/auth.py: send-code texts, /auth/register is what
-// actually inserts the user) — so the name/password collected in step one
-// are held here until step two succeeds.
+
+
+
+
+
+
+
+
+
 type Step = "form" | "otp";
 
 export default function RegisterPage() {
@@ -90,7 +90,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout illustration="/auth-illustration-register.svg">
       <div className="mb-8 lg:text-left">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {}
         <img src="/logo.png" alt="Dastyor" className="mb-4 h-11 w-11 lg:hidden" />
         <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">
           {step === "form" ? t("register.title") : t("register.otpTitle")}
@@ -187,8 +187,7 @@ export default function RegisterPage() {
         )}
       </div>
 
-      {/* Consent is given HERE, so this is where the documents have to be
-          one tap away — a link buried in a menu is not consent. */}
+      {}
       <p className="mt-5 text-center text-xs leading-relaxed text-text-tertiary">
         {t("register.agree")}{" "}
         <Link href="/terms" className="underline hover:text-primary">

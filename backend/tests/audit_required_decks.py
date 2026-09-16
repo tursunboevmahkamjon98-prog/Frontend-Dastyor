@@ -1,21 +1,3 @@
-# -*- coding: utf-8 -*-
-"""End-to-end audit of the 5 decks named in the brief.
-
-Builds slide CONTENT by hand (no AI call — a fixed, realistic fixture per
-deck, shaped exactly like what the model returns: a "kind" on every
-slide, short bullet fragments, an "image_query", and — for the Python
-deck — a real "code" field). Runs that content through the REAL image
-pipeline (app.ai_service._render_slide_images, the same function a live
-generation calls) so the numbers below are the actual Commons fetch, not
-a mock. Then builds the actual .pptx and audits it.
-
-Run:
-    venv313/Scripts/python.exe tests/audit_required_decks.py
-
-Reports, per deck: unique images found, duplicate images (should be
-zero), layouts used, and any overflow/overlap problems the same audit()
-test_presentation_templates.py uses would catch.
-"""
 import asyncio
 import io
 import os
@@ -28,11 +10,11 @@ try:
 except Exception:
     pass
 
-from pptx import Presentation                                  # noqa: E402
-from pptx.util import Emu                                      # noqa: E402
+from pptx import Presentation
+from pptx.util import Emu
 
-from app.ai_service import _render_slide_images                # noqa: E402
-from app.export_builder import build_presentation_pptx         # noqa: E402
+from app.ai_service import _render_slide_images
+from app.export_builder import build_presentation_pptx
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_decks")
 SLIDE_W_EMU = Emu(int(13.333 * 914400))

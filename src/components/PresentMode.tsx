@@ -12,34 +12,34 @@ export interface PresentSlide {
   visual?: VisualBlock;
 }
 
-// Full-screen, one-slide-at-a-time viewer for showing a presentation
-// straight off a projector/TV — no PPTX download or PowerPoint needed.
-// Reuses VisualBlockView so a slide's table/chart/process looks the same
-// here as in the normal card view, just scaled up.
-//
-// Extracted out of the material viewer page so the new 3-pane Slide
-// Editor (dashboard/presentations/[id]/edit) can open the exact same
-// fullscreen mode instead of re-implementing it — both pass an
-// `initialIndex` (the editor opens on whichever slide is selected, the
-// viewer always starts at 0).
-//
-// ── Why the sizing here is all clamp() and not Tailwind steps ──────────
-// This one component has to look right on a 1920px classroom projector,
-// a 1280px laptop, a tablet, and a 360px phone — including inside the
-// APK's webview, where it is the phone case that matters most. Fixed
-// breakpoint steps (text-3xl sm:text-5xl, as this was) give exactly two
-// sizes: the small one is lost on a projector and the large one overflows
-// a phone. clamp() scales continuously with the viewport, so there is no
-// width at which the type is wrong, and no breakpoint to fall between.
-//
-// The three other things a real projector/phone session needs, which the
-// breakpoint version did not have:
-//   * the slide body SCROLLS when its content is taller than the screen,
-//     instead of being clipped with no way to reach the rest;
-//   * swipe advances the slide, because nobody taps a 44px arrow while
-//     holding a phone up to a class;
-//   * the chrome respects the safe-area insets, so the close button isn't
-//     under a notch and the nav isn't under a home indicator.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export default function PresentMode({
   slides,
   accent,
@@ -81,11 +81,11 @@ export default function PresentMode({
       window.removeEventListener("keydown", onKey);
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- slides.length/onClose are stable for the lifetime of one Present session
+    
   }, []);
 
-  // A long slide leaves the body scrolled partway down; the next slide
-  // must start at ITS top, not inherit that offset.
+  
+  
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [i]);
@@ -93,10 +93,10 @@ export default function PresentMode({
   const s = slides[i];
   if (!s) return null;
 
-  // A horizontal swipe changes slide; a vertical one is left alone,
-  // because the body scrolls and stealing that gesture would make a long
-  // slide unreadable. The 60px threshold and the "mostly horizontal"
-  // test together stop a slightly-diagonal scroll from skipping a slide.
+  
+  
+  
+  
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
@@ -129,11 +129,7 @@ export default function PresentMode({
         <X className="h-5 w-5" />
       </button>
 
-      {/* min-h-0 is what actually makes the scroll work: a flex child
-          defaults to min-height:auto, which refuses to shrink below its
-          content, so `overflow-y-auto` on it never gets a bounded height
-          and the overflow spills out of the viewport instead of
-          scrolling. */}
+      {}
       <div
         ref={scrollRef}
         className="present-body min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -146,10 +142,7 @@ export default function PresentMode({
             {i + 1} / {slides.length}
           </p>
 
-          {/* break-words + hyphens so a long formula, a chemical name or
-              a URL wraps instead of pushing the whole slide sideways —
-              the one thing that produces a horizontal scrollbar on a
-              360px screen. */}
+          {}
           <h2 className="mb-[3vh] w-full text-balance break-words text-[clamp(1.35rem,4.2vw,3.25rem)] font-extrabold leading-tight text-gray-900">
             {s.title}
           </h2>
@@ -173,10 +166,7 @@ export default function PresentMode({
         </div>
       </div>
 
-      {/* Tap targets are 44px (the smallest reliably-hittable size on a
-          touch screen) and the row sits above the home indicator. The
-          slide counter repeats here so a presenter glancing down at the
-          phone doesn't have to look back up at the top of the slide. */}
+      {}
       <div className="present-nav flex shrink-0 items-center justify-center gap-4">
         <button
           onClick={prev}

@@ -29,9 +29,9 @@ interface Slide {
   visual?: VisualBlock;
 }
 
-// Which MaterialOut field holds a given type's JSON content blob — see
-// PresentationUpdate/TestUpdate/KonspektUpdate/LectureUpdate in
-// backend/app/schemas.py, whose field names this mirrors exactly.
+
+
+
 const CONTENT_FIELD: Record<MaterialType, "content" | "slides_json" | "questions_json" | "tasks_json" | "game_json"> = {
   konspekt: "content",
   lektsiya: "content",
@@ -63,13 +63,13 @@ export default function MaterialViewerPage() {
   const [hasUndo, setHasUndo] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [presenting, setPresenting] = useState(false);
-  // Everything opens on its content. A deck briefly opened on a
-  // server-rendered image of its real slides instead; that is gone —
-  // rendering it meant running LibreOffice per view (300-500 MB a
-  // conversion), which took the whole API down when two teachers opened
-  // a deck at once on a small VPS. A presentation is downloaded and
-  // opened in PowerPoint now; "content" (the editable card list) is what
-  // the app itself shows.
+  
+  
+  
+  
+  
+  
+  
   const [view, setView] = useState<"content" | "pdf">("content");
   const [chatInstruction, setChatInstruction] = useState("");
   const [chatSubmitting, setChatSubmitting] = useState(false);
@@ -98,11 +98,11 @@ export default function MaterialViewerPage() {
     return <div className="px-4 pt-10 text-center text-sm text-text-secondary">Загрузка...</div>;
   }
 
-  // Rewrites ONE section via AI (keeping everything else in the konspekt
-  // untouched) and persists the result immediately, so a refresh doesn't
-  // lose it — same pattern as the regenerate-item feature already used for
-  // test questions/presentation slides, just section-keyed instead of
-  // index-keyed since a konspekt's fields aren't a repeated list.
+  
+  
+  
+  
+  
   async function handleRegenerateSection(section: string) {
     if (!item) return;
     setRegenerating(section);
@@ -122,21 +122,21 @@ export default function MaterialViewerPage() {
       const nextContent = { ...content, ...result.item };
       setContent(nextContent);
       const updated = await materialsApi.update(type, id, { content: JSON.stringify(nextContent) });
-      // The backend snapshots the pre-regeneration content server-side, so
-      // it survives a refresh — has_undo just tells us whether that
-      // snapshot exists, so the t("common.cancel2") button can appear.
+      
+      
+      
       setHasUndo(Boolean(updated.has_undo));
     } catch {
-      // silent — regeneration failures just leave the old section text in place
+      
     } finally {
       setRegenerating(null);
     }
   }
 
-  // Retries the real-world photo/map a generation asked for but didn't get
-  // (see backend routers/materials.py's retry_konspekt_image/
-  // retry_lecture_image) — the endpoint itself fetches AND persists in one
-  // step, unlike handleRegenerateSection's separate AI-then-save calls.
+  
+  
+  
+  
   async function handleFetchImage() {
     if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
     setFetchingImage(true);
@@ -145,15 +145,15 @@ export default function MaterialViewerPage() {
       const raw = updated.content ?? "{}";
       setContent(JSON.parse(raw));
     } catch {
-      // 404 ("nothing to retry") or a transient fetch miss — leave content as-is
+      
     } finally {
       setFetchingImage(false);
     }
   }
 
-  // Swaps ONE lesson_images entry for a different Commons result — unlike
-  // handleFetchImage above (only fires on an empty slot), this fires on a
-  // slot that already has a picture the teacher doesn't want.
+  
+  
+  
   async function handleReplaceLessonImage(index: number) {
     if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
     setReplacingLessonImage(index);
@@ -162,14 +162,14 @@ export default function MaterialViewerPage() {
       const raw = updated.content ?? "{}";
       setContent(JSON.parse(raw));
     } catch {
-      // 404 ("no different picture found") or a transient fetch miss — leave content as-is
+      
     } finally {
       setReplacingLessonImage(null);
     }
   }
 
-  // Places a teacher's own file into a lesson_images slot — the only
-  // source of a picture that isn't a Commons pick at all.
+  
+  
   async function handleUploadLessonImage(index: number, file: File) {
     if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
     setUploadingLessonImage(index);
@@ -178,17 +178,17 @@ export default function MaterialViewerPage() {
       const raw = updated.content ?? "{}";
       setContent(JSON.parse(raw));
     } catch {
-      // bad file type/too large — leave content as-is; the button itself has no error UI yet
+      
     } finally {
       setUploadingLessonImage(null);
     }
   }
 
-  // Rewrites ONE slide of an already-generated presentation via AI — the
-  // teacher gets a fresh version of just the slide they don't like instead
-  // of burning a full regeneration (and their daily AI quota) on the whole
-  // deck. No undo here (unlike konspekt sections): a single slide is cheap
-  // enough to just regenerate again if the new version isn't better either.
+  
+  
+  
+  
+  
   async function handleRegenerateSlide(index: number) {
     if (!item) return;
     const slides = (content.slides as Record<string, unknown>[] | undefined) ?? [];
@@ -209,15 +209,15 @@ export default function MaterialViewerPage() {
       setContent(nextContent);
       await materialsApi.update(type, id, { slides_json: JSON.stringify(nextContent) });
     } catch {
-      // silent — a failed regeneration just leaves the old slide in place
+      
     } finally {
       setRegeneratingSlide(null);
     }
   }
 
-  // Rewrites ONE question of an already-generated test — same pattern as
-  // handleRegenerateSlide above, just keyed by question index and saved
-  // through questions_json instead of slides_json.
+  
+  
+  
   async function handleRegenerateQuestion(index: number) {
     if (!item) return;
     const questions = (content.questions as Record<string, unknown>[] | undefined) ?? [];
@@ -238,15 +238,15 @@ export default function MaterialViewerPage() {
       setContent(nextContent);
       await materialsApi.update(type, id, { questions_json: JSON.stringify(nextContent) });
     } catch {
-      // silent — a failed regeneration just leaves the old question in place
+      
     } finally {
       setRegeneratingQuestion(null);
     }
   }
 
-  // Rewrites ONE practical task — same pattern as handleRegenerateQuestion
-  // above, but keyed by (kind, index) since individual_tasks and
-  // group_tasks are two separate arrays, and saved through tasks_json.
+  
+  
+  
   async function handleRegeneratePracticalTask(kind: "individual_tasks" | "group_tasks", index: number) {
     if (!item) return;
     const items = (content[kind] as Record<string, unknown>[] | undefined) ?? [];
@@ -268,14 +268,14 @@ export default function MaterialViewerPage() {
       setContent(nextContent);
       await materialsApi.update(type, id, { tasks_json: JSON.stringify(nextContent) });
     } catch {
-      // silent — a failed regeneration just leaves the old task in place
+      
     } finally {
       setRegeneratingTask(null);
     }
   }
 
-  // Reverts to whatever the content was right before the last change (see
-  // handleRegenerateSection) — one step, not a full history.
+  
+  
   async function handleUndo() {
     setUndoing(true);
     try {
@@ -285,23 +285,23 @@ export default function MaterialViewerPage() {
       try {
         setContent(JSON.parse(raw));
       } catch {
-        // leave content as-is if the restored value somehow isn't valid JSON
+        
       }
     } catch {
-      // silent — same failure-visibility tradeoff as the other handlers here
+      
     } finally {
       setUndoing(false);
     }
   }
 
-  // Free-text AI edit (t("material.editExample1"), t("material.editExample2"), ...) applied
-  // to the WHOLE current content, unlike handleRegenerateSection/Slide
-  // above which each touch exactly one named part. Two-step like those:
-  // POST /materials/chat-edit only returns the updated content, this
-  // still has to persist it itself via the normal update() call — which
-  // is also where konspekt/lektsiya's undo snapshot gets taken server-side
-  // (see PUT /materials/konspekts/{id}'s handler), so t("common.cancel2") works
-  // after a chat edit exactly like it does after a section regeneration.
+  
+  
+  
+  
+  
+  
+  
+  
   async function handleChatEdit(instruction: string) {
     if (!item || !instruction.trim()) return;
     setChatError(null);
@@ -332,16 +332,16 @@ export default function MaterialViewerPage() {
   async function handleDownload(format: "docx" | "pptx" | "pdf" | "txt") {
     setDownloading(format);
     try {
-      // The material's own language is stamped into its content JSON at
-      // generation time (see ai_service.py) — falls back to Russian only
-      // for materials generated before that existed. Previously this was
-      // hardcoded to "Русский" always, so a Tajik/Uzbek/English konspekt's
-      // section headers (Компетенции, Цели урока...) downloaded in Russian
-      // regardless of what language the actual content was written in.
+      
+      
+      
+      
+      
+      
       const language = typeof content.language === "string" ? content.language : "Русский";
       await downloadMaterial(format, { material_type: type, content, language });
     } catch {
-      // silent — download failures are visible to the user as "nothing happened"; acceptable for now
+      
     } finally {
       setDownloading(null);
     }
@@ -354,10 +354,10 @@ export default function MaterialViewerPage() {
   }
 
   const Icon = config.icon;
-  // "igra" is played in the app, never printed — no PDF/DOCX exporter
-  // exists for it server-side (see backend/app/export_builder.py's
-  // comment on build_practical_pdf: this type's whole point is being
-  // played, not handed out on paper), so it gets no download row at all.
+  
+  
+  
+  
   const downloadFormats: Array<"docx" | "pptx" | "pdf" | "txt"> =
     type === "prezentatsiya" ? ["pptx", "pdf"]
     : type === "igra" ? []
@@ -414,10 +414,7 @@ export default function MaterialViewerPage() {
             <Play className="h-4 w-4" />
             Показать на весь экран
           </button>
-          {/* The 3-pane slide editor (thumbnails / canvas / tools) — a
-              separate route rather than a mode inside this page, since it
-              needs a very different (full-width, no-scroll) layout than
-              this shared viewer's single-column card list. */}
+          {}
           <button
             onClick={() => router.push(`/dashboard/presentations/${id}/edit`)}
             className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface-muted"
@@ -428,11 +425,7 @@ export default function MaterialViewerPage() {
         </div>
       )}
 
-      {/* A test is a printable document, nothing more — the online
-          play-through (a full-screen quiz runner with a per-question
-          countdown, scoring and attempt history) was removed on purpose.
-          What stays is the editor and, below, the same PDF/DOCX preview
-          and download every other material type gets. */}
+      {}
       {type === "test" && (content.questions as Question[] | undefined)?.length ? (
         <div className="mb-3 flex">
           <button
@@ -445,16 +438,7 @@ export default function MaterialViewerPage() {
         </div>
       ) : null}
 
-      {/* konspekt/lektsiya/test/amaliy: PDF-only per explicit request — the
-          "Содержание" editable-card view (and its toggle) was removed
-          entirely for these types, along with the per-section edit UI that
-          only lived inside it (question/task regenerate, lesson-image
-          replace/upload — see the content block below, now gated to skip
-          these types). Teachers only ever wanted the finished printout
-          here; the edit tools stay reachable through the AI chat-edit box
-          right below instead. prezentatsiya keeps its own toggle (deck view
-          vs. PPTX download) unchanged, and "igra" still has no PDF at
-          all — it's played here, not printed. */}
+      {}
       {type !== "igra" && type !== "prezentatsiya" && (
         <>
           <PdfPreview
@@ -483,13 +467,7 @@ export default function MaterialViewerPage() {
 
       {type === "prezentatsiya" && (
         <>
-          {/* No in-app rendering of the deck. Showing the real slides
-              meant converting the .pptx server-side with LibreOffice —
-              a 300-500 MB process per conversion, which on a small VPS
-              was enough to take the whole API down whenever two teachers
-              opened a deck at the same moment. Removed on purpose: a
-              presentation is now something you download and open, and
-              the card list below stays as the in-app editable view. */}
+          {}
           <div className="mb-6 flex flex-wrap gap-2">
             {downloadFormats.map((f) => (
               <button
@@ -506,17 +484,7 @@ export default function MaterialViewerPage() {
         </>
       )}
 
-      {/* AI chat-edit — a free-text instruction applied to the whole
-          material at once (t("material.editExample1"), t("material.editExample2"), ...),
-          unlike the per-section/per-slide "regenerate" buttons inside
-          KonspektBody/PresentationBody below, which each touch exactly
-          one named part. See handleChatEdit's doc comment. Skipped for
-          "igra": its "rounds" list mixes 5 differently-shaped round
-          types, and a free-text instruction round-tripped through the
-          whole JSON risks silently corrupting one type's shape the way
-          the per-question "test" edit never has to risk (see _test_prompt's
-          heterogeneous-shape reasoning) — regenerating the whole game is
-          the safe equivalent for now. */}
+      {}
       {type !== "igra" && (
       <div className="mb-6 rounded-2xl border border-border-light bg-surface p-3">
         {chatError && <p className="mb-2 px-1 text-xs text-primary-dark">{chatError}</p>}
@@ -546,12 +514,7 @@ export default function MaterialViewerPage() {
       </div>
       )}
 
-      {/* Editable card view — now only reachable for "prezentatsiya" (its
-          own Содержание/PPTX toggle above) and "igra" (always on, no PDF to
-          hide behind). konspekt/lektsiya/test/amaliy are PDF-only per
-          explicit request — this also removes their per-section edit UI
-          (question/task regenerate, lesson-image replace/upload), which
-          only ever lived inside this block. */}
+      {}
       {((view === "content" && type === "prezentatsiya") || type === "igra") && (
         <>
           {type === "prezentatsiya" && (
@@ -651,9 +614,9 @@ const DIFFICULTY_STYLE: Record<string, string> = {
   hard: "bg-red-100 text-red-700",
 };
 
-// Same individual/group split as backend/app/export_builder.py's
-// build_practical_pdf — no answer key here either, since grading is
-// against each task's own "expected_outcome", not a correct option.
+
+
+
 function PracticalBody({
   content,
   onRegenerateTask,
@@ -744,12 +707,12 @@ function PracticalBody({
   );
 }
 
-// Mirrors the actual PPTX/PDF export's look closely enough that changing
-// the template/subject in the wizard visibly changes something here too
-// (previously this was one fixed generic bullet list regardless of either
-// choice) — same per-subject accent color (getSubjectAccent, matching
-// export_builder.py's get_subject_accent_hex) and the template's header
-// treatment (same "header" styles TemplateCard's mockup already uses).
+
+
+
+
+
+
 function PresentationBody({
   content,
   onRegenerateSlide,
@@ -772,12 +735,12 @@ function PresentationBody({
         return (
           <div
             key={i}
-            // Each slide gets its own tinted "canvas" derived from the
-            // subject accent, plus soft decorative blobs and an oversized
-            // ghost slide number — the flat white card these used to be
-            // read as a plain document section, not a presentation slide.
-            // All CSS (gradients/blurred circles), no image assets, so it
-            // costs nothing to render and works for every subject.
+            
+            
+            
+            
+            
+            
             className="relative mb-4 overflow-hidden rounded-2xl border shadow-sm"
             style={{
               ...serifFont,
@@ -812,9 +775,7 @@ function PresentationBody({
               <RefreshCw className={`h-3.5 w-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
             </button>
             <div className="relative">
-              {/* pr-12 keeps the title clear of the absolutely-positioned
-                  regenerate button above it — without it the two overlap
-                  as soon as the title needs the full card width. */}
+              {}
               <div className="pr-12">
                 <SlideHeader index={i} title={s.title} accent={accent} header={tmpl.mockup.header} />
               </div>

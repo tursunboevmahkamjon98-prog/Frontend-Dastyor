@@ -27,11 +27,7 @@ export interface VisualBlock {
   type: "table" | "timeline" | "flowchart" | "process" | "comparison" | "concept_map";
   title?: string;
   position_after?: string;
-  /** Server-rendered infographic for "timeline" blocks (see
-   * timeline_builder.py) — a connected-cards graphic instead of a bullet
-   * list, matching the docx/pdf exports. Root-relative (e.g.
-   * "/uploads/timelines/xyz.png"); missing for konspekts saved before this
-   * existed, or if generation failed — falls back to the bullet list. */
+  
   image?: string;
   data?: {
     headers?: string[];
@@ -45,17 +41,7 @@ export interface VisualBlock {
   };
 }
 
-/** Renders one AI-chosen structured visual (see ai_service.py's
- * _konspekt_prompt "visual_blocks" rule for the source-of-truth per-type
- * `data` shape). The model picks 0-3 of these per konspekt based on what
- * actually fits the topic — this component just needs to handle whichever
- * types show up, gracefully skipping anything malformed instead of
- * crashing the whole viewer over one bad block.
- *
- * The title is a small italic caption, not a bold section-style header —
- * this block sits right inside the section it illustrates (see
- * position_after in KonspektBody), so it should read as part of that
- * explanation rather than its own separate titled chapter. */
+
 export default function VisualBlockRenderer({ block }: { block: VisualBlock }) {
   const body = renderBody(block);
   if (!body) return null;
@@ -86,13 +72,13 @@ function renderBody(block: VisualBlock) {
       return <DataTable headers={headers} rows={rows} />;
     }
     case "timeline": {
-      // A real generated infographic (see timeline_builder.py) — connected
-      // colored cards with a node line, not a bullet list. Falls back to
-      // the bullet list below only for older konspekts saved before this
-      // existed, or if the image failed to render.
-      // Dated notes, not the generated card strip — matching the PDF and
-      // DOCX exports. `block.image` (saved by older konspekts) is ignored
-      // so those print as notes too.
+      
+      
+      
+      
+      
+      
+      
       const events = data.events ?? [];
       if (events.length === 0) return null;
       return (
@@ -111,13 +97,13 @@ function renderBody(block: VisualBlock) {
     }
     case "flowchart":
     case "process": {
-      // Conspect notes — a numbered heading with its explanation under
-      // it — matching what the PDF, the DOCX and the slides now print.
-      // The generated strip of coloured cards joined by arrows is gone
-      // from every export: it was a picture nobody could edit, its cards
-      // overflowed once the steps held real sentences, and its palette
-      // matched nothing else on the page. `block.image` (pre-saved by
-      // older konspekts) is deliberately ignored for the same reason.
+      
+      
+      
+      
+      
+      
+      
       const steps = data.steps ?? [];
       if (steps.length === 0) return null;
       return (
@@ -137,12 +123,12 @@ function renderBody(block: VisualBlock) {
       );
     }
     case "concept_map": {
-      // A real generated network diagram (nodes in a circle, labeled edges
-      // — see timeline_builder.py) instead of a bullet list. Falls back to
-      // the list below only for older konspekts saved before this
-      // existed, or if the image failed to render.
-      // The relations written out rather than drawn as a ring of nodes,
-      // matching the other exports.
+      
+      
+      
+      
+      
+      
       const nodes = new Map((data.nodes ?? []).map((n) => [n.id ?? "", n.label ?? n.id ?? ""]));
       const edges = data.edges ?? [];
       if (edges.length === 0) return null;

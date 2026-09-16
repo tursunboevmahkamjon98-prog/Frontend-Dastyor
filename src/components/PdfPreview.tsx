@@ -5,28 +5,17 @@ import { Download, ExternalLink, Loader2 } from "lucide-react";
 import { fetchMaterialExport, downloadMaterial, ExportBody, ApiError } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
-/** Shows a material's real exported PDF inline, in the page, where the
- * teacher is already reading it — not behind a button in a modal.
- *
- * Renders the very bytes the download button produces (see
- * fetchMaterialExport) inside an <iframe> rather than re-drawing the
- * material JSON in HTML: a second HTML renderer would inevitably drift
- * from export_builder.py, and the whole point is to show exactly what is
- * about to be printed and handed out.
- *
- * The blob URL is created once the bytes arrive and revoked on unmount, so
- * a session that opens many materials doesn't leak one object URL per
- * view. */
+
 export default function PdfPreview({ body }: { body: ExportBody }) {
   const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  // Re-fetches whenever the content actually changes (an AI edit or a
-  // section regeneration), so the PDF on screen never lags the konspekt
-  // it is supposed to be showing. Keyed on the serialised content rather
-  // than the object, which is a new reference on every render.
+  
+  
+  
+  
   const contentKey = JSON.stringify(body.content);
 
   useEffect(() => {
@@ -49,7 +38,7 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contentKey]);
 
   async function handleDownload() {
@@ -57,7 +46,7 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
     try {
       await downloadMaterial("pdf", body);
     } catch {
-      // The preview is already on screen; a failed save is self-evident.
+      
     } finally {
       setDownloading(false);
     }
@@ -93,11 +82,11 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
       {error ? (
         <p className="px-4 py-10 text-center text-sm text-primary-dark">{error}</p>
       ) : url ? (
-        // #toolbar=0&navpanes=0 strips the browser's own PDF chrome — the
-        // dark control strip and the thumbnail sidebar — so what shows is
-        // just the pages themselves. Its zoom/print/download controls are
-        // redundant here anyway: this panel has its own download and
-        // open-full-screen buttons above.
+        
+        
+        
+        
+        
         <iframe
           src={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
           title="PDF"

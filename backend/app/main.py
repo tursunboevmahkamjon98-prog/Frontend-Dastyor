@@ -24,12 +24,6 @@ os.makedirs(os.path.join(UPLOAD_DIR, "avatars"), exist_ok=True)
 
 
 async def _provision_admin():
-    """Ensures ADMIN_EMAIL (if set) is an admin: promotes it if the
-    account already exists (e.g. someone registered normally first), or
-    creates it with ADMIN_PASSWORD if not. Runs on every startup, not just
-    the first — cheap no-op once the role is already "admin", and it
-    means changing ADMIN_EMAIL in .env and restarting is enough to add
-    another admin without needing a database console."""
     settings = get_settings()
     if not settings.ADMIN_EMAIL:
         return
@@ -58,10 +52,6 @@ async def _provision_admin():
             if user.role != "admin":
                 user.role = "admin"
                 changed = True
-            # Backfills a phone onto an admin account that predates
-            # ADMIN_PHONE existing — login is phone-only now (see
-            # schemas.UserLogin), so without this the account would be
-            # stuck admin-in-the-database but unable to actually sign in.
             if phone and not user.phone:
                 user.phone = phone
                 user.phone_verified = True
@@ -76,46 +66,24 @@ async def lifespan(app: FastAPI):
     os.makedirs(os.path.join(UPLOAD_DIR, "avatars"), exist_ok=True)
     await init_db()
     await _provision_admin()
-    # rate_limit_attempts gets a row per login/OTP/generation attempt and
-    # is read on the hot path of all three; nothing ever looks further
-    # back than an hour. Sweeping on startup keeps it from growing into a
-    # table scan on every sign-in. Failure here must not stop the app
-    # from booting — a large table is slow, an app that won't start is
-    # down.
     try:
         removed = await prune_rate_limit_attempts()
         if removed:
             logger.info(f"Pruned {removed} expired rate-limit attempt rows")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"Rate-limit prune skipped: {e}")
 
-    # Say out loud whether this machine can actually produce the files
-    # the product sells. Both failures below are silent at runtime — a
-    # missing font still returns a 200 PDF (of empty boxes) and a missing
-    # LibreOffice still returns a 200 preview (of the wrong thing) — so
-    # startup is the only place they can be noticed before a teacher
-    # notices them.
     try:
         from app.export_builder import verify_pdf_fonts
         from app.math_render import verify_math_fonts
         from app.fonts import verify_fonts
         for problem in verify_pdf_fonts():
             logger.error(f"FONT PROBLEM: {problem}")
-        # Three separate checks because there are three separate font
-        # stacks, and they have failed independently: ReportLab's text
-        # font (above), the PIL faces math_render draws formulas with,
-        # and the PIL faces cover/figure/timeline_builder draw with. A
-        # real deploy shipped a perfectly readable konspekt body on the
-        # same page as unreadable equations, behind an illegible cover.
         for problem in verify_math_fonts():
             logger.error(f"MATH FONT PROBLEM: {problem}")
         for problem in verify_fonts():
             logger.error(f"DRAWING FONT PROBLEM: {problem}")
-        # No LibreOffice check here any more: its absence is now the
-        # intended state (see backend/Dockerfile), so warning about it
-        # every boot would be noise that trains people to ignore this
-        # block — which is exactly what it exists not to be.
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(f"Startup asset check skipped: {e}")
     yield
 
@@ -127,8 +95,6 @@ app = FastAPI(
     description="Backend for the TeachAIweb website — separate from the Flutter app's backend.",
     version="0.1.0",
     lifespan=lifespan,
-    # None removes the route entirely rather than leaving it to 404 a
-    # request it would otherwise have answered. See DOCS_ENABLED.
     docs_url="/docs" if _settings.DOCS_ENABLED else None,
     redoc_url="/redoc" if _settings.DOCS_ENABLED else None,
     openapi_url="/openapi.json" if _settings.DOCS_ENABLED else None,
@@ -136,16 +102,6 @@ app = FastAPI(
 
 settings = _settings
 
-# Starlette runs middleware in REVERSE order of registration, so the ones
-# added here run last-registered-first. Everything below is registered
-# before CORSMiddleware and therefore runs after it — which is what makes
-# a rejection (429/413) come back with CORS headers attached instead of
-# surfacing in the browser as an opaque network error that says nothing
-# about why the request failed.
-#
-# Order among themselves, cheapest rejection first: body size is a header
-# comparison, the flood guard is an in-memory deque, and security headers
-# only touch the response.
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(BodySizeLimitMiddleware)
@@ -157,10 +113,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Content-Disposition isn't in the browser's default CORS-safelisted
-    # response headers, so without this, frontend code reading it (to name
-    # a downloaded file after its real title) would silently see null and
-    # fall back to a generic name — this exposes it so that actually works.
     expose_headers=["Content-Disposition"],
 )
 
@@ -176,8 +128,4 @@ app.include_router(qr_auth.router)
 
 @app.get("/api/health")
 async def health():
-    # ai_queue is how many requests are currently waiting for a
-    # generation slot (see security.ai_slot). A number that stays above
-    # zero means MAX_CONCURRENT_AI_CALLS is the bottleneck, which is
-    # worth seeing from outside rather than only in the logs.
     return {"status": "ok", "app": "TeachAIweb", "ai_queue": ai_queue_depth()}

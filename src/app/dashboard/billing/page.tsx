@@ -7,15 +7,7 @@ import { billingApi, ApiError } from "@/lib/api";
 import { CONTACT } from "@/lib/contact";
 import { useT } from "@/lib/i18n";
 
-/** Balance, and the one way to add to it: talk to an administrator.
- *
- * There was a card-payment flow here (Dushanbe City: amount picker,
- * redirect to the bank, status polling). It is gone from the UI by an
- * explicit decision — a teacher tops up by contacting an administrator,
- * paying outside the app, and the administrator credits the balance from
- * the admin panel (backend/app/routers/admin.py's add_balance). What is
- * left is the number to reach and the current balance.
- */
+
 export default function BillingPage() {
   const t = useT();
   const [balance, setBalance] = useState<number | null>(null);
@@ -28,9 +20,9 @@ export default function BillingPage() {
       .then((b) => setBalance(b.balance_somoni))
       .catch((err) => setError(err instanceof ApiError ? err.message : t("common.error")))
       .finally(() => setLoading(false));
-    // t is stable for a given locale and re-running this on a language
-    // change would refetch the balance for nothing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
+    
+    
   }, []);
 
   return (

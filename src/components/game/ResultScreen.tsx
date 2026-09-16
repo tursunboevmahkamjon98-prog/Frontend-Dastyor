@@ -17,10 +17,10 @@ const BADGE_META: Record<string, { emoji: string; key: MessageKey }> = {
 };
 
 
-// The "победа/поражение" screen for both modes — one component branching on
-// result.mode rather than two near-identical screens, since the shared shell
-// (confetti/trophy hero + score card + the two footer actions) is the same;
-// only the middle stat block differs.
+
+
+
+
 export default function ResultScreen({
   result,
   template,
@@ -30,16 +30,11 @@ export default function ResultScreen({
   regenerating,
 }: {
   result: GameResult;
-  /** Same template the round itself just played in — this screen used to
-   * always be one fixed violet gradient regardless, so finishing a
-   * "Урок"-themed run would suddenly cut to a purple screen that
-   * didn't look like anything the pupil had just seen. */
+  
   template: GameTemplate;
   onPlayAgain: () => void;
   onMainMenu: () => void;
-  /** Rerolls a fresh 12-round set on the same topic — for handing the
-   * device to a different pupil without the teacher leaving this game to
-   * build a whole new material (see GamePlayer.tsx's `regenerate`). */
+  
   onNewQuestions: () => void;
   regenerating: boolean;
 }) {
@@ -125,12 +120,7 @@ export default function ResultScreen({
         </button>
       </div>
 
-      {/* For handing the device to the next pupil — same topic, a fresh
-          set of 12 rounds instead of the ones just played (see
-          GameEngine.tsx's regenerateAndReset), rather than the teacher
-          having to leave and generate a whole new game. Kept visually
-          quieter than the two actions above: it's a nice-to-have for a
-          specific moment (a class taking turns), not the default next step. */}
+      {}
       <button
         onClick={onNewQuestions}
         disabled={regenerating}

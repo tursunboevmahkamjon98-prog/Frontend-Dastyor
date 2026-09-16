@@ -12,11 +12,7 @@ const NAV_ITEMS = [
   { href: "/admin/materials", label: "Материалы", icon: FileText },
 ];
 
-/** Gate on the same session every teacher-facing page uses — there's no
- * separate admin login. A non-admin (or logged-out) visitor is bounced
- * before any admin data ever renders; a real block still happens
- * server-side per-request (see backend's get_current_admin) since a
- * client-side redirect alone is never a security boundary. */
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();

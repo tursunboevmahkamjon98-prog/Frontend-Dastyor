@@ -1,6 +1,6 @@
-// UI section labels for konspekt content — mirrors the Russian
-// _DOCX_LABELS keys in backend/app/docx_builder.py. Field order here also
-// drives render order in the material viewer.
+
+
+
 export const KONSPEKT_SECTION_ORDER: [string, string][] = [
   ["competencies", "Компетенции"],
   ["objectives", "Цели урока"],

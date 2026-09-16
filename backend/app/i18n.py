@@ -1,4 +1,3 @@
-# Dastyor i18n Messages
 
 ERROR_MESSAGES = {
     "ru": {
@@ -88,20 +87,6 @@ ERROR_MESSAGES = {
 }
 
 
-# User.language holds a display name, not a code — "Русский", "Тоҷикӣ",
-# "English" (and the Russian-language name the API also accepts:
-# "Таджикский"/"Английский"). The old resolver did lang.lower()[:2] and
-# compared that to the keys below, which can only ever match ASCII
-# input: "Тоҷикӣ" became "то", matched nothing, and fell back to
-# Russian. Every Tajik user was reading Russian error messages. Mapping
-# the real names explicitly is what fixes that; the two-letter prefix is
-# kept afterwards so a bare "ru"/"tg"/"en" still works.
-#
-# Uzbek support (ERROR_MESSAGES["uz"], every "uz"/"узбекский"/
-# "o'zbekcha" alias) was removed — it is not offered as a language
-# choice anywhere a teacher can pick one (see frontend's
-# lib/material-types.ts: "Узбекский removed per product decision").
-# Nothing in the UI can ever send lang="uz" here.
 _LANG_ALIASES = {
     "русский": "ru", "russian": "ru", "ru": "ru",
     "тоҷикӣ": "tg", "тоҷики": "tg", "точикй": "tg", "таджикский": "tg",
@@ -111,7 +96,6 @@ _LANG_ALIASES = {
 
 
 def get_message(key: str, lang: str = "ru") -> str:
-    """Get translated error message"""
     raw = (lang or "ru").strip().lower()
     lang_code = _LANG_ALIASES.get(raw) or _LANG_ALIASES.get(raw[:2]) or "ru"
     return ERROR_MESSAGES[lang_code].get(key, ERROR_MESSAGES["ru"][key])
