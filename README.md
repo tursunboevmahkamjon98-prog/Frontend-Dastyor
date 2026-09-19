@@ -50,3 +50,18 @@ uvicorn app.main:app --reload --port 8009
 
 To'liq qo'llanma — server tanlash, domen, Nginx+HTTPS, systemd
 muqobili — asosiy (backend+mobil) repodagi `DEPLOY.md`da.
+
+### Nginx timeout — o'tkazib yubormang
+
+Nginx orqasiga qo'yayotgan bo'lsangiz, `deploy/nginx-dastyor-timeouts.conf`
+ni `/etc/nginx/conf.d/` ga ko'chiring va nginx'ni qayta yuklang.
+
+Nginx'ning `proxy_read_timeout` qiymati sukut bo'yicha 60 sekund.
+Prezentatsiya esa `POST /api/materials/generate` orqali yaratiladi va
+tayyor bo'lguncha bitta ham bayt qaytarmaydi — faqat AI chaqiruvining
+o'zi 180 sekundgacha (`app/ai_service.py`), ustiga navbatda kutish
+`AI_QUEUE_TIMEOUT_SECONDS` (`app/config.py`). 60 sekunddan oshganda
+nginx backend'ni tashlab, JSON `detail`i yo'q 504 sahifasini qaytaradi
+va foydalanuvchi "Ошибка сервера" degan, backend hech qachon
+yubormaydigan xabarni ko'radi. Lokalda nginx bo'lmagani uchun bu faqat
+production'da chiqadi.

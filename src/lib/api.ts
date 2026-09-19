@@ -65,7 +65,10 @@ export class ApiError extends Error {
 }
 
 
-function extractError(detail: unknown): string {
+function extractError(detail: unknown, status?: number): string {
+  if (detail == null && status != null && status >= 502 && status <= 504) {
+    return "Сервер не успел ответить (шлюз прервал запрос). Попробуйте ещё раз.";
+  }
   if (detail == null) return "Ошибка сервера";
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
@@ -158,7 +161,7 @@ async function request<T>(
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401 && auth) clearToken();
-    throw new ApiError(extractError(data.detail), response.status);
+    throw new ApiError(extractError(data.detail, response.status), response.status);
   }
   return data as T;
 }
