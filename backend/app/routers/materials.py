@@ -74,6 +74,13 @@ _FREE_USED_ATTR = {
 }
 
 
+def _readable(model_cls, item_id: str, user: User):
+    q = select(model_cls).where(model_cls.id == item_id)
+    if user.role != "admin":
+        q = q.where(model_cls.owner_id == user.id)
+    return q
+
+
 async def enforce_generation_quota(user: User) -> None:
     await enforce_user_quota(
         user.id, "generate", get_settings().MAX_GENERATIONS_PER_HOUR
@@ -202,9 +209,7 @@ async def get_konspekt(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Konspekt).where(Konspekt.id == item_id, Konspekt.owner_id == user.id)
-    )
+    result = await db.execute(_readable(Konspekt, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -391,9 +396,7 @@ async def get_lecture(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Lecture).where(Lecture.id == item_id, Lecture.owner_id == user.id)
-    )
+    result = await db.execute(_readable(Lecture, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -580,9 +583,7 @@ async def get_presentation(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Presentation).where(Presentation.id == item_id, Presentation.owner_id == user.id)
-    )
+    result = await db.execute(_readable(Presentation, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -666,9 +667,7 @@ async def get_test(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Test).where(Test.id == item_id, Test.owner_id == user.id)
-    )
+    result = await db.execute(_readable(Test, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -751,9 +750,7 @@ async def get_practical_task(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(PracticalTask).where(PracticalTask.id == item_id, PracticalTask.owner_id == user.id)
-    )
+    result = await db.execute(_readable(PracticalTask, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -837,9 +834,7 @@ async def get_game(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Game).where(Game.id == item_id, Game.owner_id == user.id)
-    )
+    result = await db.execute(_readable(Game, item_id, user))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
