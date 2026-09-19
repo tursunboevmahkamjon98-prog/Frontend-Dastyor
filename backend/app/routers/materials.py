@@ -32,6 +32,7 @@ from app.ai_service import (
     chat_edit_material, summarize_previous_konspekt, summarize_previous_presentation,
     retry_visual_assets, generate_quiz_set,
 )
+from app.diagnostics import memory_report
 from app.document_extract import extract_source_text
 from app.docx_builder import (
     build_konspekt_docx, build_lecture_docx, build_test_docx, build_presentation_docx,
@@ -1296,6 +1297,7 @@ async def _generate_all_impl(
             f"lang={data.language!r} level={data.level!r} grade={data.grade!r} "
             f"slides={data.slide_count} questions={data.question_count} "
             f"test_type={data.test_type!r} types={types_to_generate}")
+        logger.info(f"generate-all memory before: {memory_report()}")
         async with released(db):
             result = await generate_all_materials(
                 topic=data.topic,
@@ -1308,6 +1310,7 @@ async def _generate_all_impl(
                 test_type=data.test_type,
                 types=types_to_generate,
             )
+        logger.info(f"generate-all memory after: {memory_report()}")
         if result.get("errors"):
             logger.warning(f"generate-all errors: {result.get('errors')}")
         logger.info("generate-all generated: " + " ".join(

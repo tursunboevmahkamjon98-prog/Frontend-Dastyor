@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from app.database import init_db, async_session
 from app.config import get_settings
+from app.diagnostics import memory_report
 from app.routers import auth, materials, admin, billing, qr_auth
 from app.auth import hash_password
 from app.models import User
@@ -128,4 +129,9 @@ app.include_router(qr_auth.router)
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "app": "TeachAIweb", "ai_queue": ai_queue_depth()}
+    return {
+        "status": "ok",
+        "app": "TeachAIweb",
+        "ai_queue": ai_queue_depth(),
+        "memory": memory_report(),
+    }

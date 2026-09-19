@@ -676,28 +676,35 @@ export async function streamGenerateAll(
   let result: GenerateAllResult | null = null;
   let failure: string | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    let sepIndex: number;
-    while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
-      const frame = buffer.slice(0, sepIndex);
-      buffer = buffer.slice(sepIndex + 2);
-      const line = frame.split("\n").find((l) => l.startsWith("data:"));
-      if (!line) continue;
-      const payload = line.slice("data:".length).trim();
-      if (!payload) continue;
-      let event: { type?: string; message?: string };
-      try {
-        event = JSON.parse(payload);
-      } catch {
-        continue;
+      let sepIndex: number;
+      while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+        const frame = buffer.slice(0, sepIndex);
+        buffer = buffer.slice(sepIndex + 2);
+        const line = frame.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        const payload = line.slice("data:".length).trim();
+        if (!payload) continue;
+        let event: { type?: string; message?: string };
+        try {
+          event = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        if (event.type === "error") failure = event.message ?? null;
+        else if (event.type === "complete") result = event as unknown as GenerateAllResult;
       }
-      if (event.type === "error") failure = event.message ?? null;
-      else if (event.type === "complete") result = event as unknown as GenerateAllResult;
     }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(
+      "Соединение с сервером оборвалось во время генерации. Скорее всего серверу не хватило памяти — попробуйте ещё раз, по одному материалу."
+    );
   }
 
   if (failure) throw new ApiError(failure);
