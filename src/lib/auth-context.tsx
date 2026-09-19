@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { authApi, getToken, setToken, getRefreshToken, setRefreshToken, setDeviceToken, clearToken, TokenResponse, UserOut, ApiError } from "./api";
+import { authApi, getToken, setToken, getRefreshToken, setRefreshToken, setDeviceToken, clearToken, ensureAccessToken, TokenResponse, UserOut, ApiError } from "./api";
 
 interface AuthContextValue {
   user: UserOut | null;
@@ -54,6 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     
     async function loadUser() {
+      if (!(await ensureAccessToken())) {
+        clearToken();
+        return;
+      }
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           setUser(await authApi.me());

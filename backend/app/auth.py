@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models import User, RefreshToken, TrustedDevice
 
 settings = get_settings()
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -179,9 +179,15 @@ async def _ensure_short_id(user: User, db: AsyncSession) -> None:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user_id = decode_token(credentials.credentials)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

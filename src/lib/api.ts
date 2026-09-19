@@ -117,6 +117,11 @@ async function refreshTokens(): Promise<boolean> {
   return refreshInFlight;
 }
 
+export async function ensureAccessToken(): Promise<boolean> {
+  if (getToken()) return true;
+  return refreshTokens();
+}
+
 async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean; signal?: AbortSignal } = {},
