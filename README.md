@@ -51,17 +51,26 @@ uvicorn app.main:app --reload --port 8009
 To'liq qo'llanma — server tanlash, domen, Nginx+HTTPS, systemd
 muqobili — asosiy (backend+mobil) repodagi `DEPLOY.md`da.
 
-### Nginx timeout — o'tkazib yubormang
+### Uzoq generatsiya va proxy timeout
 
-Nginx orqasiga qo'yayotgan bo'lsangiz, `deploy/nginx-dastyor-timeouts.conf`
-ni `/etc/nginx/conf.d/` ga ko'chiring va nginx'ni qayta yuklang.
+Nginx'ning `proxy_read_timeout` qiymati sukut bo'yicha 60 sekund, va u
+so'rov boshidan emas, **oxirgi kelgan baytdan** hisoblanadi. Material
+generatsiyasi esa bundan uzoq davom etadi: AI chaqiruvining o'zi 180
+sekundgacha, uch urinishgacha (`app/ai_service.py`), ustiga navbatda
+kutish `AI_QUEUE_TIMEOUT_SECONDS` (`app/config.py`).
 
-Nginx'ning `proxy_read_timeout` qiymati sukut bo'yicha 60 sekund.
-Prezentatsiya esa `POST /api/materials/generate` orqali yaratiladi va
-tayyor bo'lguncha bitta ham bayt qaytarmaydi — faqat AI chaqiruvining
-o'zi 180 sekundgacha (`app/ai_service.py`), ustiga navbatda kutish
-`AI_QUEUE_TIMEOUT_SECONDS` (`app/config.py`). 60 sekunddan oshganda
-nginx backend'ni tashlab, JSON `detail`i yo'q 504 sahifasini qaytaradi
-va foydalanuvchi "Ошибка сервера" degan, backend hech qachon
-yubormaydigan xabarni ko'radi. Lokalda nginx bo'lmagani uchun bu faqat
-production'da chiqadi.
+Shuning uchun generatsiya **oqim (SSE) orqali** yuboriladi —
+`POST /api/materials/generate-all-stream`. U ishlayotgan vaqtida har 10
+sekundda `: keep-alive` kadrini yuboradi, shuning uchun proxy'ning
+timeout hisobi hech qachon 60 sekundga yetmaydi. Javob `X-Accel-Buffering: no`
+bilan keladi — nginx uni buferlamay, darrov uzatadi.
+
+Eski `POST /api/materials/generate-all` (oddiy JSON, oqimsiz) o'z
+joyida qoldi: mobil ilova o'shandan foydalanadi. Uni to'g'ridan-to'g'ri
+proxy orqasida ishlatsangiz, yuqoridagi 60 sekundlik chegara qaytadan
+paydo bo'ladi.
+
+`deploy/nginx-dastyor-timeouts.conf` — ixtiyoriy, lekin tavsiya
+etiladi. Uni `/etc/nginx/conf.d/` ga ko'chirib nginx'ni qayta yuklasangiz,
+oqimga tayanmaydigan uzoq so'rovlar (katta PDF eksporti, kitob yuklash)
+ham himoyalanadi.

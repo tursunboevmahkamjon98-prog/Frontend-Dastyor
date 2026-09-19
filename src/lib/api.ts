@@ -502,8 +502,7 @@ export const materialsApi = {
     test_type?: string;
     
     types?: MaterialType[];
-  }) =>
-    request<GenerateAllResult>("/materials/generate-all", { method: "POST", body }),
+  }) => streamGenerateAll(body),
   
   uploadSource: async (file: File): Promise<{ status: string; text: string; truncated: boolean; filename: string }> => {
     const token = getToken();
@@ -623,6 +622,87 @@ export async function streamGenerateKonspekt(
     if (err instanceof DOMException && err.name === "AbortError") return;
     throw new ApiError("Соединение прервано во время генерации");
   }
+}
+
+export interface GenerateAllBody {
+  topic: string;
+  subject: string;
+  language: string;
+  level: string;
+  grade: string;
+  slide_count?: number;
+  question_count?: number;
+  test_type?: string;
+  types?: MaterialType[];
+}
+
+
+
+
+
+
+export async function streamGenerateAll(
+  body: GenerateAllBody,
+  signal?: AbortSignal
+): Promise<GenerateAllResult> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/materials/generate-all-stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError("Не удалось подключиться к серверу");
+  }
+
+  if (!response.ok || !response.body) {
+    const data = await response.json().catch(() => ({}));
+    throw new ApiError(
+      extractError(data.detail, response.status) || "Не удалось начать генерацию",
+      response.status
+    );
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: GenerateAllResult | null = null;
+  let failure: string | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sepIndex: number;
+    while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      const payload = line.slice("data:".length).trim();
+      if (!payload) continue;
+      let event: { type?: string; message?: string };
+      try {
+        event = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+      if (event.type === "error") failure = event.message ?? null;
+      else if (event.type === "complete") result = event as unknown as GenerateAllResult;
+    }
+  }
+
+  if (failure) throw new ApiError(failure);
+  if (!result) throw new ApiError("Соединение прервано во время генерации");
+  return result;
 }
 
 const DOWNLOAD_EXT: Record<string, string> = {

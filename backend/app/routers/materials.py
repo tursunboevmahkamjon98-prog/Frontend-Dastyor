@@ -1272,12 +1272,11 @@ async def chat_edit_endpoint(
 _GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy"]
 
 
-@router.post("/generate-all")
-async def generate_all(
+async def _generate_all_impl(
     data: GenerateAllRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+    user: User,
+    db: AsyncSession,
+) -> dict:
     if data.types:
         types_to_generate = [t for t in _GENERATE_ALL_TYPES if t in set(data.types)]
         if not types_to_generate:
@@ -1297,17 +1296,18 @@ async def generate_all(
             f"lang={data.language!r} level={data.level!r} grade={data.grade!r} "
             f"slides={data.slide_count} questions={data.question_count} "
             f"test_type={data.test_type!r} types={types_to_generate}")
-        result = await generate_all_materials(
-            topic=data.topic,
-            subject=data.subject,
-            language=data.language,
-            level=data.level,
-            grade=data.grade,
-            slide_count=data.slide_count or 10,
-            question_count=data.question_count or 10,
-            test_type=data.test_type,
-            types=types_to_generate,
-        )
+        async with released(db):
+            result = await generate_all_materials(
+                topic=data.topic,
+                subject=data.subject,
+                language=data.language,
+                level=data.level,
+                grade=data.grade,
+                slide_count=data.slide_count or 10,
+                question_count=data.question_count or 10,
+                test_type=data.test_type,
+                types=types_to_generate,
+            )
         if result.get("errors"):
             logger.warning(f"generate-all errors: {result.get('errors')}")
         logger.info("generate-all generated: " + " ".join(
@@ -1395,12 +1395,77 @@ async def generate_all(
             "balance_somoni": (await limits.current_balance(user.id)) / 100,
         }
 
+    except asyncio.CancelledError:
+        await limits.refund(charge, reason="generate-all cancelled")
+        raise
     except Exception as e:
         await limits.refund(charge, reason=f"generate-all failed: {type(e).__name__}")
         if isinstance(e, HTTPException):
             raise
         logger.error(f"Generate-all materials error for user {user.id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=get_message("ai_busy", data.language))
+
+
+@router.post("/generate-all")
+async def generate_all(
+    data: GenerateAllRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _generate_all_impl(data, user, db)
+
+
+GENERATE_KEEPALIVE_SECONDS = 10
+
+
+@router.post("/generate-all-stream")
+async def generate_all_stream(
+    data: GenerateAllRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    async def event_stream():
+        async with async_session() as db:
+            task = asyncio.create_task(_generate_all_impl(data, user, db))
+            try:
+                while True:
+                    try:
+                        payload = await asyncio.wait_for(
+                            asyncio.shield(task), timeout=GENERATE_KEEPALIVE_SECONDS
+                        )
+                        break
+                    except asyncio.TimeoutError:
+                        if await request.is_disconnected():
+                            logger.info(
+                                f"generate-all-stream: client disconnected, stopping for user {user.id}"
+                            )
+                            task.cancel()
+                            return
+                        yield ": keep-alive\n\n"
+
+                await asyncio.wait_for(db.commit(), timeout=20.0)
+                yield f"data: {json.dumps({'type': 'complete', **payload}, ensure_ascii=False)}\n\n"
+
+            except HTTPException as e:
+                await db.rollback()
+                yield f"data: {json.dumps({'type': 'error', 'message': e.detail}, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"generate-all-stream error for user {user.id}: {str(e)}", exc_info=True
+                )
+                message = get_message("ai_busy", data.language)
+                yield f"data: {json.dumps({'type': 'error', 'message': message}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 
