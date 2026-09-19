@@ -9,9 +9,15 @@ import {
   type AdminSmsResult,
   type AdminDashboardStats,
   type AdminMaterialOut,
+  type MaterialType,
 } from "@/lib/api";
 
 const PAGE_SIZE = 200;
+const MAT_PAGE_SIZE = 50;
+
+const MAT_TYPES: MaterialType[] = [
+  "konspekt", "lektsiya", "test", "prezentatsiya", "amaliy", "igra",
+];
 
 const cell: React.CSSProperties = {
   border: "1px solid #ccc",
@@ -35,9 +41,13 @@ export default function AdminConsolePage() {
   const [smsResults, setSmsResults] = useState<AdminSmsResult[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [topUp, setTopUp] = useState<Record<string, string>>({});
-  const [openUser, setOpenUser] = useState<AdminUserOut | null>(null);
-  const [materials, setMaterials] = useState<AdminMaterialOut[] | null>(null);
-  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [materials, setMaterials] = useState<AdminMaterialOut[]>([]);
+  const [matTotal, setMatTotal] = useState(0);
+  const [matLoading, setMatLoading] = useState(false);
+  const [matQ, setMatQ] = useState("");
+  const [matType, setMatType] = useState<MaterialType | "">("");
+  const [matOwner, setMatOwner] = useState<{ id: string; name: string } | null>(null);
+  const [matOffset, setMatOffset] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,24 +106,34 @@ export default function AdminConsolePage() {
     setSelected((prev) => (prev.size === users.length ? new Set() : new Set(users.map((u) => u.id))));
   }
 
-  async function showMaterials(user: AdminUserOut) {
-    if (openUser?.id === user.id) {
-      setOpenUser(null);
-      setMaterials(null);
-      return;
-    }
-    setOpenUser(user);
-    setMaterials(null);
-    setMaterialsLoading(true);
-    setError(null);
+  const loadMaterials = useCallback(async () => {
+    setMatLoading(true);
     try {
-      const page = await adminApi.listMaterials({ user_id: user.id, limit: 100 });
+      const page = await adminApi.listMaterials({
+        q: matQ || undefined,
+        type: matType || undefined,
+        user_id: matOwner?.id,
+        limit: MAT_PAGE_SIZE,
+        offset: matOffset,
+      });
       setMaterials(page.items);
+      setMatTotal(page.total);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось загрузить материалы");
     } finally {
-      setMaterialsLoading(false);
+      setMatLoading(false);
     }
+  }, [matQ, matType, matOwner, matOffset]);
+
+  useEffect(() => {
+    const t = setTimeout(loadMaterials, 250);
+    return () => clearTimeout(t);
+  }, [loadMaterials]);
+
+  function filterByOwner(user: AdminUserOut) {
+    setMatOwner({ id: user.id, name: user.full_name });
+    setMatOffset(0);
+    document.getElementById("materials")?.scrollIntoView({ behavior: "smooth" });
   }
 
   const withPhone = users.filter((u) => selected.has(u.id) && u.phone).length;
@@ -222,8 +242,8 @@ export default function AdminConsolePage() {
                 <td style={cell}>{u.language}</td>
                 <td style={cell}>{new Date(u.created_at).toLocaleDateString("ru-RU")}</td>
                 <td style={cell}>
-                  <button onClick={() => showMaterials(u)} style={{ font: "inherit" }}>
-                    {openUser?.id === u.id ? "скрыть материалы" : "материалы"}
+                  <button onClick={() => filterByOwner(u)} style={{ font: "inherit" }}>
+                    материалы
                   </button>{" "}
                   <button
                     onClick={() =>
@@ -298,60 +318,100 @@ export default function AdminConsolePage() {
         </table>
       </div>
 
-      {openUser && (
-        <div style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
-            Материалы: {openUser.full_name} {openUser.phone ? `(${openUser.phone})` : ""}
-          </h2>
-          {materialsLoading && <p>загрузка...</p>}
-          {materials && materials.length === 0 && <p>нет материалов</p>}
-          {materials && materials.length > 0 && (
-            <table style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={head}>тип</th>
-                  <th style={head}>название</th>
-                  <th style={head}>предмет</th>
-                  <th style={head}>класс</th>
-                  <th style={head}>создан</th>
-                  <th style={head}>действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {materials.map((m) => (
-                  <tr key={`${m.type}-${m.id}`}>
-                    <td style={cell}>{m.type}</td>
-                    <td style={{ ...cell, whiteSpace: "normal", maxWidth: 400 }}>{m.title || "—"}</td>
-                    <td style={cell}>{m.subject}</td>
-                    <td style={cell}>{m.grade}</td>
-                    <td style={cell}>{new Date(m.created_at).toLocaleDateString("ru-RU")}</td>
-                    <td style={cell}>
-                      <Link
-                        href={`/dashboard/materials/${m.type}/${m.id}`}
-                        target="_blank"
-                        style={{ textDecoration: "underline" }}
-                      >
-                        открыть
-                      </Link>{" "}
-                      <button
-                        onClick={() =>
-                          act(async () => {
-                            await adminApi.removeMaterial(m.type, m.id);
-                            setMaterials((prev) => (prev ? prev.filter((x) => x.id !== m.id) : prev));
-                          }, `${m.title || m.id}: удалён`)
-                        }
-                        style={{ font: "inherit", color: "#b00" }}
-                      >
-                        удалить
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+      <h2 id="materials" style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+        Материалы
+      </h2>
+
+      <div style={{ marginBottom: 8 }}>
+        <input
+          value={matQ}
+          onChange={(e) => { setMatQ(e.target.value); setMatOffset(0); }}
+          placeholder="поиск: название, предмет"
+          style={{ border: "1px solid #999", padding: "3px 6px", width: 280, font: "inherit" }}
+        />{" "}
+        <select
+          value={matType}
+          onChange={(e) => { setMatType(e.target.value as MaterialType | ""); setMatOffset(0); }}
+          style={{ border: "1px solid #999", padding: "3px 6px", font: "inherit" }}
+        >
+          <option value="">все типы</option>
+          {MAT_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>{" "}
+        {matOwner && (
+          <>
+            <span>автор: {matOwner.name}</span>{" "}
+            <button onClick={() => { setMatOwner(null); setMatOffset(0); }} style={{ font: "inherit" }}>
+              снять фильтр
+            </button>{" "}
+          </>
+        )}
+        <button onClick={loadMaterials} disabled={matLoading} style={{ border: "1px solid #999", padding: "3px 8px", font: "inherit" }}>
+          {matLoading ? "..." : "обновить"}
+        </button>{" "}
+        <span>
+          {matTotal === 0 ? "ничего не найдено" : `${matOffset + 1}–${Math.min(matOffset + MAT_PAGE_SIZE, matTotal)} из ${matTotal}`}
+        </span>{" "}
+        <button onClick={() => setMatOffset(Math.max(matOffset - MAT_PAGE_SIZE, 0))} disabled={matOffset === 0} style={{ font: "inherit" }}>
+          назад
+        </button>{" "}
+        <button onClick={() => setMatOffset(matOffset + MAT_PAGE_SIZE)} disabled={matOffset + MAT_PAGE_SIZE >= matTotal} style={{ font: "inherit" }}>
+          вперёд
+        </button>
+      </div>
+
+      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+        <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <thead>
+            <tr>
+              <th style={head}>тип</th>
+              <th style={head}>название</th>
+              <th style={head}>предмет</th>
+              <th style={head}>класс</th>
+              <th style={head}>автор</th>
+              <th style={head}>создан</th>
+              <th style={head}>действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {materials.map((m) => (
+              <tr key={`${m.type}-${m.id}`}>
+                <td style={cell}>{m.type}</td>
+                <td style={{ ...cell, whiteSpace: "normal", minWidth: 260 }}>{m.title || "—"}</td>
+                <td style={cell}>{m.subject}</td>
+                <td style={cell}>{m.grade}</td>
+                <td style={cell}>
+                  {m.owner_name}
+                  {m.owner_phone ? ` (${m.owner_phone})` : ""}
+                </td>
+                <td style={cell}>{new Date(m.created_at).toLocaleDateString("ru-RU")}</td>
+                <td style={cell}>
+                  <Link
+                    href={`/dashboard/materials/${m.type}/${m.id}`}
+                    target="_blank"
+                    style={{ textDecoration: "underline" }}
+                  >
+                    открыть
+                  </Link>{" "}
+                  <button
+                    onClick={() =>
+                      act(async () => {
+                        await adminApi.removeMaterial(m.type, m.id);
+                        setMaterials((prev) => prev.filter((x) => x.id !== m.id));
+                        setMatTotal((n) => Math.max(n - 1, 0));
+                      }, `${m.title || m.id}: удалён`)
+                    }
+                    style={{ font: "inherit", color: "#b00" }}
+                  >
+                    удалить
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>SMS</h2>
       <textarea
