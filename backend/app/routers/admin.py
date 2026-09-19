@@ -12,9 +12,12 @@ from app.models import (
 from app.schemas import (
     AdminDashboardStats, AdminUserOut, AdminRoleUpdate, AdminPremiumUpdate, AdminBalanceTopUp,
     AdminMaterialOut, AdminMaterialsPage, BalanceTransactionOut,
+    AdminSmsRequest, AdminBulkSmsRequest, AdminSmsResult, AdminSmsReport,
 )
 from app.auth import get_current_admin
 from app.logger import get_logger
+from app.sms_service import send_sms_text
+from app.config import get_settings
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -324,6 +327,78 @@ async def delete_material(
     await db.delete(item)
     logger.info(f"Admin {admin.email} deleted {type} {item_id}")
 
+
+
+async def _send_to_user(user: User, text: str) -> AdminSmsResult:
+    dry_run = get_settings().SMS_DRY_RUN
+    if not user.phone:
+        return AdminSmsResult(
+            user_id=user.id, full_name=user.full_name, phone=None,
+            sent=False, error="У пользователя нет номера телефона", dry_run=dry_run,
+        )
+    try:
+        ok = await send_sms_text(user.phone, text)
+    except Exception as e:
+        logger.error(f"Admin SMS to {user.id} raised: {e}", exc_info=True)
+        return AdminSmsResult(
+            user_id=user.id, full_name=user.full_name, phone=user.phone,
+            sent=False, error=f"{type(e).__name__}: {e}", dry_run=dry_run,
+        )
+    return AdminSmsResult(
+        user_id=user.id, full_name=user.full_name, phone=user.phone,
+        sent=ok, error=None if ok else "Оператор не подтвердил отправку", dry_run=dry_run,
+    )
+
+
+@router.post("/users/{user_id}/sms", response_model=AdminSmsResult)
+async def send_sms_to_user(
+    user_id: str,
+    data: AdminSmsRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    outcome = await _send_to_user(user, data.text)
+    logger.info(
+        f"Admin {admin.email} sent SMS to {user.id} ({outcome.phone}): "
+        f"sent={outcome.sent} len={len(data.text)}"
+    )
+    return outcome
+
+
+@router.post("/sms", response_model=AdminSmsReport)
+async def send_sms_to_users(
+    data: AdminBulkSmsRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (await db.execute(select(User).where(User.id.in_(data.user_ids)))).scalars().all()
+    found = {u.id: u for u in rows}
+
+    results: list[AdminSmsResult] = []
+    for user_id in data.user_ids:
+        user = found.get(user_id)
+        if user is None:
+            results.append(AdminSmsResult(
+                user_id=user_id, full_name="?", phone=None,
+                sent=False, error="Пользователь не найден",
+            ))
+            continue
+        results.append(await _send_to_user(user, data.text))
+
+    sent = sum(1 for r in results if r.sent)
+    logger.info(
+        f"Admin {admin.email} sent SMS to {len(data.user_ids)} users: "
+        f"{sent} delivered, {len(results) - sent} failed, len={len(data.text)}"
+    )
+    return AdminSmsReport(
+        sent=sent, failed=len(results) - sent,
+        dry_run=get_settings().SMS_DRY_RUN, results=results,
+    )
 
 
 @router.get("/users/{user_id}/balance-history", response_model=list[BalanceTransactionOut])

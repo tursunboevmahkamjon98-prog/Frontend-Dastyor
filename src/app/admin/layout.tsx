@@ -3,13 +3,14 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Users, FileText, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Terminal, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Обзор", icon: LayoutDashboard, exact: true },
   { href: "/admin/users", label: "Пользователи", icon: Users },
   { href: "/admin/materials", label: "Материалы", icon: FileText },
+  { href: "/admin/console", label: "Консоль", icon: Terminal },
 ];
 
 
@@ -65,7 +66,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         </div>
       </div>
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">{children}</div>
+      <div className={`mx-auto px-4 py-6 sm:px-6 ${pathname.startsWith("/admin/console") ? "max-w-none" : "max-w-4xl"}`}>
+        {children}
+      </div>
     </div>
   );
 }

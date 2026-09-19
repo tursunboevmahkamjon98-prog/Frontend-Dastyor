@@ -111,6 +111,45 @@ async def _send_via_twilio(phone: str, code: str, language: str) -> bool:
         return False
 
 
+async def _send_text_via_twilio(phone: str, text: str) -> bool:
+    sid = settings.TWILIO_ACCOUNT_SID
+    token = settings.TWILIO_AUTH_TOKEN
+    from_number = settings.TWILIO_FROM_NUMBER
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                TWILIO_MESSAGES_URL.format(sid=sid),
+                auth=(sid, token),
+                data={"From": from_number, "To": phone, "Body": text},
+                timeout=10.0,
+            )
+        if resp.status_code not in (200, 201):
+            print(f"[SMS] Twilio error {resp.status_code} sending to {phone}: {resp.text[:300]}")
+            return False
+        return True
+    except Exception as e:
+        print(f"[SMS] Twilio failed to send to {phone}: {e}")
+        return False
+
+
+async def send_sms_text(phone: str, text: str) -> bool:
+    if settings.SMS_DRY_RUN:
+        print(f"[SMS DRY RUN] Would send to {phone}: {text[:80]!r} — nothing sent")
+        return True
+
+    if settings.ROBITA_LOGIN and settings.ROBITA_PASSWORD and settings.ROBITA_SENDER:
+        if await _robita_client.send(phone, text):
+            print(f"[SMS] Message sent to {phone} via Robita")
+            return True
+        print(f"[SMS] Robita failed for {phone}, falling back...")
+
+    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER:
+        return await _send_text_via_twilio(phone, text)
+
+    print(f"[SMS] No provider configured — would have sent to {phone}: {text[:120]!r}")
+    return False
+
+
 async def send_sms_code(phone: str, code: str, language: str = "ru") -> bool:
     if settings.SMS_DRY_RUN:
         print(f"[SMS DRY RUN] Would send code {code} to {phone} — nothing sent")

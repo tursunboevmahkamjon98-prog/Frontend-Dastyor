@@ -537,6 +537,31 @@ class AdminBalanceTopUp(BaseModel):
     reason: str | None = Field(default=None, max_length=255)
 
 
+class AdminSmsRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=480)
+
+
+class AdminBulkSmsRequest(BaseModel):
+    user_ids: list[str] = Field(min_length=1, max_length=500)
+    text: str = Field(min_length=1, max_length=480)
+
+
+class AdminSmsResult(BaseModel):
+    user_id: str
+    full_name: str
+    phone: str | None
+    sent: bool
+    error: str | None = None
+    dry_run: bool = False
+
+
+class AdminSmsReport(BaseModel):
+    sent: int
+    failed: int
+    dry_run: bool = False
+    results: list[AdminSmsResult]
+
+
 class BalanceTransactionOut(BaseModel):
     id: str
     kind: str

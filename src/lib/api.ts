@@ -942,6 +942,22 @@ export interface AdminMaterialsPage {
   total: number;
 }
 
+export interface AdminSmsResult {
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  sent: boolean;
+  error: string | null;
+  dry_run: boolean;
+}
+
+export interface AdminSmsReport {
+  sent: number;
+  failed: number;
+  dry_run: boolean;
+  results: AdminSmsResult[];
+}
+
 export interface BalanceTransactionOut {
   id: string;
   
@@ -998,6 +1014,11 @@ export const adminApi = {
     request<AdminMaterialsPage>(`/admin/materials${qs(params)}`),
   removeMaterial: (type: MaterialType, id: string) =>
     request<void>(`/admin/materials/${type}/${id}`, { method: "DELETE" }),
+
+  sendSms: (userId: string, text: string) =>
+    request<AdminSmsResult>(`/admin/users/${userId}/sms`, { method: "POST", body: { text } }),
+  sendBulkSms: (user_ids: string[], text: string) =>
+    request<AdminSmsReport>("/admin/sms", { method: "POST", body: { user_ids, text } }),
 };
 
 
