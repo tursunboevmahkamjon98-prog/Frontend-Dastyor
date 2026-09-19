@@ -1,6 +1,7 @@
 import asyncio
 import json
 import io
+import secrets
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -1420,6 +1421,12 @@ async def generate_all(
 
 GENERATE_KEEPALIVE_SECONDS = 10
 
+GENERATE_KEEPALIVE_PADDING_BYTES = 16 * 1024
+
+
+def _keepalive_frame() -> str:
+    return ": " + secrets.token_hex(GENERATE_KEEPALIVE_PADDING_BYTES // 2) + "\n\n"
+
 
 @router.post("/generate-all-stream")
 async def generate_all_stream(
@@ -1431,6 +1438,7 @@ async def generate_all_stream(
         async with async_session() as db:
             task = asyncio.create_task(_generate_all_impl(data, user, db))
             try:
+                yield _keepalive_frame()
                 while True:
                     try:
                         payload = await asyncio.wait_for(
@@ -1444,7 +1452,7 @@ async def generate_all_stream(
                             )
                             task.cancel()
                             return
-                        yield ": keep-alive\n\n"
+                        yield _keepalive_frame()
 
                 await asyncio.wait_for(db.commit(), timeout=20.0)
                 yield f"data: {json.dumps({'type': 'complete', **payload}, ensure_ascii=False)}\n\n"

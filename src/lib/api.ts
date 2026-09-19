@@ -702,9 +702,7 @@ export async function streamGenerateAll(
     }
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError(
-      "Соединение с сервером оборвалось во время генерации. Скорее всего серверу не хватило памяти — попробуйте ещё раз, по одному материалу."
-    );
+    throw new ApiError("Соединение оборвалось во время генерации. Попробуйте ещё раз.");
   }
 
   if (failure) throw new ApiError(failure);
