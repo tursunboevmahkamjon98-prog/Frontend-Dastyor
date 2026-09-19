@@ -33,8 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    if (!getToken() && !getRefreshToken()) {
       setLoading(false);
       return;
     }
@@ -100,10 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(fullName: string, phone: string, code: string, password: string) {
-    const res = await authApi.register(fullName, phone, code, password);
-    setToken(res.access_token);
-    setRefreshToken(res.refresh_token);
-    setUser(res.user);
+    adoptSession(await authApi.register(fullName, phone, code, password));
   }
 
   async function loginEmail(email: string, password: string) {

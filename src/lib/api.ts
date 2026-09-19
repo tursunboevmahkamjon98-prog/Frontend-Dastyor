@@ -102,7 +102,7 @@ async function refreshTokens(): Promise<boolean> {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token: rt }),
         });
-        if (!res.ok) return false;
+        if (!res.ok) return getRefreshToken() !== rt;
         const data = await res.json();
         setToken(data.access_token);
         setRefreshToken(data.refresh_token);
@@ -156,11 +156,11 @@ async function request<T>(
   if (response.status === 401 && auth && !_isRetry) {
     const refreshed = await refreshTokens();
     if (refreshed) return request<T>(path, options, true);
+    clearToken();
   }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 && auth) clearToken();
     throw new ApiError(extractError(data.detail, response.status), response.status);
   }
   return data as T;
