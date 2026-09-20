@@ -127,6 +127,18 @@ app.include_router(billing.router)
 app.include_router(qr_auth.router)
 
 
+@app.get("/api/app/version")
+async def app_version():
+    s = get_settings()
+    return {
+        "latest_build": s.APP_LATEST_BUILD,
+        "latest_version": s.APP_LATEST_VERSION,
+        "min_build": s.APP_MIN_BUILD,
+        "apk_url": s.APP_APK_URL,
+        "notes": s.APP_UPDATE_NOTES,
+    }
+
+
 @app.get("/api/health")
 async def health():
     return {
