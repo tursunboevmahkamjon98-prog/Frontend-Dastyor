@@ -10,6 +10,7 @@ import { markBackNavigationListener } from "@/lib/back-navigation";
 import { API_ORIGIN } from "@/lib/api";
 import { useT, useAccountLocale } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
+import AppUpdateBanner from "@/components/AppUpdateBanner";
 
 type NavItem = { href: string; labelKey: MessageKey; icon: typeof Home; exact?: boolean };
 
@@ -69,6 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {t("common.offline")}
         </div>
       )}
+
+      <AppUpdateBanner />
 
       {}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border-light bg-surface lg:flex">
