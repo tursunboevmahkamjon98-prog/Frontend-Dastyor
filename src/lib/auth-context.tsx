@@ -54,8 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     
     async function loadUser() {
-      if (!(await ensureAccessToken())) {
-        clearToken();
+      const outcome = await ensureAccessToken();
+      if (outcome !== "ok") {
+        if (outcome === "rejected") clearToken();
         return;
       }
       for (let attempt = 0; attempt < 3; attempt++) {

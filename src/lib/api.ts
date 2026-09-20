@@ -89,26 +89,31 @@ function extractError(detail: unknown, status?: number): string {
 
 
 
-let refreshInFlight: Promise<boolean> | null = null;
+export type RefreshOutcome = "ok" | "rejected" | "unavailable";
 
-async function refreshTokens(): Promise<boolean> {
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
+
+async function refreshTokens(): Promise<RefreshOutcome> {
   const rt = getRefreshToken();
-  if (!rt) return false;
+  if (!rt) return "rejected";
   if (!refreshInFlight) {
-    refreshInFlight = (async () => {
+    refreshInFlight = (async (): Promise<RefreshOutcome> => {
       try {
         const res = await fetch(`${API_URL}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token: rt }),
         });
-        if (!res.ok) return getRefreshToken() !== rt;
-        const data = await res.json();
-        setToken(data.access_token);
-        setRefreshToken(data.refresh_token);
-        return true;
+        if (res.ok) {
+          const data = await res.json();
+          setToken(data.access_token);
+          setRefreshToken(data.refresh_token);
+          return "ok";
+        }
+        if (getRefreshToken() !== rt) return "ok";
+        return res.status === 401 ? "rejected" : "unavailable";
       } catch {
-        return false;
+        return "unavailable";
       } finally {
         refreshInFlight = null;
       }
@@ -117,8 +122,8 @@ async function refreshTokens(): Promise<boolean> {
   return refreshInFlight;
 }
 
-export async function ensureAccessToken(): Promise<boolean> {
-  if (getToken()) return true;
+export async function ensureAccessToken(): Promise<RefreshOutcome> {
+  if (getToken()) return "ok";
   return refreshTokens();
 }
 
@@ -159,9 +164,9 @@ async function request<T>(
   
   
   if (response.status === 401 && auth && !_isRetry) {
-    const refreshed = await refreshTokens();
-    if (refreshed) return request<T>(path, options, true);
-    clearToken();
+    const outcome = await refreshTokens();
+    if (outcome === "ok") return request<T>(path, options, true);
+    if (outcome === "rejected") clearToken();
   }
 
   const data = await response.json().catch(() => ({}));
