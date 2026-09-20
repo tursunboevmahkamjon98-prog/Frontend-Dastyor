@@ -95,11 +95,11 @@ class Settings(BaseSettings):
 
     MAX_MATERIALS_PER_DAY: int = 100
 
-    APP_LATEST_BUILD: int = 1
-    APP_LATEST_VERSION: str = "1.0.0"
+    APP_LATEST_BUILD: int = 2
+    APP_LATEST_VERSION: str = "1.0.1"
     APP_MIN_BUILD: int = 0
     APP_APK_URL: str = "/dastyor.apk"
-    APP_UPDATE_NOTES: str = ""
+    APP_UPDATE_NOTES: str = "Sinov: yangilanish oynasi tekshirilyapti"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
