@@ -2,31 +2,21 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/messages";
 
 
 
 
-
-const ITEMS: { q: string; a: string }[] = [
-  {
-    q: "Как это работает?",
-    a: "Вы выбираете предмет, класс и тему урока — ИИ за несколько секунд создаёт готовый документ: конспект, тест, презентацию, лекцию или практическое задание. Можно отметить сразу несколько — все придут по одной теме. Результат скачивается в Word, PDF или PowerPoint.",
-  },
-  {
-    q: "На каких языках создаются материалы?",
-    a: "На таджикском, русском и английском — язык материала выбирается отдельно от языка интерфейса, под тот класс, для которого вы готовите урок.",
-  },
-  {
-    q: "Можно ли редактировать то, что создал ИИ?",
-    a: "Да. Презентация выгружается как обычный .pptx с редактируемым текстом, таблицами и диаграммами — не картинками, конспект и тест — как .docx/.pdf. Всё открывается и правится в Word/PowerPoint как любой другой файл.",
-  },
-  {
-    q: "Материалы соответствуют школьной программе?",
-    a: "Да — предметы, классы и структура документов ориентированы на программу школ Таджикистана; при этом тему урока вы всегда задаёте сами, так что материал точно попадает в то, что вы проходите.",
-  },
+const ITEMS: { q: MessageKey; a: MessageKey }[] = [
+  { q: "landing.faq.q1", a: "landing.faq.a1" },
+  { q: "landing.faq.q2", a: "landing.faq.a2" },
+  { q: "landing.faq.q3", a: "landing.faq.a3" },
+  { q: "landing.faq.q4", a: "landing.faq.a4" },
 ];
 
 export default function LandingFaq() {
+  const t = useT();
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -41,7 +31,7 @@ export default function LandingFaq() {
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left sm:px-6"
               aria-expanded={isOpen}
             >
-              <span className="text-sm font-semibold text-text-primary sm:text-base">{item.q}</span>
+              <span className="text-sm font-semibold text-text-primary sm:text-base">{t(item.q)}</span>
               <ChevronDown
                 className={`h-4.5 w-4.5 shrink-0 text-text-tertiary transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : ""}`}
               />
@@ -54,7 +44,7 @@ export default function LandingFaq() {
                 opacity: isOpen ? 1 : 0,
               }}
             >
-              <div className="min-h-0">{item.a}</div>
+              <div className="min-h-0">{t(item.a)}</div>
             </div>
           </div>
         );

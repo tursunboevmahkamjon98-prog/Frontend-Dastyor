@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SUBJECTS } from "@/lib/material-types";
+import { useT } from "@/lib/i18n";
 
 
 
@@ -18,6 +19,7 @@ const BG_VARS = [
 
 
 export default function SubjectsCarousel() {
+  const t = useT();
   const trackRef = useRef<HTMLDivElement>(null);
 
   function scroll(dir: 1 | -1) {
@@ -29,14 +31,15 @@ export default function SubjectsCarousel() {
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">
-            {SUBJECTS.length} предметов — <span className="text-primary">любая тема</span>
+            {SUBJECTS.length} {t("landing.subjects.count")}{" "}
+            <span className="text-primary">{t("landing.subjects.any")}</span>
           </h2>
         </div>
         <div className="hidden shrink-0 gap-2 sm:flex">
           <button
             type="button"
             onClick={() => scroll(-1)}
-            aria-label="Прокрутить влево"
+            aria-label={t("landing.subjects.scrollLeft")}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition hover:bg-surface-muted"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -44,7 +47,7 @@ export default function SubjectsCarousel() {
           <button
             type="button"
             onClick={() => scroll(1)}
-            aria-label="Прокрутить вправо"
+            aria-label={t("landing.subjects.scrollRight")}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition hover:bg-surface-muted"
           >
             <ChevronRight className="h-4 w-4" />

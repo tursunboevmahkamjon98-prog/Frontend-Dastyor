@@ -6,11 +6,13 @@ import {
   X, BookOpen, Lightbulb, ClipboardCheck, ClipboardList, Presentation,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useLocale } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/messages";
 
 export type Sample = {
   
   id: string;
-  label: string;
+  labelKey: MessageKey;
   icon: LucideIcon;
   
   pages: number;
@@ -28,20 +30,18 @@ export type Sample = {
 
 
 
-
-
 const SAMPLES: Sample[] = [
-  { id: "konspekt", label: "Конспект", icon: BookOpen, pages: 6, aspect: "595/842", span: "" },
-  { id: "lektsiya", label: "Лекция", icon: Lightbulb, pages: 4, aspect: "595/842", span: "" },
-  { id: "test", label: "Тест", icon: ClipboardCheck, pages: 3, aspect: "595/842", span: "" },
-  { id: "amaliy", label: "Практическое задание", icon: ClipboardList, pages: 2, aspect: "595/842", span: "" },
-  { id: "prezentatsiya", label: "Презентация", icon: Presentation, pages: 11, aspect: "16/9", span: "col-span-2" },
+  { id: "konspekt", labelKey: "type.konspekt", icon: BookOpen, pages: 6, aspect: "595/842", span: "" },
+  { id: "lektsiya", labelKey: "type.lektsiya", icon: Lightbulb, pages: 4, aspect: "595/842", span: "" },
+  { id: "test", labelKey: "type.test", icon: ClipboardCheck, pages: 3, aspect: "595/842", span: "" },
+  { id: "amaliy", labelKey: "type.amaliy", icon: ClipboardList, pages: 2, aspect: "595/842", span: "" },
+  { id: "prezentatsiya", labelKey: "type.prezentatsiya", icon: Presentation, pages: 11, aspect: "16/9", span: "col-span-2" },
 ];
 
 export default function SamplesGallery() {
+  const { locale, t } = useLocale();
   const samples = SAMPLES;
   const [open, setOpen] = useState<Sample | null>(null);
-  
   
   
   
@@ -69,6 +69,13 @@ export default function SamplesGallery() {
     };
   }, [open, close]);
 
+  
+  
+  const unit = (n: number, id: string) =>
+    locale === "ru"
+      ? pagesWordRu(n, id)
+      : t(id === "prezentatsiya" ? "landing.samples.slides" : "landing.samples.pages");
+
   return (
     <>
       {}
@@ -82,7 +89,7 @@ export default function SamplesGallery() {
               type="button"
               onClick={() => setOpen(sample)}
               className="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label={`${sample.label}: посмотреть все страницы (${sample.pages})`}
+              aria-label={`${t(sample.labelKey)}: ${t("landing.samples.viewAll")} (${sample.pages})`}
             >
               <div
                 className="relative overflow-hidden bg-surface-muted"
@@ -90,17 +97,17 @@ export default function SamplesGallery() {
               >
                 <img
                   src={`/samples/${sample.id}/1.png`}
-                  alt={`Пример: ${sample.label}`}
+                  alt={`${t("landing.samples.exampleAlt")}: ${t(sample.labelKey)}`}
                   loading="lazy"
                   className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
                 />
                 <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-                  {sample.pages} {pagesWord(sample.pages, sample.id)}
+                  {sample.pages} {unit(sample.pages, sample.id)}
                 </span>
               </div>
               <figcaption className="flex items-center gap-2 px-3 py-2.5">
                 <sample.icon className="h-4 w-4 shrink-0 text-primary" />
-                <span className="text-xs font-semibold text-text-primary">{sample.label}</span>
+                <span className="text-xs font-semibold text-text-primary">{t(sample.labelKey)}</span>
               </figcaption>
             </button>
           </figure>
@@ -113,19 +120,19 @@ export default function SamplesGallery() {
           onClick={close}
           role="dialog"
           aria-modal="true"
-          aria-label={open.label}
+          aria-label={t(open.labelKey)}
         >
           <div className="sticky top-0 z-10 mx-auto mb-4 flex max-w-4xl items-center justify-between gap-3">
             <p className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-text-primary shadow-lg">
-              {open.label}
+              {t(open.labelKey)}
               <span className="ml-2 font-normal text-text-tertiary">
-                {open.pages} {pagesWord(open.pages, open.id)}
+                {open.pages} {unit(open.pages, open.id)}
               </span>
             </p>
             <button
               type="button"
               onClick={close}
-              aria-label="Закрыть"
+              aria-label={t("landing.samples.close")}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/95 text-text-secondary shadow-lg transition hover:text-text-primary"
             >
               <X className="h-5 w-5" />
@@ -141,7 +148,7 @@ export default function SamplesGallery() {
               <img
                 key={i}
                 src={`/samples/${open.id}/${i + 1}.png`}
-                alt={`${open.label}, страница ${i + 1}`}
+                alt={`${t(open.labelKey)}, ${t("landing.samples.pageAlt")} ${i + 1}`}
                 loading="lazy"
                 className="w-full rounded-xl bg-white shadow-2xl"
                 style={{ aspectRatio: open.aspect }}
@@ -156,7 +163,7 @@ export default function SamplesGallery() {
 }
 
 
-function pagesWord(n: number, id: string) {
+function pagesWordRu(n: number, id: string) {
   const slide = id === "prezentatsiya";
   const mod10 = n % 10;
   const mod100 = n % 100;
