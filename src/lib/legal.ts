@@ -3,7 +3,7 @@
 export type LegalDoc = { title: string; updated: string; sections: { h: string; p: string[] }[] };
 
 const OWNER = "Dastyor";
-const CONTACT_LINE = "Telegram @tursunboev_mee, tursunboevmahkamjon98@gmail.com, +992 92 841 55 52";
+const CONTACT_LINE = "dastyor.rahnamo@gmail.com";
 const UPDATED = "30 августа 2026";
 
 export const TERMS: Record<string, LegalDoc> = {

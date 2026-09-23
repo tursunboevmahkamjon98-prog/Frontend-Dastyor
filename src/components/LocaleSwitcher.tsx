@@ -4,16 +4,18 @@ import { useLocale } from "@/lib/i18n";
 import { LOCALES } from "@/lib/messages";
 
 
+
+
 export default function LocaleSwitcher({ className = "" }: { className?: string }) {
   const { locale, setLocale } = useLocale();
 
   return (
     <div
-      className={`inline-flex rounded-xl border border-border-light bg-surface p-0.5 ${className}`}
+      className={`inline-flex shrink-0 rounded-xl border border-border-light bg-surface p-0.5 ${className}`}
       role="group"
       aria-label="Language"
     >
-      {LOCALES.map(({ code, label }) => {
+      {LOCALES.map(({ code, label, short }) => {
         const active = locale === code;
         return (
           <button
@@ -21,13 +23,16 @@ export default function LocaleSwitcher({ className = "" }: { className?: string 
             type="button"
             onClick={() => setLocale(code)}
             aria-pressed={active}
-            className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition ${
+            aria-label={label}
+            className={`rounded-[10px] px-2 py-1.5 text-xs font-medium transition sm:px-3 ${
               active
                 ? "bg-primary-50 font-semibold text-primary"
                 : "text-text-tertiary hover:text-text-primary"
             }`}
           >
-            {label}
+            {}
+            <span className="sm:hidden">{short}</span>
+            <span className="hidden sm:inline">{label}</span>
           </button>
         );
       })}

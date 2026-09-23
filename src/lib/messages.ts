@@ -2,10 +2,10 @@
 
 export type Locale = "ru" | "tg" | "en";
 
-export const LOCALES: { code: Locale; label: string }[] = [
-  { code: "tg", label: "Тоҷикӣ" },
-  { code: "ru", label: "Русский" },
-  { code: "en", label: "English" },
+export const LOCALES: { code: Locale; label: string; short: string }[] = [
+  { code: "tg", label: "Тоҷикӣ", short: "TJ" },
+  { code: "ru", label: "Русский", short: "RU" },
+  { code: "en", label: "English", short: "EN" },
 ];
 
 const ru = {

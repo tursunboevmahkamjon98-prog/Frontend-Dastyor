@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Wallet, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Wallet } from "lucide-react";
 import { billingApi, ApiError } from "@/lib/api";
-import { CONTACT } from "@/lib/contact";
 import { useT } from "@/lib/i18n";
 
 
@@ -61,28 +60,6 @@ export default function BillingPage() {
         <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
           {t("billing.howToBody")}
         </p>
-
-        <div className="mt-4 space-y-2">
-          <a
-            href={`https://wa.me/${CONTACT.whatsappDigits}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-xl bg-primary px-4 py-3 text-white transition hover:bg-primary-dark"
-          >
-            <MessageCircle className="h-5 w-5 shrink-0" />
-            <span className="flex-1 text-sm font-semibold">{t("billing.writeWhatsapp")}</span>
-            <span className="text-sm text-white/85">{CONTACT.whatsapp}</span>
-          </a>
-
-          <a
-            href={`tel:${CONTACT.phoneDigits}`}
-            className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-text-primary transition hover:border-primary hover:bg-primary-50"
-          >
-            <Phone className="h-5 w-5 shrink-0 text-primary" />
-            <span className="flex-1 text-sm font-semibold">{t("billing.callAdmin")}</span>
-            <span className="text-sm text-text-secondary">{CONTACT.phone}</span>
-          </a>
-        </div>
 
         <p className="mt-4 text-xs leading-relaxed text-text-tertiary">{t("billing.priceNote")}</p>
       </div>

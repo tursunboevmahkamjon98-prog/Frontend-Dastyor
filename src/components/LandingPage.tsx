@@ -79,10 +79,10 @@ export default function LandingPage({ apkSize }: { apkSize: string | null }) {
       {}
       <header className="sticky top-0 z-30 border-b border-border-light/70 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             {}
-            <img src="/logo.png" alt="Dastyor" className="h-9 w-9" />
-            <span className="text-lg font-bold text-text-primary">Dastyor</span>
+            <img src="/logo.png" alt="Dastyor" className="h-9 w-9 shrink-0" />
+            <span className="truncate text-lg font-bold text-text-primary">Dastyor</span>
           </div>
           <nav className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (
@@ -95,13 +95,13 @@ export default function LandingPage({ apkSize }: { apkSize: string | null }) {
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             {}
             <LocaleSwitcher />
             <Link href="/login" className="hidden rounded-xl px-3 py-2 text-sm font-semibold text-text-primary hover:bg-surface-muted sm:inline-block sm:px-4">
               {t("login.submit")}
             </Link>
-            <Link href="/register" className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-primary/25 transition hover:-translate-y-0.5 hover:bg-primary-dark sm:px-4">
+            <Link href="/register" className="whitespace-nowrap rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-primary/25 transition hover:-translate-y-0.5 hover:bg-primary-dark sm:px-4">
               {t("landing.start")}
             </Link>
           </div>
