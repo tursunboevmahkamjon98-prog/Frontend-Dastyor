@@ -413,6 +413,35 @@ class GenerateAllRequest(BaseModel):
     types: list[str] | None = None
 
 
+class BookGenerateRequest(GenerateAllRequest):
+    source_id: str
+    scope: str = "all"
+    chapter_index: int | None = None
+    page_start: int | None = None
+    page_end: int | None = None
+
+
+class GenerationQuoteRequest(BaseModel):
+    types: list[str]
+
+
+class GenerationQuoteItem(BaseModel):
+    material_type: str
+    was_free: bool
+    price_dirams: int
+
+
+class GenerationQuoteOut(BaseModel):
+    count: int
+    free_count: int
+    paid_count: int
+    unit_price_dirams: int
+    required_dirams: int
+    balance_dirams: int
+    affordable: bool
+    items: list[GenerationQuoteItem]
+
+
 class RegenerateItemRequest(BaseModel):
     material_type: str
     topic: str
@@ -572,6 +601,11 @@ class BalanceTransactionOut(BaseModel):
     reason: str | None = None
     material_type: str | None = None
     created_at: datetime
+    # Populated only by the global ledger browser (GET /admin/balance-
+    # transactions) - the existing per-user balance-history endpoint
+    # leaves these unset since the user is already implied by its URL.
+    user_id: str | None = None
+    user_name: str | None = None
 
 
 
@@ -582,3 +616,210 @@ class BalanceOut(BaseModel):
 
 
 
+
+
+class TelegramLinkOut(BaseModel):
+    deep_link: str
+    app_link: str
+    start_command: str
+    bot_username: str
+    expires_at: datetime
+    expires_in_seconds: int
+
+
+class TelegramLinkCodeOut(BaseModel):
+    code: str
+    bot_username: str
+    expires_at: datetime
+    expires_in_seconds: int
+
+
+class TelegramLinkStatusOut(BaseModel):
+    linked: bool
+    bot_configured: bool
+    bot_username: str
+    linked_at: datetime | None = None
+
+
+class PayInstructionsOut(BaseModel):
+    text: str
+
+
+class PayInstructionsUpdate(BaseModel):
+    text: str = Field(max_length=2000)
+
+
+class TopupRequestOut(BaseModel):
+    id: str
+    requested_somoni: float
+    note: str | None = None
+    receipt_url: str | None = None
+    status: str
+    credited_somoni: float | None = None
+    admin_note: str | None = None
+    created_at: datetime
+    resolved_at: datetime | None = None
+
+
+class AdminTopupRequestOut(TopupRequestOut):
+    user_id: str
+    user_name: str
+    user_phone: str | None = None
+    user_short_id: str | None = None
+    user_balance_somoni: float = 0
+
+
+class AdminTopupApprove(BaseModel):
+    credited_somoni: float = Field(gt=0, le=10_000)
+    note: str | None = Field(default=None, max_length=255)
+
+
+class AdminTopupReject(BaseModel):
+    note: str | None = Field(default=None, max_length=255)
+
+
+class AdminRosterEntry(BaseModel):
+    user_id: str
+    full_name: str
+    short_id: str | None = None
+    admin_tier: str | None = None  # NULL reads as "super" — see admin_roles.py
+
+
+class UnreviewedTelegramAdminOut(BaseModel):
+    """A telegram_admins grant whose Dastyor account is not (yet) a web
+    admin — surfaced for a human to promote or dismiss, never acted on
+    automatically."""
+    grant_id: str
+    telegram_user_id: int | None = None
+    user_id: str | None = None
+    full_name: str | None = None
+    short_id: str | None = None
+    added_at: datetime
+
+
+class AdminRosterOut(BaseModel):
+    admins: list[AdminRosterEntry]
+    unreviewed: list[UnreviewedTelegramAdminOut]
+
+
+class AdminPromoteRequest(BaseModel):
+    action: str  # "promote" | "demote" | "ignore"
+    admin_tier: str | None = None  # required when action == "promote"
+
+
+class CardOut(BaseModel):
+    id: str
+    bank_name: str
+    holder_name: str
+    card_number_masked: str
+    currency: str
+    note: str | None = None
+    is_active: bool
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class CardDetailOut(CardOut):
+    card_number: str  # decrypted - only this endpoint ever returns it
+
+
+class CardCreate(BaseModel):
+    bank_name: str = Field(min_length=1, max_length=120)
+    holder_name: str = Field(min_length=1, max_length=120)
+    card_number: str = Field(min_length=4, max_length=64)
+    currency: str = Field(default="TJS", max_length=10)
+    note: str | None = Field(default=None, max_length=255)
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class CardUpdate(BaseModel):
+    bank_name: str | None = Field(default=None, max_length=120)
+    holder_name: str | None = Field(default=None, max_length=120)
+    card_number: str | None = Field(default=None, min_length=4, max_length=64)
+    currency: str | None = Field(default=None, max_length=10)
+    note: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = None
+    sort_order: int | None = None
+
+
+class ExpenseOut(BaseModel):
+    id: str
+    category: str
+    amount_somoni: float
+    note: str | None = None
+    spent_at: datetime
+    created_by: str | None = None
+    created_at: datetime
+
+
+class ExpenseCreate(BaseModel):
+    category: str = Field(min_length=1, max_length=60)
+    amount_somoni: float = Field(gt=0)
+    note: str | None = Field(default=None, max_length=255)
+    spent_at: datetime
+
+
+class ExpenseUpdate(BaseModel):
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    amount_somoni: float | None = Field(default=None, gt=0)
+    note: str | None = Field(default=None, max_length=255)
+    spent_at: datetime | None = None
+
+
+class AdminPaymentRequestOut(BaseModel):
+    """The Telegram-side payment queue, as the CRM's unified Payments
+    page needs to see it — same underlying payment_requests row the
+    bot's own /pending queue reads, just with the user identified by
+    name instead of chat id.
+
+    receipt_url is deliberately absent: the bot never saves a Telegram
+    receipt to local disk (see telegram/bot.py — only receipt_file_id,
+    the OCR having already run on the in-memory bytes), so there is
+    nothing under /uploads/... to link to yet. Serving that image needs
+    a small proxy through the Bot API, which is Stage 8's job alongside
+    the receipt lightbox component that would actually display it.
+    """
+    id: str
+    public_code: str
+    user_id: str
+    user_name: str
+    user_short_id: str | None = None
+    requested_somoni: float
+    status: str
+    receipt_file_id: str | None = None
+    receipt_mime: str | None = None
+    ocr_amount_somoni: float | None = None
+    ocr_sender: str | None = None
+    ocr_recipient: str | None = None
+    ocr_reference: str | None = None
+    ocr_confidence: int = 0
+    ocr_warnings: str | None = None
+    credited_somoni: float | None = None
+    decision_note: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminPaymentDecision(BaseModel):
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class AdminPaymentApprove(BaseModel):
+    # Both set together or neither - see telegram.service.approve_payment,
+    # which refuses an override with no reason attached.
+    amount_override_somoni: float | None = Field(default=None, gt=0)
+    correction_reason: str | None = Field(default=None, max_length=500)
+
+
+class AuditLogEntryOut(BaseModel):
+    id: str
+    subject: str  # payment_request_id column, reused as a generic subject key
+    event: str
+    actor_kind: str
+    actor_telegram_id: int | None = None
+    actor_user_id: str | None = None
+    actor_name: str | None = None
+    detail: str | None = None  # raw JSON string; frontend parses as needed
+    created_at: datetime

@@ -1,0 +1,15 @@
+# Nusxa oling -> android/key.properties (u git ga tushmaydi)
+#
+# Kalit do'konini (keystore) o'zingiz yarating:
+#
+#   keytool -genkey -v -keystore C:\Users\user\dastyor-release.jks ^
+#     -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias dastyor
+#
+# Parolni faqat siz bilasiz. Bu fayl va .jks yo'qolsa, ilovani BOSHQA
+# hech qachon yangilab bo'lmaydi — Google Play boshqa kalit bilan
+# imzolangan yangilanishni qabul qilmaydi. Ikkalasini zaxiraga oling.
+
+storeFile=C:\\Users\\user\\dastyor-release.jks
+storePassword=SIZNING_PAROLINGIZ
+keyAlias=dastyor
+keyPassword=SIZNING_PAROLINGIZ

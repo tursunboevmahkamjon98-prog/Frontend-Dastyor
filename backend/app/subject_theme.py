@@ -60,3 +60,22 @@ def get_subject_illustration_path(subject: str | None) -> str | None:
         return None
     path = os.path.join(_ASSETS_DIR, fname)
     return path if os.path.exists(path) else None
+
+
+def resolve_accent_hex(content: dict) -> str:
+    """The accent for a rendered material.
+
+    Colour used to be a property of the subject alone. A composed template may
+    now carry its own palette, and when it does it wins; templates without one
+    (including all seven original ones) keep falling back to the subject, so
+    nothing that existed before this function changes.
+    """
+    from app.konspekt_templates import get_template
+
+    template = get_template(content.get("template"))
+    return template.accent or get_subject_accent_hex(content.get("subject"))
+
+
+def resolve_accent_rgb(content: dict) -> tuple[int, int, int]:
+    hex_str = resolve_accent_hex(content).lstrip("#")
+    return int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)

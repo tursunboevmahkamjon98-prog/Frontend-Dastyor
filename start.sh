@@ -1,137 +1,154 @@
 #!/usr/bin/env bash
-# One command for the whole stack — Postgres + backend (:8586) +
-# frontend (:8090) — safe to run on a totally fresh clone, safe to run
-# again after every `git pull`.
+# One-shot bootstrap + launcher for the Dastyor Docker stack.
 #
 #     ./start.sh
 #
-# First run only: backend/.env and .env (docker-compose.yml's own
-# overrides — see its top comment) don't exist yet, so this generates
-# them with random values for everything that's safe to invent locally
-# (JWT signing secret, Postgres's password, the admin account's
-# password) and leaves a clearly-marked blank for everything that
-# ISN'T — an AI provider key, an SMS provider's credentials, your own
-# phone number — because those are real accounts nobody but you has,
-# not secrets that can be conjured. Both files are gitignored (see
-# .gitignore) and never touched again once they exist, so editing them
-# by hand afterward is always safe — this script will not overwrite
-# your changes on the next run.
+# What it does, in order:
+#   1. Generates ./.env (Postgres password + host ports) if it does not
+#      exist yet — never overwrites one that's already there.
+#   2. Generates backend/.env from backend/.env.example if it does not
+#      exist yet, filling in SECRET_KEY, ADMIN_PASSWORD and the Postgres
+#      credentials automatically. Also never overwrites an existing file,
+#      so real production secrets (AI keys, SMTP, ROBITA...) are never
+#      touched once they've been filled in by hand.
+#   3. Runs `docker compose up -d --build`, which builds two images
+#      (backend, frontend — `db` is the stock postgres:16-alpine image,
+#      nothing to build) and starts three containers: db + backend +
+#      frontend, wired together on the compose network.
+#
+# Safe to re-run any time (e.g. after `git pull`): existing .env files
+# are left alone, and compose only rebuilds what changed.
 set -euo pipefail
+
 cd "$(dirname "$0")"
 
-BACKEND_ENV="backend/.env"
-ROOT_ENV=".env"
+# ── defaults (only used the first time .env is generated) ────────────────
+DEFAULT_FRONTEND_PORT=8090
+DEFAULT_BACKEND_PORT=8586
 
-if [ ! -f "$BACKEND_ENV" ]; then
-    if [ ! -f "backend/.env.example" ]; then
-        echo "FATAL: backend/.env.example is missing — can't generate backend/.env from it." >&2
-        exit 1
-    fi
-    if ! command -v openssl >/dev/null 2>&1; then
-        echo "FATAL: openssl is required to generate random secrets (apt install openssl)." >&2
-        exit 1
-    fi
+log()  { echo "-> $*"; }
+warn() { echo "   WARNING: $*" >&2; }
 
-    echo "No backend/.env — generating one (first run only)."
-    cp backend/.env.example "$BACKEND_ENV"
-
-    SECRET_KEY="$(openssl rand -hex 32)"
-    ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | cut -c1-16)"
-
-    # The admin account is provisioned at backend startup by main.py's
-    # _provision_admin — which returns immediately unless ADMIN_EMAIL is
-    # set, and creates an account that CANNOT log in unless ADMIN_PHONE
-    # is too (sign-in is phone-only, see schemas.UserLogin). Generating a
-    # password without both of these produced exactly that: a printed
-    # password belonging to no account at all. Neither value can be
-    # invented — the phone has to be a real number that receives SMS —
-    # so ask, and only fall back to a warning when there's no terminal
-    # to ask from (CI, `docker compose` wrappers, a non-interactive
-    # provisioning script).
-    ADMIN_PHONE=""
-    if [ -t 0 ]; then
-        echo
-        echo "Admin sign-in is by PHONE, not email. Enter the phone number that"
-        echo "should own the admin account, in full international form."
-        printf "  Admin phone (e.g. +992901234567), or blank to skip: "
-        read -r ADMIN_PHONE
-        echo
-    fi
-
-    # -i (in place, no backup suffix) — fine on the Linux servers this
-    # targets; macOS/BSD sed would need -i '' instead, not handled here
-    # since DEPLOY.md's whole deploy path is Ubuntu.
-    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" "$BACKEND_ENV"
-    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|" "$BACKEND_ENV"
-
-    if [ -n "$ADMIN_PHONE" ]; then
-        sed -i "s|^ADMIN_PHONE=.*|ADMIN_PHONE=${ADMIN_PHONE}|" "$BACKEND_ENV"
-        # _provision_admin keys off the EMAIL, so it has to be non-empty
-        # for the account to be created at all — it is never used to log
-        # in (phone-only), just as the provisioning key and the address
-        # shown in the admin panel. A placeholder on the machine's own
-        # hostname is enough and needs nothing from the operator.
-        sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=admin@$(hostname -f 2>/dev/null || echo localhost)|" "$BACKEND_ENV"
-        GENERATED_ADMIN_PASSWORD="$ADMIN_PASSWORD"
+# ── random secrets, without depending on any one specific tool ───────────
+rand_hex() {
+    local bytes="${1:-24}"
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex "$bytes"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import secrets; print(secrets.token_hex(${bytes}))"
     else
-        ADMIN_SETUP_SKIPPED=1
+        head -c "$bytes" /dev/urandom | od -An -tx1 | tr -d ' \n'
     fi
+}
+
+rand_urlsafe() {
+    local bytes="${1:-32}"
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 "$bytes" | tr '+/' '-_' | tr -d '=\n'
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import secrets; print(secrets.token_urlsafe(${bytes}))"
+    else
+        head -c "$bytes" /dev/urandom | base64 | tr '+/' '-_' | tr -d '=\n'
+    fi
+}
+
+# Readable password: alnum only, no quoting/escaping surprises wherever it
+# ends up (.env file, shell, docker logs).
+rand_password() {
+    local len="${1:-16}"
+    rand_urlsafe 24 | tr -dc 'A-Za-z0-9' | head -c "$len"
+}
+
+# ── 0. docker compose must exist ──────────────────────────────────────────
+if docker compose version >/dev/null 2>&1; then
+    DC=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    DC=(docker-compose)
+else
+    echo "FATAL: 'docker compose' (plugin) yoki 'docker-compose' topilmadi." >&2
+    echo "       O'rnating: sudo apt install -y docker.io docker-compose-plugin" >&2
+    exit 1
 fi
 
+# ── 1. root .env — Postgres password + host ports for docker-compose.yml ─
+ROOT_ENV=".env"
 if [ ! -f "$ROOT_ENV" ]; then
-    echo "No .env — generating docker-compose's own Postgres password (first run only)."
-    POSTGRES_PASSWORD="$(openssl rand -hex 16)"
+    log ".env yaratilmoqda (Postgres paroli avtomatik, portlar: backend=${DEFAULT_BACKEND_PORT}, frontend=${DEFAULT_FRONTEND_PORT})..."
+    GEN_POSTGRES_PASSWORD="$(rand_hex 24)"
     cat > "$ROOT_ENV" <<EOF
-# Generated by start.sh — see docker-compose.yml's own top comment for
-# what these three do. Safe to hand-edit; this script never overwrites
-# an existing .env.
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-BACKEND_PORT=8586
-FRONTEND_PORT=8090
+# Avtomatik yaratildi: $(date -u +%Y-%m-%dT%H:%M:%SZ) by start.sh — qo'lda o'zgartirsangiz bo'ladi,
+# start.sh bu faylni qayta ishga tushirilganda tegmaydi (agar u allaqachon mavjud bo'lsa).
+#
+# docker-compose.yml Compose'ning o'zi bu faylni (papkadagi .env) avtomatik o'qiydi.
+
+# Postgres paroli — faqat postgres_data volume BIRINCHI marta yaratilganda
+# ishlatiladi (qara docker-compose.yml). Volume yaratilgandan keyin buni
+# o'zgartirish hech narsa qilmaydi, volume'ni o'chirib qayta yaratish kerak.
+POSTGRES_PASSWORD=${GEN_POSTGRES_PASSWORD}
+
+# Stack qaysi HOST portlarida javob beradi.
+BACKEND_PORT=${DEFAULT_BACKEND_PORT}
+FRONTEND_PORT=${DEFAULT_FRONTEND_PORT}
 EOF
+    log "POSTGRES_PASSWORD avtomatik yaratildi va .env ga yozildi."
+else
+    log ".env allaqachon mavjud — tegilmadi."
 fi
 
-docker compose up -d --build
-
-# Only for this final printout — docker-compose.yml itself reads .env
-# on its own via Compose's built-in auto-load, this script doesn't need
-# these exported for `up` to see them. Sourced here (not just grepped)
-# so this stays correct even if .env sets other overrides.
+# Load it so POSTGRES_PASSWORD/BACKEND_PORT/FRONTEND_PORT are available
+# below (for backend/.env generation and the final printout).
 set -a
-# shellcheck disable=SC1090
-[ -f "$ROOT_ENV" ] && source "$ROOT_ENV"
+# shellcheck disable=SC1091
+source "$ROOT_ENV"
 set +a
 
-echo
-echo "========================================================================"
-echo "  Frontend:  http://localhost:${FRONTEND_PORT:-8090}"
-echo "  Backend:   http://localhost:${BACKEND_PORT:-8586}/api/health"
-if [ -n "${GENERATED_ADMIN_PASSWORD:-}" ]; then
-    ADMIN_PHONE_SET="$(grep -m1 '^ADMIN_PHONE=' "$BACKEND_ENV" | cut -d= -f2-)"
-    echo
-    echo "  Admin account created. Sign in at the frontend with:"
-    echo
-    echo "    Phone:    ${ADMIN_PHONE_SET}"
-    echo "    Password: ${GENERATED_ADMIN_PASSWORD}"
-    echo
-    echo "  SAVE THE PASSWORD NOW — it is only ever shown this once."
-    echo
-elif [ -n "${ADMIN_SETUP_SKIPPED:-}" ]; then
-    echo
-    echo "  NO ADMIN ACCOUNT WAS CREATED — no phone number was given, and"
-    echo "  sign-in is phone-only, so an account without one cannot log in."
-    echo "  To create it: set BOTH of these in backend/.env, then re-run"
-    echo "  'docker compose up -d --build':"
-    echo "    ADMIN_PHONE=+992901234567     (your real number)"
-    echo "    ADMIN_EMAIL=admin@localhost   (any value; just the lookup key)"
-    echo "    ADMIN_PASSWORD=...            (already generated, see the file)"
-    echo
+# ── 2. backend/.env — app secrets, generated once ─────────────────────────
+BACKEND_ENV="backend/.env"
+if [ ! -f "$BACKEND_ENV" ]; then
+    if [ ! -f "backend/.env.example" ]; then
+        echo "FATAL: backend/.env.example topilmadi, backend/.env yarata olmadim." >&2
+        exit 1
+    fi
+    log "backend/.env yaratilmoqda (backend/.env.example asosida, kalitlar avtomatik)..."
+    cp backend/.env.example "$BACKEND_ENV"
+
+    GEN_SECRET_KEY="$(rand_urlsafe 32)"
+    GEN_ADMIN_PASSWORD="$(rand_password 16)"
+
+    # db xizmati docker-compose.yml'da POSTGRES_DB=dastyor_db, POSTGRES_USER=postgres
+    # bilan ishga tushadi — shu bilan mos bo'lishi uchun (compose baribir
+    # DATABASE_URL'ni environment: bo'limida db:5432'ga qarab qayta yozadi,
+    # bu yerdagi qiymat asosan Docker'siz to'g'ridan-to'g'ri ishga tushirish
+    # uchun kerak).
+    sed -i \
+        -e "s#^DATABASE_URL=.*#DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@localhost:5432/dastyor_db#" \
+        -e "s#^DATABASE_URL_SYNC=.*#DATABASE_URL_SYNC=postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432/dastyor_db#" \
+        -e "s#^SECRET_KEY=.*#SECRET_KEY=${GEN_SECRET_KEY}#" \
+        -e "s#^ADMIN_PASSWORD=.*#ADMIN_PASSWORD=${GEN_ADMIN_PASSWORD}#" \
+        "$BACKEND_ENV"
+
+    log "SECRET_KEY va ADMIN_PASSWORD avtomatik yaratildi."
+    log "ADMIN_PASSWORD: ${GEN_ADMIN_PASSWORD}  (buni hozir saqlab qo'ying — boshqa joyda qayta ko'rsatilmaydi)"
+    echo ""
+    warn "backend/.env quyidagilarsiz to'liq ishlamaydi — qo'lda to'ldiring:"
+    warn "  AI_API_KEY          - AI generatsiya (Cerebras)"
+    warn "  ADMIN_EMAIL / ADMIN_PHONE - admin akkaunt"
+    warn "  SMTP_USER / SMTP_PASSWORD - email yuborish"
+    warn "  GOOGLE_CLIENT_ID     - Google orqali kirish"
+    warn "  ROBITA_* yoki TWILIO_* - SMS OTP"
+    warn "  CORS_ORIGINS         - haqiqiy domeningiz"
+    echo ""
+else
+    log "backend/.env allaqachon mavjud — tegilmadi (mavjud maxfiy kalitlar saqlanib qoladi)."
 fi
-echo "  Still needed before AI/SMS work — edit backend/.env, then re-run"
-echo "  'docker compose up -d --build':"
-echo "    AI_API_KEY (..5)       a Cerebras key, or generation fails"
-echo "    ROBITA_* or TWILIO_*   an SMS provider, or sign-up codes only"
-echo "                           print to 'docker compose logs backend'"
-echo "    CORS_ORIGINS           your real domain (only matters for the"
-echo "                           mobile app; the website proxies via /api)"
-echo "========================================================================"
+
+# ── 3. build + start ───────────────────────────────────────────────────────
+log "Docker image'lar qurilmoqda va konteynerlar ishga tushirilmoqda (db + backend + frontend)..."
+"${DC[@]}" up -d --build
+
+echo ""
+log "Tayyor."
+echo "   Holat:    ${DC[*]} ps"
+echo "   Loglar:   ${DC[*]} logs -f backend   (yoki frontend / db)"
+echo "   Frontend: http://localhost:${FRONTEND_PORT:-$DEFAULT_FRONTEND_PORT}"
+echo "   Backend:  http://localhost:${BACKEND_PORT:-$DEFAULT_BACKEND_PORT}/api/health"

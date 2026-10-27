@@ -1,0 +1,73 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Was ONLY declared in the debug/profile manifest overlays (the
+         stock `flutter create` template's default) — fine for `flutter
+         run`, but every RELEASE build silently had zero network access:
+         every API call failed immediately with no permission to even try,
+         surfacing to the teacher as a plain "can't connect to server".
+         Needed in `main` since the release build is the one real users
+         actually run. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Required on Android 13+ to actually show the "Majmua is ready"
+         notification (see CurriculumWatchService) — without this the
+         notification silently never appears, no crash/error either. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- QrScanScreen's camera-based QR scanner (mobile_scanner) — "log in
+         on computer" from Profile. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- usesCleartextTraffic was here and is deliberately gone. It existed
+         because the backend was reached over plain http:// on a dev
+         machine, and the comment that sat with it said it was safe to drop
+         once the backend was served over https. That is now true:
+         ApiConstants.baseUrl defaults to https://rahnamo.tj, where nginx
+         terminates TLS. Leaving the flag on would let a shipped app send
+         passwords and JWTs in the clear to ANY http:// host it was ever
+         pointed at, which is not a risk worth carrying for a convenience
+         only development needs — development gets it from
+         src/debug/AndroidManifest.xml instead, which applies to debug
+         builds only and never to the APK teachers install. -->
+    <application
+        android:label="dastyor"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

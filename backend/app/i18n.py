@@ -27,6 +27,8 @@ ERROR_MESSAGES = {
         "admin_locked": "Слишком много неудачных попыток входа. Аккаунт временно заблокирован.",
         "weak_password": "Пароль слишком простой. Нужно минимум 10 символов, заглавная и строчная буква, цифра.",
         "ai_busy": "ИИ сейчас перегружен — слишком много запросов одновременно. Подождите пару минут и попробуйте снова.",
+        "topic_gibberish": "Тема похожа на случайный набор символов. Напишите тему урока словами — например «Фотосинтез» или «Квадратные уравнения».",
+        "topic_not_real": "Не удалось распознать это как учебную тему. Проверьте написание или сформулируйте тему иначе.",
     },
     "en": {
         "invalid_current_password": "Invalid current password",
@@ -55,6 +57,8 @@ ERROR_MESSAGES = {
         "admin_locked": "Too many failed sign-in attempts. This account is temporarily locked.",
         "weak_password": "That password is too weak. It needs at least 10 characters, an upper- and a lower-case letter, and a digit.",
         "ai_busy": "The AI is overloaded right now — too many requests at once. Wait a couple of minutes and try again.",
+        "topic_gibberish": "That looks like random characters. Write the lesson topic in words — for example \"Photosynthesis\" or \"Quadratic equations\".",
+        "topic_not_real": "This could not be recognised as a teachable topic. Check the spelling or phrase it differently.",
     },
     "tg": {
         "invalid_current_password": "Пароли ҷорӣ нодуруст аст",
@@ -83,6 +87,8 @@ ERROR_MESSAGES = {
         "admin_locked": "Кӯшишҳои нодурусти зиёд. Ҳисоб муваққатан баста шуд.",
         "weak_password": "Парол хеле содда аст. Ҳадди ақал 10 аломат, ҳарфи калон ва хурд ва рақам лозим аст.",
         "ai_busy": "AI ҳоло аз ҳад зиёд банд аст — дар як вақт дархостҳои зиёд омадаанд. Якчанд дақиқа интизор шавед ва бори дигар кӯшиш кунед.",
+        "topic_gibberish": "Ин ба маҷмӯи тасодуфии аломатҳо монанд аст. Мавзӯи дарсро бо калимаҳо нависед — масалан «Фотосинтез» ё «Муодилаҳои квадратӣ».",
+        "topic_not_real": "Инро ҳамчун мавзӯи таълимӣ шинохтан нашуд. Навиштанро санҷед ё мавзӯъро ба таври дигар ифода кунед.",
     },
 }
 

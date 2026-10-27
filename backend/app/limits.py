@@ -213,6 +213,8 @@ async def current_balance(user_id: str) -> int:
 
 async def quote(user_id: str, count: int,
                 material_types: list[str] | None = None) -> dict:
+    if count < 0 or (material_types is not None and count != len(material_types)):
+        raise ValueError("count must match the number of material types")
     columns = ", ".join(FREE_SLOT_COLUMN.values())
     async with async_session() as db:
         row = (await db.execute(
@@ -220,19 +222,28 @@ async def quote(user_id: str, count: int,
             {"uid": user_id},
         )).first()
     if row is None:
-        balance, used = 0, {t: True for t in FREE_SLOT_COLUMN}
+        balance, used = 0, {t: get_settings().FREE_GENERATIONS_PER_TYPE
+                            for t in FREE_SLOT_COLUMN}
     else:
         balance = row[0]
-        used = {t: bool(v) for t, v in zip(FREE_SLOT_COLUMN, row[1:])}
+        used = {t: int(v) for t, v in zip(FREE_SLOT_COLUMN, row[1:])}
     if PILOT_FREE_FOR_ALL:
         return {"count": count, "free_count": count, "paid_count": 0,
-                "required_dirams": 0, "balance_dirams": balance, "affordable": True}
+                "required_dirams": 0, "balance_dirams": balance, "affordable": True,
+                "unit_price_dirams": GENERATION_PRICE_DIRAMS,
+                "items": [{"material_type": t, "was_free": True, "price_dirams": 0}
+                          for t in (material_types or [])]}
     free_count = 0
+    items = []
+    free_limit = get_settings().FREE_GENERATIONS_PER_TYPE
     if material_types:
-        for mtype in material_types[:count]:
-            if mtype in used and not used[mtype]:
-                used[mtype] = True
+        for mtype in material_types:
+            was_free = mtype in used and used[mtype] < free_limit
+            if was_free:
+                used[mtype] += 1
                 free_count += 1
+            items.append({"material_type": mtype, "was_free": was_free,
+                          "price_dirams": 0 if was_free else GENERATION_PRICE_DIRAMS})
     paid_count = count - free_count
     required = paid_count * GENERATION_PRICE_DIRAMS
     return {
@@ -242,4 +253,6 @@ async def quote(user_id: str, count: int,
         "required_dirams": required,
         "balance_dirams": balance,
         "affordable": required <= balance,
+        "unit_price_dirams": GENERATION_PRICE_DIRAMS,
+        "items": items,
     }

@@ -38,16 +38,33 @@ WORKDIR /app
 #       mathematics (DejaVu Serif's own italic ships in the -extra
 #       package, which is not installed). Variables are set in italic by
 #       convention, so this is most of the glyphs in any formula.
+# tesseract-ocr + the rus/eng language data read payment receipts
+# (app/telegram/ocr.py). ~45 MB installed and it runs per upload for a
+# second or two, so unlike the LibreOffice case above this does not
+# threaten the 2 GB host — a receipt screenshot is a few hundred KB, not
+# a headless office suite.
+#
+# tesseract-ocr-rus (not -tgk): Debian ships no Tajik traineddata. Tajik
+# receipts are Cyrillic, and the fields a reviewer reconciles — amount,
+# reference, date — are digits, so the missing ғ қ ҳ ҷ ӣ ӯ cost accuracy
+# only in names. See ocr.TESSERACT_LANGS.
+#
+# If these packages are ever dropped, the bot keeps working: OCR reports
+# engine="unavailable" with an explicit warning and the admin reviews the
+# attached image by eye. Degrading, not breaking, is deliberate.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc libpq-dev curl \
         fonts-dejavu-core fonts-liberation \
+        tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY alembic.ini .
+COPY alembic ./alembic
 
 # Avatars/uploads and rembg's downloaded model (see app/image_builder.py)
 # live here — mount a named volume over this path in docker-compose.yml so
@@ -58,6 +75,16 @@ EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8001/api/health || exit 1
+
+# Runs app/db_bootstrap.py (stamp-or-upgrade, see that module's own
+# docstring) before whatever CMD this image is given — the backend's own
+# uvicorn command below, or the telegram-bot service's `python -m
+# app.telegram.bot` override in docker-compose.yml. Both share this same
+# database, and this has to happen before either one touches it, not as
+# a step the user remembers to run on the server — there is no such step.
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
 
 # Single worker, though no longer for the reason this comment used to
 # give: MAX_MATERIALS_PER_DAY stopped being enforced (see

@@ -1,11 +1,33 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+from pydantic import ValidationError
 
 
 class Settings(BaseSettings):
+    def __repr_args__(self):
+        # Assertion diagnostics and uncaught exceptions must not render
+        # database URLs, credentials or API keys from this model.
+        return (("configuration", "<redacted>"),)
+
     DATABASE_URL: str
     DATABASE_URL_SYNC: str
     SECRET_KEY: str
+
+    # Key for pgcrypto's pgp_sym_encrypt/pgp_sym_decrypt on
+    # payment_cards.card_number_encrypted (see models.py's PaymentCard
+    # and routers/admin_crm.py's card endpoints). Empty by default like
+    # TELEGRAM_BOT_TOKEN - a server that hasn't set this yet must not
+    # crash on startup, so the cards endpoints check for this explicitly
+    # and answer 503 "not configured" rather than encrypting with no key
+    # at all or silently falling back to something weaker. Set it once,
+    # in .env, and never log it - same handling as SECRET_KEY.
+    CARD_ENCRYPTION_KEY: str = ""
+    DASTYOR_BOT_API_TOKEN: str = ""
+    DASTYOR_BOT_ROOT_ADMIN_ID: int = 0
+    DASTYOR_STANDALONE_BOT_USERNAME: str = ""
+    DASTYOR_STANDALONE_TELEGRAM_TOKEN: str = ""
+
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -68,7 +90,7 @@ class Settings(BaseSettings):
     MAX_GENERATIONS_PER_HOUR: int = 40
     MAX_AI_EDITS_PER_HOUR: int = 60
 
-    FREE_GENERATIONS_PER_TYPE: int = 10
+    FREE_GENERATIONS_PER_TYPE: int = 1
 
     MAX_CONCURRENT_AI_CALLS: int = 8
 
@@ -101,9 +123,18 @@ class Settings(BaseSettings):
     APP_APK_URL: str = "/dastyor.apk"
     APP_UPDATE_NOTES: str = ""
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # Bot settings live in the same .env but are read by their own config;
+    # the web API must ignore those extra keys instead of failing startup.
+    model_config = {"env_file": (str(Path(__file__).resolve().parent.parent / ".env"),
+                                 str(Path(__file__).resolve().parent.parent / ".env.telegram")),
+                    "env_file_encoding": "utf-8", "extra": "ignore",
+                    "hide_input_in_errors": True}
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as exc:
+        fields = sorted({str(e["loc"][0]) for e in exc.errors(include_input=False)})
+        raise RuntimeError("Invalid backend configuration: " + ", ".join(fields)) from None

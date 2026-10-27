@@ -1,0 +1,14 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Flutter's template ignores the keystore here — this repo commits it
+# instead, deliberately. It is private, and losing dastyor-release.jks
+# means never being able to ship an update to the published app again
+# (Play Store rejects a build signed with a different key).
+# See https://flutter.dev/to/reference-keystore

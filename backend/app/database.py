@@ -48,6 +48,20 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # payment_cards.card_number_encrypted needs pgp_sym_encrypt/
+        # pgp_sym_decrypt (routers/admin_crm.py). This is also the only
+        # statement in alembic/versions/..._enable_pgcrypto's upgrade() -
+        # duplicated here, not moved here, because that migration's
+        # body never runs on a brand-new database: app.db_bootstrap
+        # stamps a fresh database straight to head (every table/column
+        # alembic's other migrations would add already exists, freshly
+        # made by create_all() above, so there is nothing safe left for
+        # those migrations to actually run) and create_all() has no
+        # equivalent of "CREATE EXTENSION" to fall back on. Idempotent
+        # either way, so having it in both places costs nothing.
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)"
         ))
@@ -186,3 +200,158 @@ async def init_db():
             "CREATE INDEX IF NOT EXISTS ix_balance_tx_user_created "
             "ON balance_transactions (user_id, created_at DESC)"
         ))
+
+        # Telegram top-up columns on the existing ledger.
+        for _col, _type in (
+            ("actor_telegram_id", "BIGINT"),
+            ("idempotency_key", "VARCHAR(64)"),
+            ("public_code", "VARCHAR(20)"),
+        ):
+            await conn.execute(text(
+                f"ALTER TABLE balance_transactions "
+                f"ADD COLUMN IF NOT EXISTS {_col} {_type}"
+            ))
+
+        # The guarantee behind "pressing confirm twice credits once".
+        # Partial, so the rows that predate this feature — and every
+        # generation charge, which carries no key — do not all collide
+        # on NULL.
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_balance_tx_idempotency "
+            "ON balance_transactions (idempotency_key) "
+            "WHERE idempotency_key IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_balance_tx_public_code "
+            "ON balance_transactions (public_code) "
+            "WHERE public_code IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_balance_tx_admin_created "
+            "ON balance_transactions (actor_telegram_id, created_at DESC) "
+            "WHERE actor_telegram_id IS NOT NULL"
+        ))
+
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_payment_requests_user_created "
+            "ON payment_requests (user_id, created_at DESC)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_payment_requests_status_created "
+            "ON payment_requests (status, created_at DESC)"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_requests_approved_reference "
+            "ON payment_requests (reference_normalized) "
+            "WHERE status = 'approved' AND reference_normalized IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_payment_audit_request_created "
+            "ON payment_audit_log (payment_request_id, created_at)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_telegram_link_tokens_user_created "
+            "ON telegram_link_tokens (user_id, created_at DESC)"
+        ))
+
+        # telegram_processed_updates was first created with update_id as
+        # the sole primary key. That is wrong as soon as a second bot
+        # exists: update ids are per-bot, so the admin bot's update 7
+        # would be rejected as a duplicate of the user bot's update 7 and
+        # the approval behind it would be silently dropped. Add the `bot`
+        # column and widen the key.
+        #
+        # Rows already present predate the admin bot, so they are all
+        # from the user bot and backfill to 'user'.
+        # telegram_admins was first created keyed on telegram_user_id,
+        # which made it impossible to grant admin to a Dastyor account
+        # that had not linked Telegram yet — there was no key to store.
+        # Re-key on a surrogate id so a grant can sit PENDING with a NULL
+        # telegram_user_id and activate on link.
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'telegram_admins'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'telegram_admins' AND column_name = 'id'
+                ) THEN
+                    ALTER TABLE telegram_admins
+                        DROP CONSTRAINT IF EXISTS telegram_admins_pkey;
+                    ALTER TABLE telegram_admins
+                        ADD COLUMN id VARCHAR(36);
+                    UPDATE telegram_admins
+                        SET id = gen_random_uuid()::text WHERE id IS NULL;
+                    ALTER TABLE telegram_admins ALTER COLUMN id SET NOT NULL;
+                    ALTER TABLE telegram_admins
+                        ADD CONSTRAINT telegram_admins_pkey PRIMARY KEY (id);
+                    ALTER TABLE telegram_admins
+                        ALTER COLUMN telegram_user_id DROP NOT NULL;
+                END IF;
+            END $$;
+        """))
+        await conn.execute(text(
+            "ALTER TABLE telegram_admins "
+            "ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ"
+        ))
+
+        # Lets "/addadmin @username" resolve from our own records; the
+        # Bot API cannot look a user up by username.
+        await conn.execute(text(
+            "ALTER TABLE telegram_accounts "
+            "ADD COLUMN IF NOT EXISTS username VARCHAR(64)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_telegram_accounts_username "
+            "ON telegram_accounts (username) WHERE username IS NOT NULL"
+        ))
+
+        # One active grant per Telegram id, and one per Dastyor account.
+        # Partial so revoked rows stay as history and a pending grant
+        # (NULL telegram id) does not collide with another pending one.
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_telegram_admins_active_tg "
+            "ON telegram_admins (telegram_user_id) "
+            "WHERE revoked = FALSE AND telegram_user_id IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_telegram_admins_active_user "
+            "ON telegram_admins (user_id) "
+            "WHERE revoked = FALSE AND user_id IS NOT NULL"
+        ))
+
+        await conn.execute(text(
+            "ALTER TABLE telegram_processed_updates "
+            "ADD COLUMN IF NOT EXISTS bot VARCHAR(20)"
+        ))
+        await conn.execute(text(
+            "UPDATE telegram_processed_updates SET bot = 'user' WHERE bot IS NULL"
+        ))
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'telegram_processed_updates'
+                      AND column_name = 'bot'
+                      AND is_nullable = 'YES'
+                ) THEN
+                    ALTER TABLE telegram_processed_updates
+                        ALTER COLUMN bot SET NOT NULL;
+                END IF;
+                IF EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'telegram_processed_updates_pkey'
+                      AND array_length(conkey, 1) = 1
+                ) THEN
+                    ALTER TABLE telegram_processed_updates
+                        DROP CONSTRAINT telegram_processed_updates_pkey;
+                    ALTER TABLE telegram_processed_updates
+                        ADD CONSTRAINT telegram_processed_updates_pkey
+                        PRIMARY KEY (bot, update_id);
+                END IF;
+            END $$;
+        """))

@@ -20,6 +20,8 @@ from app.schemas import (
     GenerateRequest, GenerateResponse,
     GenerateKonspektStreamRequest,
     GenerateAllRequest,
+    BookGenerateRequest,
+    GenerationQuoteRequest, GenerationQuoteOut,
     RegenerateItemRequest,
     RetryLessonImageRequest,
     RegenerateGameRequest,
@@ -35,6 +37,7 @@ from app.ai_service import (
 )
 from app.diagnostics import memory_report
 from app.document_extract import extract_source_text
+from app import book_sources
 from app.docx_builder import (
     build_konspekt_docx, build_lecture_docx, build_test_docx, build_presentation_docx,
     build_practical_docx,
@@ -47,6 +50,7 @@ from app import limits, pptx_pdf
 from app.security import enforce_user_quota
 from app.logger import get_logger
 from app.i18n import get_message
+from app.topic_guard import check_topic
 from app.config import get_settings
 
 settings = get_settings()
@@ -65,6 +69,7 @@ _MATERIAL_MODELS = {
 
 GENERATION_PRICE_DIRAMS = limits.GENERATION_PRICE_DIRAMS
 _PILOT_FREE_FOR_ALL = limits.PILOT_FREE_FOR_ALL
+_BOOK_PARSE_SEM = asyncio.Semaphore(2)
 
 _FREE_USED_ATTR = {
     "konspekt": "free_konspekt_used",
@@ -1021,6 +1026,22 @@ _CONTENT_FIELD = {
     "igra": "game_json",
 }
 
+async def _guard_topic(topic: str, subject: str, grade: str, language: str) -> None:
+    """Reject nonsense topics before anything is charged.
+
+    The generator has no opinion about whether a topic is real - it writes a
+    full document for random characters just as readily as for photosynthesis,
+    and the teacher pays a limit for invented facts. This runs ahead of
+    enforce_generation_quota/limits.reserve so a rejected topic costs nothing.
+    """
+    verdict = await check_topic(topic, subject, grade)
+    if verdict.ok:
+        return
+    key = "topic_gibberish" if verdict.reason in ("gibberish", "too_short") else "topic_not_real"
+    raise HTTPException(status_code=400, detail=get_message(key, language))
+
+
+
 @router.post("/generate")
 async def generate(
     data: GenerateRequest,
@@ -1031,6 +1052,7 @@ async def generate(
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
     require_game_access(user, data.material_type)
+    await _guard_topic(data.topic, data.subject, data.grade, user.language)
     async with released(db):
         await enforce_generation_quota(user)
         charge = await limits.reserve(user.id, [data.material_type], language=user.language)
@@ -1131,6 +1153,7 @@ async def generate_konspekt_stream_endpoint(
 ):
     source_text = data.source_text if data.generation_mode == "source" else None
 
+    await _guard_topic(data.topic, data.subject, data.grade, user.language)
     await enforce_generation_quota(user)
     charge = await limits.reserve(user.id, ["konspekt"], language=user.language)
 
@@ -1205,6 +1228,7 @@ async def generate_konspekt_stream_endpoint(
 async def regenerate_item_endpoint(
     data: RegenerateItemRequest,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     if data.material_type not in ("test", "prezentatsiya", "konspekt", "lektsiya", "amaliy"):
         raise HTTPException(status_code=400, detail="Regenerating a single item is only supported for tests, presentations, konspekts, lectures, and practical tasks")
@@ -1244,6 +1268,7 @@ async def regenerate_item_endpoint(
 async def chat_edit_endpoint(
     data: ChatEditRequest,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
@@ -1274,24 +1299,114 @@ async def chat_edit_endpoint(
 _GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy"]
 
 
+def _resolve_generate_all_types(types: list[str] | None) -> list[str]:
+    if types is None:
+        return list(_GENERATE_ALL_TYPES)
+    if not types or len(types) != len(set(types)) or any(
+        t not in _GENERATE_ALL_TYPES for t in types
+    ):
+        raise HTTPException(status_code=400, detail="Select distinct, supported material types")
+    selected = set(types)
+    return [t for t in _GENERATE_ALL_TYPES if t in selected]
+
+
+@router.post("/quote", response_model=GenerationQuoteOut)
+async def quote_generation(
+    data: GenerationQuoteRequest,
+    user: User = Depends(get_current_user),
+):
+    types = _resolve_generate_all_types(data.types)
+    return await limits.quote(user.id, len(types), types)
+
+
+def _book_error(exc: book_sources.BookError) -> HTTPException:
+    code = str(exc)
+    status = 404 if code == "not_found" else 413 if code == "file_too_large" else 422
+    return HTTPException(status_code=status, detail=code)
+
+
+@router.post("/book-sources")
+async def upload_book_source(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    try:
+        raw = await file.read(book_sources.MAX_BYTES + 1)
+        if len(raw) > book_sources.MAX_BYTES:
+            raise book_sources.BookError("file_too_large")
+        try:
+            await asyncio.wait_for(_BOOK_PARSE_SEM.acquire(), timeout=5)
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(status_code=503, detail="extraction_busy") from exc
+        parse_task = asyncio.create_task(asyncio.to_thread(
+            book_sources.extract_pdf, raw, file.filename or "", file.content_type,
+        ))
+        try:
+            extracted = await asyncio.wait_for(asyncio.shield(parse_task), timeout=60)
+        finally:
+            if parse_task.done():
+                _BOOK_PARSE_SEM.release()
+            else:
+                # Cancelling a thread wait does not stop PDF parsing. Keep the
+                # concurrency slot occupied until that parser really exits.
+                def release_when_done(task: asyncio.Task) -> None:
+                    try:
+                        task.exception()
+                    except BaseException:
+                        pass
+                    _BOOK_PARSE_SEM.release()
+                parse_task.add_done_callback(release_when_done)
+        return book_sources.save(user.id, extracted)
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(status_code=422, detail="extraction_timeout") from exc
+    finally:
+        await file.close()
+
+
+@router.get("/book-sources/{source_id}")
+async def get_book_source(
+    source_id: str,
+    user: User = Depends(get_current_user),
+):
+    try:
+        return book_sources.public_metadata(book_sources.load(user.id, source_id))
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+
+
+@router.post("/generate-from-book")
+async def generate_from_book(
+    data: BookGenerateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        record = book_sources.load(user.id, data.source_id)
+        source = book_sources.select_context(
+            record, data.scope, data.topic.strip() or None,
+            data.chapter_index, data.page_start, data.page_end,
+        )
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    request_data = data.model_copy(update={"topic": data.topic.strip() or record["title"]})
+    return await _generate_all_impl(request_data, user, db, source_context=source)
+
+
 async def _generate_all_impl(
     data: GenerateAllRequest,
     user: User,
     db: AsyncSession,
+    source_context: dict | None = None,
 ) -> dict:
-    if data.types:
-        types_to_generate = [t for t in _GENERATE_ALL_TYPES if t in set(data.types)]
-        if not types_to_generate:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No known material types requested. Pick from: {', '.join(_GENERATE_ALL_TYPES)}",
-            )
-    else:
-        types_to_generate = list(_GENERATE_ALL_TYPES)
+    types_to_generate = _resolve_generate_all_types(data.types)
     skipped: list[str] = []
 
+    await _guard_topic(data.topic, data.subject, data.grade, user.language)
     await enforce_generation_quota(user)
     charge = await limits.reserve(user.id, types_to_generate, language=user.language)
+    refunded_types: set[str] = set()
     try:
         logger.info(
             f"generate-all: topic={data.topic!r} subject={data.subject!r} "
@@ -1310,6 +1425,8 @@ async def _generate_all_impl(
                 question_count=data.question_count or 10,
                 test_type=data.test_type,
                 types=types_to_generate,
+                source_text=source_context["text"] if source_context else None,
+                strict_source=bool(source_context),
             )
         logger.info(f"generate-all memory after: {memory_report()}")
         if result.get("errors"):
@@ -1318,6 +1435,12 @@ async def _generate_all_impl(
             f"{t}={bool(result.get(t))}" for t in types_to_generate))
 
         saved_ids = {}
+
+        if source_context:
+            source_metadata = {key: value for key, value in source_context.items() if key != "text"}
+            for material_type in types_to_generate:
+                if result.get(material_type):
+                    result[material_type]["source"] = source_metadata
 
         if result.get("konspekt"):
             result["konspekt"]["title"] = data.topic
@@ -1387,8 +1510,13 @@ async def _generate_all_impl(
         failed = [t for t in types_to_generate if t not in saved_ids]
         if failed:
             await limits.refund(charge, failed, reason="generate-all: type produced nothing")
+            refunded_types.update(failed)
 
         free_types = {i.material_type for i in charge.items if i.was_free}
+        balance_somoni = (await limits.current_balance(user.id)) / 100
+        # Commit material rows before reporting success. Billing reservations use
+        # a separate transaction; a failed material commit must release them.
+        await db.commit()
 
         return {
             "status": "ok",
@@ -1396,14 +1524,17 @@ async def _generate_all_impl(
             "content": result,
             "skipped": skipped or None,
             "was_free": {t: (t in free_types) for t in saved_ids},
-            "balance_somoni": (await limits.current_balance(user.id)) / 100,
+            "balance_somoni": balance_somoni,
+            "source": source_metadata if source_context else None,
         }
 
     except asyncio.CancelledError:
-        await limits.refund(charge, reason="generate-all cancelled")
+        await limits.refund(charge, [t for t in types_to_generate if t not in refunded_types],
+                            reason="generate-all cancelled")
         raise
     except Exception as e:
-        await limits.refund(charge, reason=f"generate-all failed: {type(e).__name__}")
+        await limits.refund(charge, [t for t in types_to_generate if t not in refunded_types],
+                            reason=f"generate-all failed: {type(e).__name__}")
         if isinstance(e, HTTPException):
             raise
         logger.error(f"Generate-all materials error for user {user.id}: {str(e)}", exc_info=True)
@@ -1434,9 +1565,32 @@ async def generate_all_stream(
     request: Request,
     user: User = Depends(get_current_user),
 ):
+    return _stream_generate_all(data, request, user)
+
+
+@router.post("/generate-from-book-stream")
+async def generate_from_book_stream(
+    data: BookGenerateRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    try:
+        record = book_sources.load(user.id, data.source_id)
+        source = book_sources.select_context(
+            record, data.scope, data.topic.strip() or None,
+            data.chapter_index, data.page_start, data.page_end,
+        )
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    request_data = data.model_copy(update={"topic": data.topic.strip() or record["title"]})
+    return _stream_generate_all(request_data, request, user, source)
+
+
+def _stream_generate_all(data: GenerateAllRequest, request: Request, user: User,
+                         source_context: dict | None = None):
     async def event_stream():
         async with async_session() as db:
-            task = asyncio.create_task(_generate_all_impl(data, user, db))
+            task = asyncio.create_task(_generate_all_impl(data, user, db, source_context))
             try:
                 yield _keepalive_frame()
                 while True:
@@ -1459,7 +1613,7 @@ async def generate_all_stream(
 
             except HTTPException as e:
                 await db.rollback()
-                yield f"data: {json.dumps({'type': 'error', 'message': e.detail}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'message': e.detail, 'status': e.status_code}, ensure_ascii=False)}\n\n"
             except Exception as e:
                 await db.rollback()
                 logger.error(
@@ -1858,6 +2012,7 @@ async def generate_lesson_material(
     if data.material_type not in _LESSON_TYPES:
         raise HTTPException(status_code=400, detail=f"Unknown lesson material type: {data.material_type}")
     require_game_access(user, data.material_type)
+    await _guard_topic(data.topic, data.subject, data.grade, user.language)
     await enforce_generation_quota(user)
     charge = await limits.reserve(user.id, [data.material_type], language=user.language)
     try:

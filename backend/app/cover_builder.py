@@ -210,23 +210,26 @@ def _tint(color: tuple, amount: float = 0.9) -> tuple:
     return (int(r + (255 - r) * amount), int(g + (255 - g) * amount), int(b + (255 - b) * amount))
 
 
-def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, doc_type_label: str | None = None) -> bytes:
+def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, doc_type_label: str | None = None, template_id: str = "zamonaviy") -> bytes:
     W, H = _W, _H
     L = _LABELS.get(language, _LABELS["Русский"])
+    from app.subject_theme import resolve_accent_hex
+    accent_hex = resolve_accent_hex({"subject": subject, "template": template_id})
+    accent = tuple(int(accent_hex[i:i + 2], 16) for i in (1, 3, 5))
     img = Image.new("RGB", (W, H), (255, 255, 255))
     draw = ImageDraw.Draw(img)
 
-    draw.ellipse([W - 520, -260, W + 260, 480], fill=_tint(_MODERN_ACCENT, 0.90))
-    draw.ellipse([-320, H - 640, 340, H + 260], fill=_tint(_MODERN_ACCENT, 0.94))
+    draw.ellipse([W - 520, -260, W + 260, 480], fill=_tint(accent, 0.90))
+    draw.ellipse([-320, H - 640, 340, H + 260], fill=_tint(accent, 0.94))
 
     label_font = _font(_FONT_BOLD, 20)
-    draw.rectangle([100, 118, 160, 122], fill=_MODERN_ACCENT)
+    draw.rectangle([100, 118, 160, 122], fill=accent)
     label_text = doc_type_label or {"Русский": "КОНСПЕКТ", "Таджикский": "КОНСПЕКТ", "English": "LESSON NOTES"}.get(language, "КОНСПЕКТ")
-    draw.text((180, 104), label_text, font=label_font, fill=_MODERN_ACCENT)
+    draw.text((180, 104), label_text, font=label_font, fill=accent)
 
     badge_w, badge_h = 230, 150
     badge_x0, badge_y0 = W - badge_w - 100, 80
-    draw.rounded_rectangle([badge_x0, badge_y0, badge_x0 + badge_w, badge_y0 + badge_h], radius=18, fill=_MODERN_ACCENT)
+    draw.rounded_rectangle([badge_x0, badge_y0, badge_x0 + badge_w, badge_y0 + badge_h], radius=18, fill=accent)
     if grade:
         grade_font = _font(_FONT_BOLD, 44)
         gtext = f"{_grade_number(grade)} {L['class'].upper()}"
@@ -240,7 +243,7 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
     draw.text((badge_x0 + (badge_w - yw) / 2 - ybbox[0], badge_y0 + 92), year_text, font=year_font, fill=(255, 255, 255))
 
     subj_font = _font(_FONT_BOLD, 26)
-    draw.text((100, 340), subject.upper(), font=subj_font, fill=_MODERN_ACCENT)
+    draw.text((100, 340), subject.upper(), font=subj_font, fill=accent)
 
     title_font = _font(_FONT_BOLD, 62)
     lines = _wrap_text(draw, title, title_font, W - 260)[:5]
@@ -249,7 +252,7 @@ def _build_cover_zamonaviy(subject: str, title: str, grade: str, language: str, 
         draw.text((100, ty), line, font=title_font, fill=_MODERN_INK)
         ty += 78
     ty += 16
-    draw.rectangle([100, ty, 190, ty + 8], fill=_MODERN_ACCENT)
+    draw.rectangle([100, ty, 190, ty + 8], fill=accent)
 
     entry = _SUBJECT_ILLUSTRATIONS.get(subject)
     if entry and os.path.exists(entry[1]):
@@ -730,13 +733,39 @@ _COVER_BUILDERS = {
     "playful": _build_cover_playful,
 }
 
+_COVER_TYPE_LABELS = {
+    "LECTURE": {"Русский": "ЛЕКЦИЯ", "Таджикский": "ЛЕКСИЯ", "English": "LECTURE"},
+    "TEST": {"Русский": "ТЕСТ", "Таджикский": "САНҶИШ", "English": "TEST"},
+    "WORKSHEET": {"Русский": "ПРАКТИЧЕСКАЯ РАБОТА", "Таджикский": "КОРИ АМАЛӢ", "English": "WORKSHEET"},
+    "PRESENTATION": {"Русский": "ПРЕЗЕНТАЦИЯ", "Таджикский": "ПРЕЗЕНТАТСИЯ", "English": "PRESENTATION"},
+}
+
 
 def build_cover_image(
     subject: str, title: str, grade: str, language: str = "Русский",
     image_path: str | None = None, show_subject_icon: bool = False,
     template_id: str | None = None, doc_type_label: str | None = None,
 ) -> bytes:
-    builder = _COVER_BUILDERS.get(template_id, _build_cover_klassik)
+    label_key = str(doc_type_label or "").strip().upper()
+    localized_label = _COVER_TYPE_LABELS.get(label_key, {}).get(language, doc_type_label)
+    resolved_template_id = template_id
+    if template_id and template_id not in _COVER_BUILDERS:
+        try:
+            from app.konspekt_templates import get_template
+            structure = get_template(template_id).structure or template_id
+            resolved_template_id = {
+                "akademik": "rasmiy",
+                "daftar": "playful",
+                "spravochnik": "klassik",
+                "konspekt_lite": "minimal",
+                "praktikum": "nakscha",
+                "tahlil": "zamonaviy",
+                "blanka": "nakscha",
+            }.get(structure, structure)
+        except Exception:
+            resolved_template_id = None
+    builder = _COVER_BUILDERS.get(resolved_template_id, _build_cover_klassik)
     if builder is _build_cover_zamonaviy:
-        return builder(subject, title, grade, language, doc_type_label=doc_type_label)
+        return builder(subject, title, grade, language, doc_type_label=localized_label,
+                       template_id=template_id or "zamonaviy")
     return builder(subject, title, grade, language)
