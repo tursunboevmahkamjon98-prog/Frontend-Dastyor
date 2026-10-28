@@ -50,10 +50,10 @@ services:
       - "${BACKEND_PORT:-8586}:8001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
-      interval: 30s
+      interval: 20s
       timeout: 5s
-      start_period: 15s
-      retries: 3
+      start_period: 120s
+      retries: 5
 
   frontend:
     build:
@@ -128,7 +128,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
     depends_on:
-      db:
+      # The API runs the database bootstrap and migrations first. The bot
+      # shares that database and must not run the same bootstrap concurrently.
+      backend:
         condition: service_healthy
     # No `ports:`. The bot only makes outbound calls to
     # api.telegram.org; nothing needs to reach it, and publishing a port
