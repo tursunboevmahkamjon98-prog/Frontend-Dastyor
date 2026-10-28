@@ -29,3 +29,6 @@ pypdf==5.1.0  # pure-Python PDF text extraction for konspekt "book mode" source 
 Pillow==12.3.0  # transitive via python-pptx/python-docx already, pinned explicitly since app/map_builder.py imports it directly
 rembg==2.0.78  # local ONNX background removal for real_image_query "cutout" style (app/image_builder.py) — first run downloads the ~176MB u2net model
 onnxruntime==1.28.0  # rembg's inference backend — NOT pulled in automatically by plain "pip install rembg", must be installed explicitly or rembg raises SystemExit at import time
+
+pypdfium2==5.14.0
+pytesseract==0.3.13

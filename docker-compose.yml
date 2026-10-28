@@ -86,6 +86,22 @@ services:
       start_period: 15s
       retries: 3
 
+  telegram-bot:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
+      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
+    command: ["python", "-m", "app.telegram.bot"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+
   frontend:
     build:
       context: .

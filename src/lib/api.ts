@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
@@ -279,6 +279,11 @@ export interface GenerateResult {
   content: Record<string, unknown>;
 }
 
+export interface BookSourceReference {
+  document_title: string; scope: "all" | "chapter" | "pages"; page_start: number; page_end: number;
+  used_pages: number[]; chapter: string | null; selection_is_excerpt: boolean; unreadable_pages: number[];
+}
+
 export interface GenerateAllResult {
   status: string;
   
@@ -295,6 +300,7 @@ export interface GenerateAllResult {
   
   
   skipped?: MaterialType[] | null;
+  source?: BookSourceReference | null;
 }
 
 const LIST_PATH: Record<MaterialType, string> = {
@@ -653,7 +659,8 @@ export interface GenerateAllBody {
 
 export async function streamGenerateAll(
   body: GenerateAllBody,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  path = "/materials/generate-all-stream",
 ): Promise<GenerateAllResult> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -661,7 +668,7 @@ export async function streamGenerateAll(
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/materials/generate-all-stream`, {
+    response = await fetch(`${API_URL}${path}`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
@@ -1038,4 +1045,32 @@ export const adminApi = {
 
 export const billingApi = {
   balance: () => request<{ balance_somoni: number }>("/billing/balance"),
+  payInstructions: () => request<{ text: string }>("/billing/pay-instructions"),
+  topupHistory: () => request<BillingTopupRequest[]>("/billing/topup-requests/mine"),
+  submitTopup: async (body: { amount: number; bank: string; wallet: string; receipt: File }) => {
+    const token = getToken();
+    const form = new FormData();
+    form.set("amount_somoni", String(body.amount));
+    form.set("bank_name", body.bank);
+    form.set("sender_wallet", body.wallet);
+    form.set("receipt", body.receipt);
+    const response = await fetch(`${API_URL}/billing/topup-requests`, {
+      method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new ApiError(typeof data.detail === "string" ? data.detail : "Top-up request failed", response.status);
+    return data as BillingTopupRequest;
+  },
 };
+
+export interface BillingTopupRequest {
+  id: string;
+  requested_somoni: number;
+  note: string | null;
+  receipt_url: string | null;
+  status: string;
+  credited_somoni: number | null;
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}

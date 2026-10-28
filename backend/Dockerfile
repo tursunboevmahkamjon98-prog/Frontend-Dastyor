@@ -41,7 +41,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc libpq-dev curl \
-        fonts-dejavu-core fonts-liberation \
+        fonts-dejavu-core fonts-liberation tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
