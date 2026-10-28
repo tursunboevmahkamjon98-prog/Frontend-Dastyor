@@ -100,9 +100,7 @@ class Paragraph(_RLParagraph):
             super().__init__(_xml_escape(_strip_reportlab_markup(original_text)), style, *args, **kwargs)
 
 from app.logger import get_logger
-from app.subject_theme import (get_subject_accent_hex, get_subject_accent_rgb,
-                               get_subject_illustration_path, resolve_accent_hex,
-                               resolve_accent_rgb)
+from app.subject_theme import get_subject_accent_hex, get_subject_accent_rgb, get_subject_illustration_path
 from app import slide_decor, pptx_shapes, slide_layouts, slide_characters
 from app.konspekt_templates import get_template
 
@@ -1301,7 +1299,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
 
     theme = resolve_deck_theme(content)
     _accent_rgb = (_hex_tuple(theme["accent"]) if theme.get("accent")
-                   else resolve_accent_rgb(content))
+                   else get_subject_accent_rgb(content.get("subject")))
     _ACCENT, _ACCENT_DARK, _ACCENT_SOFT = _pptx_accent_shades(_accent_rgb)
     _SUPPORT = _hex_rgb(theme["support"]) if theme.get("support") else _ACCENT_SOFT
     _DECOR = str(theme.get("decor") or "none")
@@ -2789,7 +2787,7 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский', doc_type
         tag_line += f"  •  {_format_grade(grade, L['grade_suffix'])}"
 
     _tmpl = get_template(content.get("template") or "zamonaviy")
-    accent_hex = _tmpl.accent or get_subject_accent_hex(subject)
+    accent_hex = get_subject_accent_hex(subject)
 
     if _tmpl.plan_layout:
         body = _pdf_plan_body(content, L)
@@ -3601,10 +3599,7 @@ def _pdf_plan_body(content: dict, L: dict) -> list:
 
 def _add_konspekt_body_pdf(content: dict, L: dict, academic: bool = False,
                            numbered: bool = True) -> list:
-    # The body is most of the page, and it was reading the subject colour
-    # directly - so a template carrying its own palette changed the header and
-    # nothing else.
-    ACCENT = resolve_accent_hex(content)
+    ACCENT = get_subject_accent_hex(content.get("subject"))
     if content.get("group_work"):
         content = {
             **content,
@@ -4002,7 +3997,7 @@ def build_test_pdf(content: dict, include_key: bool = True,
     language = str(content.get("language") or "Русский")
     ui = _test_ui(language)
     questions = content.get("questions", [])
-    accent = resolve_accent_hex(content)
+    accent = get_subject_accent_hex(subject)
 
     story.extend(_pdf_lecture_masthead(
         title, desc, subject, grade, language,
@@ -4127,24 +4122,7 @@ def build_test_pdf(content: dict, include_key: bool = True,
         ]))
         story.append(table)
 
-    cover_png = None
-    try:
-        from app.cover_builder import build_cover_image
-        cover_png = build_cover_image(subject, title, grade, language,
-                                     template_id=content.get('template') or 'zamonaviy',
-                                     doc_type_label='TEST')
-    except Exception as e:
-        logger.warning(f"Test cover generation failed for '{title[:50]}': {e}")
-    if cover_png:
-        from reportlab.platypus import PageBreak
-        story.insert(0, PageBreak())
-
-    def _draw_test_cover(canvas_obj, doc_obj):
-        if cover_png:
-            canvas_obj.drawImage(ImageReader(io.BytesIO(cover_png)), 0, 0,
-                                 width=A4[0], height=A4[1])
-
-    doc.build(story, onFirstPage=_draw_test_cover)
+    doc.build(story)
     buf.seek(0)
     return buf
 
@@ -4176,7 +4154,7 @@ def build_practical_pdf(content: dict) -> io.BytesIO:
     language = str(content.get("language") or "Русский")
     ui = _test_ui(language)
     pui = _PRACTICAL_UI.get(language, _PRACTICAL_UI['Русский'])
-    accent = resolve_accent_hex(content)
+    accent = get_subject_accent_hex(subject)
 
     story.extend(_pdf_lecture_masthead(
         title, desc, subject, grade, language,
@@ -4246,24 +4224,7 @@ def build_practical_pdf(content: dict) -> io.BytesIO:
             story.append(KeepTogether(body))
             story.append(Spacer(1, 10))
 
-    cover_png = None
-    try:
-        from app.cover_builder import build_cover_image
-        cover_png = build_cover_image(subject, title, grade, language,
-                                     template_id=content.get('template') or 'zamonaviy',
-                                     doc_type_label='WORKSHEET')
-    except Exception as e:
-        logger.warning(f"Practical cover generation failed for '{title[:50]}': {e}")
-    if cover_png:
-        from reportlab.platypus import PageBreak
-        story.insert(0, PageBreak())
-
-    def _draw_practical_cover(canvas_obj, doc_obj):
-        if cover_png:
-            canvas_obj.drawImage(ImageReader(io.BytesIO(cover_png)), 0, 0,
-                                 width=A4[0], height=A4[1])
-
-    doc.build(story, onFirstPage=_draw_practical_cover)
+    doc.build(story)
     buf.seek(0)
     return buf
 
@@ -4312,7 +4273,7 @@ def build_presentation_pdf(content: dict) -> io.BytesIO:
     slides = content.get("slides", [])
 
     tmpl = get_template(content.get("template"))
-    ACCENT = resolve_accent_hex(content)
+    ACCENT = get_subject_accent_hex(content.get("subject"))
     ACCENT_DARK = _pdf_dark_shade_hex(ACCENT)
     ACCENT_SOFT = _pdf_light_tint_hex(ACCENT)
     title_font = MATH_FONT_BOLD if tmpl.font_family == 'serif' else FONT_NAME_BOLD

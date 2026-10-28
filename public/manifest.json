@@ -1,0 +1,17 @@
+{
+  "name": "Dastyor",
+  "short_name": "Dastyor",
+  "description": "ИИ-помощник для учителей: конспект, тест, презентация, лекция и учебный план.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#fffbfa",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

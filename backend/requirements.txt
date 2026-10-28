@@ -26,9 +26,6 @@ python-pptx==1.0.2
 reportlab==4.2.5
 aiosmtplib==3.0.2
 pypdf==5.1.0  # pure-Python PDF text extraction for konspekt "book mode" source uploads — no native build step
-pypdfium2==5.14.0  # render scanned PDF pages for the existing Tesseract OCR path
 Pillow==12.3.0  # transitive via python-pptx/python-docx already, pinned explicitly since app/map_builder.py imports it directly
 rembg==2.0.78  # local ONNX background removal for real_image_query "cutout" style (app/image_builder.py) — first run downloads the ~176MB u2net model
 onnxruntime==1.28.0  # rembg's inference backend — NOT pulled in automatically by plain "pip install rembg", must be installed explicitly or rembg raises SystemExit at import time
-pytesseract==0.3.13  # receipt OCR (app/telegram/ocr.py); needs the tesseract-ocr binary + rus/eng data from the Dockerfile. Absent binary = degraded mode, not a crash — see ocr.tesseract_available()
-pytest==8.3.4  # test runner for backend/tests/ — a deliberate departure from this project's prior hand-rolled check()-script convention, introduced for the admin-tier permission matrix tests (many small cases, where pytest's parametrize pays for itself); existing standalone scripts keep working unmodified alongside it

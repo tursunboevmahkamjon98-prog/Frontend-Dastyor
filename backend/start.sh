@@ -9,8 +9,8 @@
 set -euo pipefail
 
 # Most managed hosts inject the port they routed to your service. Fall
-# back to 8001, which is what the Dockerfile EXPOSEs.
-PORT="${PORT:-8001}"
+# back to 8586, which is what the Dockerfile EXPOSEs.
+PORT="${PORT:-8586}"
 HOST="${HOST:-0.0.0.0}"
 
 # Single worker on purpose. The daily AI-call counter in app/ai_service.py

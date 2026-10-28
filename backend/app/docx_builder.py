@@ -5,7 +5,7 @@ from docx.shared import Inches, Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
-from app.subject_theme import get_subject_accent_rgb, resolve_accent_rgb
+from app.subject_theme import get_subject_accent_rgb
 from app.konspekt_templates import get_template
 
 _GROUP_LABEL_RE = re.compile(
@@ -48,39 +48,6 @@ def _add_bottom_border(paragraph, color_hex: str):
     })
     pBdr.append(bottom)
     pPr.append(pBdr)
-
-
-def _add_material_cover_page(doc, content: dict, language: str,
-                             doc_type_label: str,
-                             body_margins=(1.4, 1.4, 1.8, 1.8)) -> bool:
-    """Add the same subject-themed artwork used by PDF material exports."""
-    section = doc.sections[0]
-    try:
-        from app.cover_builder import build_cover_image
-        from docx.enum.section import WD_SECTION
-        section.top_margin = Cm(1)
-        section.bottom_margin = Cm(1)
-        section.left_margin = Cm(1)
-        section.right_margin = Cm(1)
-        cover = build_cover_image(
-            str(content.get('subject') or ''), str(content.get('title') or ''),
-            str(content.get('grade') or ''), language,
-            template_id=content.get('template') or 'zamonaviy',
-            doc_type_label=doc_type_label,
-        )
-        paragraph = doc.add_paragraph()
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        paragraph.paragraph_format.space_before = Pt(0)
-        paragraph.paragraph_format.space_after = Pt(0)
-        paragraph.add_run().add_picture(io.BytesIO(cover), width=Cm(19))
-        body = doc.add_section(WD_SECTION.NEW_PAGE)
-        body.top_margin, body.bottom_margin = Cm(body_margins[0]), Cm(body_margins[1])
-        body.left_margin, body.right_margin = Cm(body_margins[2]), Cm(body_margins[3])
-        return True
-    except Exception:
-        section.top_margin, section.bottom_margin = Cm(body_margins[0]), Cm(body_margins[1])
-        section.left_margin, section.right_margin = Cm(body_margins[2]), Cm(body_margins[3])
-        return False
 
 
 def _add_colored_paragraph(doc, text, font_size, color_rgb, bold=False, align=WD_ALIGN_PARAGRAPH.LEFT):
@@ -784,7 +751,7 @@ _LECTURE_SUMMARY_LABEL_DOCX['Английский'] = _LECTURE_SUMMARY_LABEL_DOC
 
 
 def _add_konspekt_body(doc, content: dict, L: dict):
-    ACCENT = RGBColor(*resolve_accent_rgb(content))
+    ACCENT = RGBColor(*get_subject_accent_rgb(content.get("subject")))
     DARK = RGBColor(0x1F, 0x29, 0x37)
     SECONDARY = RGBColor(0x6B, 0x72, 0x80)
     tmpl = get_template(content.get("template") or "zamonaviy")
@@ -1738,40 +1705,11 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
         buf.seek(0)
         return buf
 
-    # DOCX used to start directly with the title while PDF already had a
-    # designed, subject-specific cover. Reuse that same cover artwork so the
-    # downloaded formats feel like one material, including its topic artwork.
-    try:
-        from app.cover_builder import build_cover_image
-        from docx.enum.section import WD_SECTION
-        for section in doc.sections:
-            section.top_margin = Cm(1)
-            section.bottom_margin = Cm(1)
-            section.left_margin = Cm(1)
-            section.right_margin = Cm(1)
-        cover = build_cover_image(
-            content.get('subject', ''), title, content.get('grade', ''),
-            language, template_id=content.get('template') or 'zamonaviy',
-        )
-        cover_paragraph = doc.add_paragraph()
-        cover_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        cover_paragraph.paragraph_format.space_before = Pt(0)
-        cover_paragraph.paragraph_format.space_after = Pt(0)
-        cover_paragraph.add_run().add_picture(io.BytesIO(cover), width=Cm(19))
-
-        # Keep the body at its readable text margins on a new page.
-        body_section = doc.add_section(WD_SECTION.NEW_PAGE)
-        body_section.top_margin = Cm(1.1)
-        body_section.bottom_margin = Cm(1.1)
-        body_section.left_margin = Cm(1.7)
-        body_section.right_margin = Cm(1.7)
-    except Exception:
-        # A missing illustration/font should not prevent a text export.
-        first_section = doc.sections[0]
-        first_section.top_margin = Cm(1.1)
-        first_section.bottom_margin = Cm(1.1)
-        first_section.left_margin = Cm(1.7)
-        first_section.right_margin = Cm(1.7)
+    for section in doc.sections:
+        section.top_margin = Cm(1.1)
+        section.bottom_margin = Cm(1.1)
+        section.left_margin = Cm(1.7)
+        section.right_margin = Cm(1.7)
 
 
     DARK = RGBColor(0x1F, 0x29, 0x37)
@@ -1808,7 +1746,7 @@ def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.B
 
 def build_lecture_docx(content: dict, language: str = 'Русский') -> io.BytesIO:
     from app.lecture_builder import _words, _split_definition, _split_main_content, _queue_callouts
-    from app.subject_theme import resolve_accent_rgb
+    from app.subject_theme import get_subject_accent_rgb
 
     w = _words(language)
     doc = Document()
@@ -1826,10 +1764,7 @@ def build_lecture_docx(content: dict, language: str = 'Русский') -> io.By
         section.left_margin = Cm(2.0)
         section.right_margin = Cm(2.0)
 
-    _add_material_cover_page(doc, {**content, 'language': language}, language,
-                             'LECTURE', body_margins=(1.7, 1.7, 2.0, 2.0))
-
-    ar, ag, ab = resolve_accent_rgb(content)
+    ar, ag, ab = get_subject_accent_rgb(content.get('subject'))
     ACCENT = RGBColor(ar, ag, ab)
     accent_hex = '%02X%02X%02X' % (ar, ag, ab)
     INK = RGBColor(0x15, 0x1A, 0x22)
@@ -2307,10 +2242,9 @@ def build_test_docx(content: dict) -> io.BytesIO:
     GREY = RGBColor(0x6B, 0x72, 0x80)
     language = str(content.get('language') or 'Русский')
     ui = _test_ui(language)
-    _add_material_cover_page(doc, content, language, 'TEST')
     try:
-        from app.subject_theme import resolve_accent_rgb
-        ar, ag, ab = resolve_accent_rgb(content)
+        from app.export_builder import get_subject_accent_rgb
+        ar, ag, ab = get_subject_accent_rgb(content.get('subject', ''))
         ACCENT = RGBColor(ar, ag, ab)
     except Exception:
         ACCENT = RGBColor(0x10, 0xB9, 0x81)
@@ -2534,10 +2468,9 @@ def build_practical_docx(content: dict) -> io.BytesIO:
     GREY = RGBColor(0x6B, 0x72, 0x80)
     language = str(content.get('language') or 'Русский')
     ui = _PRACTICAL_DOCX_UI.get(language, _PRACTICAL_DOCX_UI['Русский'])
-    _add_material_cover_page(doc, content, language, 'WORKSHEET')
     try:
-        from app.subject_theme import resolve_accent_rgb
-        ar, ag, ab = resolve_accent_rgb(content)
+        from app.export_builder import get_subject_accent_rgb
+        ar, ag, ab = get_subject_accent_rgb(content.get('subject', ''))
         ACCENT = RGBColor(ar, ag, ab)
     except Exception:
         ACCENT = RGBColor(0x10, 0xB9, 0x81)
@@ -2672,70 +2605,42 @@ def build_presentation_docx(content: dict) -> io.BytesIO:
     style.font.name = 'Calibri'
     style.font.size = Pt(11)
 
-    from app.subject_theme import resolve_accent_rgb
-    ACCENT = RGBColor(*resolve_accent_rgb(content))
-    accent_hex = '%02X%02X%02X' % tuple(resolve_accent_rgb(content))
+    for section in doc.sections:
+        section.top_margin = Cm(2)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+
+    ACCENT = RGBColor(0x37, 0x41, 0x51)
     DARK = RGBColor(0x1F, 0x29, 0x37)
     GREY = RGBColor(0x6B, 0x72, 0x80)
 
     title = content.get('title', 'Презентация')
-    try:
-        from app.cover_builder import build_cover_image
-        from docx.enum.section import WD_SECTION
-        cover_section = doc.sections[0]
-        cover_section.top_margin = Cm(1)
-        cover_section.bottom_margin = Cm(1)
-        cover_section.left_margin = Cm(1)
-        cover_section.right_margin = Cm(1)
-        cover = build_cover_image(
-            content.get('subject', ''), title, content.get('grade', ''),
-            str(content.get('language') or 'Русский'),
-            template_id=content.get('template') or 'zamonaviy',
-            doc_type_label='PRESENTATION',
-        )
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        p.add_run().add_picture(io.BytesIO(cover), width=Cm(19))
-        body_section = doc.add_section(WD_SECTION.NEW_PAGE)
-        body_section.top_margin = Cm(1.4)
-        body_section.bottom_margin = Cm(1.4)
-        body_section.left_margin = Cm(1.8)
-        body_section.right_margin = Cm(1.8)
-    except Exception:
-        for section in doc.sections:
-            section.top_margin = Cm(1.4)
-            section.bottom_margin = Cm(1.4)
-            section.left_margin = Cm(1.8)
-            section.right_margin = Cm(1.8)
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(title)
-        run.font.size = Pt(22)
-        run.font.color.rgb = DARK
-        run.bold = True
-        run.font.name = 'Calibri'
-        _add_bottom_border(doc.add_paragraph(), accent_hex)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run(title)
+    run.font.size = Pt(22)
+    run.font.color.rgb = DARK
+    run.bold = True
+    run.font.name = 'Calibri'
+
+    _add_bottom_border(doc.add_paragraph(), '374151')
 
     slides = content.get('slides', [])
     for i, slide in enumerate(slides):
         slide_title = slide.get('title', '')
         bullets = slide.get('bullet_points', [])
         notes = slide.get('speaker_notes', '')
-        if i:
-            doc.add_page_break()
 
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(16)
         p.paragraph_format.space_after = Pt(4)
-        p.paragraph_format.keep_with_next = True
         run = p.add_run(f'  {i + 1}  ')
         run.font.size = Pt(10)
         run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
         run.bold = True
         run.font.name = 'Calibri'
-        _set_paragraph_shading(p, accent_hex)
+        _set_paragraph_shading(p, '374151')
 
         p = doc.add_paragraph()
         p.paragraph_format.space_after = Pt(8)
@@ -2745,46 +2650,15 @@ def build_presentation_docx(content: dict) -> io.BytesIO:
         run.bold = True
         run.font.name = 'Calibri'
 
-        body = str(slide.get('body') or '').strip()
-        if body:
-            p = doc.add_paragraph(body)
-            p.paragraph_format.space_after = Pt(8)
-            for body_run in p.runs:
-                body_run.font.size = Pt(11)
-                body_run.font.color.rgb = DARK
-                body_run.font.name = 'Calibri'
-
         for b in bullets:
             _add_bullet(doc, b, ACCENT)
-
-        image = slide.get('image')
-        if isinstance(image, dict) and image.get('path'):
-            _add_illustration(doc, image['path'], image.get('caption', ''),
-                              image.get('credit', ''), width_inches=5.3)
-
-        visual = slide.get('visual')
-        if isinstance(visual, dict):
-            _add_visual_block(doc, visual, ACCENT, {})
-
-        callout = slide.get('callout')
-        if isinstance(callout, dict) and callout.get('text'):
-            p = doc.add_paragraph()
-            p.paragraph_format.left_indent = Cm(0.35)
-            p.paragraph_format.space_before = Pt(4)
-            p.paragraph_format.space_after = Pt(8)
-            _set_paragraph_shading(p, 'FFF1F2')
-            callout_run = p.add_run(str(callout['text']))
-            callout_run.font.size = Pt(10.5)
-            callout_run.bold = True
-            callout_run.font.color.rgb = ACCENT
-            callout_run.font.name = 'Calibri'
 
         if notes:
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Cm(1)
             p.paragraph_format.space_before = Pt(6)
             p.paragraph_format.space_after = Pt(8)
-            _set_paragraph_shading(p, 'F8FAFC')
+            _set_paragraph_shading(p, 'F3F4F6')
             run = p.add_run('Заметки:  ')
             run.font.size = Pt(10)
             run.font.color.rgb = GREY
@@ -2792,7 +2666,7 @@ def build_presentation_docx(content: dict) -> io.BytesIO:
             run.font.name = 'Calibri'
             run = p.add_run(notes)
             run.font.size = Pt(10)
-            run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
+            run.font.color.rgb = RGBColor(0x37, 0x41, 0x51)
             run.italic = True
             run.font.name = 'Calibri'
 

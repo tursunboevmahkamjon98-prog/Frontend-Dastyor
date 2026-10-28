@@ -83,12 +83,7 @@ def build_queries(slide: dict, topic: str, subject: str | None,
     subject_quals = template.image_qualifiers
 
     if _is_generic(core, subject):
-        # Older model responses sometimes omit image_query. Prefer the slide's
-        # own heading and first teaching points so different slides do not all
-        # collapse onto the same generic, topic-level search.
-        slide_terms = _join(str(slide.get("title") or ""),
-                            " ".join(str(b) for b in (slide.get("bullet_points") or [])[:2]))
-        core = slide_terms if not _is_generic(slide_terms, subject) else _clean(topic)
+        core = _clean(topic)
 
     queries: list[str] = []
 

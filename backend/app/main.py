@@ -1,4 +1,3 @@
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -14,12 +13,10 @@ from sqlalchemy import select
 from app.database import init_db, async_session
 from app.config import get_settings
 from app.diagnostics import memory_report
-from app.routers import auth, materials, admin, admin_crm, billing, qr_auth, bot_api
+from app.routers import auth, materials, admin, billing, qr_auth
 from app.auth import hash_password
 from app.models import User
-from app.logger import get_logger, install_secret_redaction
-from app import book_sources
-from app.preflight import database_report, validate_backend_config
+from app.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -67,9 +64,6 @@ async def _provision_admin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    install_secret_redaction()
-    validate_backend_config(get_settings())
-    await asyncio.to_thread(database_report, get_settings())
     os.makedirs(os.path.join(UPLOAD_DIR, "avatars"), exist_ok=True)
     await init_db()
     await _provision_admin()
@@ -92,22 +86,7 @@ async def lifespan(app: FastAPI):
             logger.error(f"DRAWING FONT PROBLEM: {problem}")
     except Exception as e:
         logger.warning(f"Startup asset check skipped: {e}")
-    await asyncio.to_thread(book_sources.cleanup)
-
-    async def prune_private_sources():
-        while True:
-            await asyncio.sleep(3600)
-            await asyncio.to_thread(book_sources.cleanup)
-
-    cleanup_task = asyncio.create_task(prune_private_sources())
-    try:
-        yield
-    finally:
-        cleanup_task.cancel()
-        try:
-            await cleanup_task
-        except asyncio.CancelledError:
-            pass
+    yield
 
 
 _settings = get_settings()
@@ -144,10 +123,8 @@ app.include_router(auth.router)
 app.include_router(materials.router)
 app.include_router(materials.lessons_router)
 app.include_router(admin.router)
-app.include_router(admin_crm.router)
 app.include_router(billing.router)
 app.include_router(qr_auth.router)
-app.include_router(bot_api.router)
 
 
 @app.get("/api/app/version")

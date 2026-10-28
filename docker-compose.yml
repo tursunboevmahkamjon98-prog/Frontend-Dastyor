@@ -1,8 +1,26 @@
-# Dastyor stack: Postgres, backend, web app, and Telegram bot.
-
-# Setup: copy backend/.env.example to backend/.env and configure secrets.
-# Start: docker compose up -d --build
-
+# One command, the whole stack: Postgres + backend + frontend.
+#
+#     docker compose up -d --build
+#
+# Unlike the private "dastyor" monorepo this was split out of, backend/
+# has NO committed .env here (this repo is public — see .gitignore's own
+# comment on that). So unlike that repo's compose file, `backend` below
+# does NOT have an `env_file:` line pointing at a real secrets file —
+# there isn't one to point at. Instead:
+#
+#   1. Copy backend/.env.example to backend/.env on the SERVER (never
+#      committed, never leaves that machine) and fill in the real AI
+#      keys, JWT secret, admin phone/password, SMS provider credentials.
+#   2. `docker compose up -d --build` picks it up via the same
+#      `env_file: ./backend/.env` line below — Compose does not care
+#      whether that file is tracked by git, only that it exists on disk
+#      when you run the command.
+#
+# First boot only: POSTGRES_* below seeds a FRESH volume. If backend/.env
+# (once you've created it) names a different db/user/password, either
+# match them here or drop the `db` service and point DATABASE_URL at
+# your own Postgres — compose does not reconcile the two after the
+# volume already exists.
 services:
   db:
     image: postgres:16-alpine
@@ -18,62 +36,84 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # No `ports:` published to the host on purpose РІР‚вЂќ only `backend` needs
-    # to reach Postgres, and it does so over the compose network by
-    # service name (db:5432), never through the host's own network stack.
-    # Publish 5432:5432 here only if you need psql from the host itself.
+    # No `ports:` published to the host on purpose — only `backend` needs
+    # to reach Postgres, over the compose network by service name
+    # (db:5432), never through the host's own network stack. Publish
+    # 5432:5432 here only if you need psql from the host itself.
 
   backend:
     build:
       context: ./backend
     restart: unless-stopped
     env_file:
+      # Not committed — see this file's own top comment and
+      # .gitignore. Create it on the server before first `up`.
       - ./backend/.env
     environment:
-      # backend/.env's own DATABASE_URL says "localhost" (a dev machine
-      # with Postgres installed directly on it) РІР‚вЂќ inside this network
-      # that has to be the `db` service's name instead. User/password/db
-      # name below must match the `db` service above (or your own external
-      # Postgres, in which case override DATABASE_URL entirely instead).
+      # Whatever backend/.env's own DATABASE_URL says (typically
+      # "localhost", for running python -m uvicorn directly on a dev
+      # machine) — inside this network that has to be the `db` service's
+      # name instead. User/password/db name below must match the `db`
+      # service above (or your own external Postgres, in which case
+      # override DATABASE_URL entirely instead and remove this block).
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      # Avatars/generated-image uploads survive a container recreation РІР‚вЂќ
+      # Avatars/generated-image uploads survive a container recreation —
       # without this named volume every redeploy would silently orphan
       # every teacher's avatar and every lesson illustration on disk
       # while the DB rows still point at paths that no longer exist.
       - backend_uploads:/app/uploads
     ports:
+      # Host 8586 -> container 8001. The container port follows the
+      # backend Dockerfile, which serves 8001; only the HOST side is 8586,
+      # which is what nginx proxies to. These were briefly both 8586, by
+      # editing the Dockerfile — and that edit was then silently undone by
+      # a file copy from the other repo, leaving the container on 8001
+      # while compose still mapped and healthchecked 8586. Nothing was
+      # listening there, so the backend came up perfectly and was marked
+      # unhealthy, which reads as "backend failed to start". Keeping the
+      # container port identical in both repos is what stops that
+      # happening again.
       - "${BACKEND_PORT:-8586}:8001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
-      interval: 20s
+      interval: 30s
       timeout: 5s
-      start_period: 120s
-      retries: 5
+      start_period: 15s
+      retries: 3
 
   frontend:
     build:
-      context: ./frontend
+      context: .
       args:
-        # Baked into the browser bundle at BUILD time (see frontend/
-        # Dockerfile's own comment) РІР‚вЂќ "/api" makes the browser call this
+        # Baked into the browser bundle at BUILD time (see this repo's
+        # own Dockerfile comment) — "/api" makes the browser call this
         # same frontend origin, which next.config.ts's rewrites then
         # forward server-side to BACKEND_ORIGIN below. Change this only
         # if the browser should call the backend directly instead (then
         # BACKEND_ORIGIN's host must also be in the backend's
         # CORS_ORIGINS, or every request fails in the browser alone).
         NEXT_PUBLIC_API_URL: /api
+        # MUST be a build arg, not only the runtime `environment:` below.
+        # Next resolves next.config.ts's rewrites() during `next build`
+        # and freezes the destination into its route manifests — see the
+        # Dockerfile for the full explanation and the outage this caused.
+        # Setting it only at runtime silently ships an image that proxies
+        # /api to next.config.ts's localhost fallback.
+        BACKEND_ORIGIN: http://backend:8001
     restart: unless-stopped
     environment:
-      # Runtime (not build-time) РІР‚вЂќ read when the container starts, so
-      # this is the one line to change to point an already-built image at
-      # a different backend. "backend" is the service name above; Docker's
-      # embedded DNS resolves it on the compose network, "localhost"
-      # inside this container would mean the frontend container itself.
+      # Deliberately the same value as the build arg above. This one does
+      # NOT drive the /api rewrite (that is already baked in by then) —
+      # it only keeps anything reading process.env.BACKEND_ORIGIN at
+      # runtime from disagreeing with what the build used. "backend" is
+      # the service name above, at the port its own Dockerfile serves
+      # (8001) — NOT the host port 8586, which only exists outside this
+      # network. "localhost" here would mean this container itself.
       BACKEND_ORIGIN: http://backend:8001
     depends_on:
       backend:
@@ -86,56 +126,6 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
-
-  # The Telegram payment bot. Same image as `backend` (it imports
-  # app.models / app.telegram.*), different entrypoint: a long-polling
-  # worker instead of uvicorn.
-  #
-  # Starts automatically with `docker compose up -d --build`, same as
-  # the other three services РІР‚вЂќ no separate profile flag. This was
-  # behind a COMPOSE PROFILE until 2026-10-24, requiring a second,
-  # explicit `docker compose --profile telegram up -d --build
-  # telegram-bot` plus a hand-created backend/.env.telegram on the
-  # server. That assumed shell access to the server to run the extra
-  # command and write the extra file; the only deploy path actually
-  # available is git pull plus the one default compose command. Bot tokens
-  # belong in the server-local ignored backend/.env. If a future deploy
-  # path CAN write a second file to the server, backend/.env.telegram
-  # (gitignored) still works and overrides .env for whatever it sets РІР‚вЂќ
-  # see .env.telegram.example.
-  #
-  # Why its own container rather than a task inside the API: the API runs
-  # --workers 1 (see backend/Dockerfile's comment) and a poll loop in
-  # that worker would compete with request handling; and the bot crashing
-  # must not take the API with it.
-  #
-  # Exactly one replica. Two pollers would both call getUpdates, and
-  # Telegram hands each update to whoever asks first РІР‚вЂќ so the duplicate
-  # would not double-credit (the status compare-and-swap in
-  # app/telegram/service.py stops that) but it would double-message every
-  # teacher. Do not scale this service. (tests/test_telegram_startup.py
-  # also guards the one case that would quietly create a second poller:
-  # TELEGRAM_ADMIN_BOT_TOKEN set equal to TELEGRAM_BOT_TOKEN.)
-  telegram-bot:
-    build:
-      context: ./backend
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    environment:
-      # Same reasoning as `backend` above: .env says localhost, which
-      # inside this network has to be the db service's name.
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
-      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dastyor_db
-    depends_on:
-      # The API runs the database bootstrap and migrations first. The bot
-      # shares that database and must not run the same bootstrap concurrently.
-      backend:
-        condition: service_healthy
-    # No `ports:`. The bot only makes outbound calls to
-    # api.telegram.org; nothing needs to reach it, and publishing a port
-    # would be pure attack surface.
-    command: ["python", "-m", "app.telegram.bot"]
 
 volumes:
   postgres_data:

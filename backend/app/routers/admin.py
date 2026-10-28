@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,22 +7,17 @@ from sqlalchemy.orm import aliased
 from app.database import get_db
 from app.models import (
     User, Konspekt, Lecture, Test, Presentation, PracticalTask, Game,
-    BalanceTransaction, BalanceTopupRequest,
+    BalanceTransaction,
 )
 from app.schemas import (
     AdminDashboardStats, AdminUserOut, AdminRoleUpdate, AdminPremiumUpdate, AdminBalanceTopUp,
     AdminMaterialOut, AdminMaterialsPage, BalanceTransactionOut,
     AdminSmsRequest, AdminBulkSmsRequest, AdminSmsResult, AdminSmsReport,
-    AdminTopupRequestOut, AdminTopupApprove, AdminTopupReject,
 )
 from app.auth import get_current_admin
 from app.logger import get_logger
 from app.sms_service import send_sms_text
 from app.config import get_settings
-from app.schemas import PayInstructionsOut, PayInstructionsUpdate
-from app.telegram import service as telegram_service
-from app.telegram.api import TelegramApiError, TelegramClient, TelegramTransportError
-from app.telegram.config import get_telegram_settings
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -438,173 +432,3 @@ async def balance_history(
         )
         for tx, actor_name in rows
     ]
-
-
-def _admin_topup_out(row: BalanceTopupRequest, user: User) -> AdminTopupRequestOut:
-    return AdminTopupRequestOut(
-        id=row.id,
-        requested_somoni=row.requested_dirams / 100,
-        note=row.note,
-        receipt_url=row.receipt_path,
-        status=row.status,
-        credited_somoni=(row.credited_dirams / 100) if row.credited_dirams is not None else None,
-        admin_note=row.admin_note,
-        created_at=row.created_at,
-        resolved_at=row.resolved_at,
-        user_id=user.id,
-        user_name=user.full_name,
-        user_phone=user.phone,
-        user_short_id=user.short_id,
-        user_balance_somoni=user.balance_somoni,
-    )
-
-
-@router.get("/topup-requests", response_model=list[AdminTopupRequestOut])
-async def list_topup_requests(
-    status: str | None = None,
-    limit: int = 100,
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    query = select(BalanceTopupRequest, User).join(User, User.id == BalanceTopupRequest.user_id)
-    if status:
-        query = query.where(BalanceTopupRequest.status == status)
-    query = query.order_by(BalanceTopupRequest.created_at.desc()).limit(min(limit, 200))
-    rows = (await db.execute(query)).all()
-    return [_admin_topup_out(req, user) for req, user in rows]
-
-
-@router.post("/topup-requests/{request_id}/approve", response_model=AdminTopupRequestOut)
-async def approve_topup_request(
-    request_id: str,
-    data: AdminTopupApprove,
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Credit a balance and resolve the request, in one transaction.
-
-    The credit and the status flip happen together so a crash between
-    them cannot leave an "approved" request that credited nothing, or a
-    credited balance still sitting in the pending queue for a second
-    admin to double it.
-    """
-    result = await db.execute(
-        select(BalanceTopupRequest).where(BalanceTopupRequest.id == request_id)
-    )
-    req = result.scalar_one_or_none()
-    if not req:
-        raise HTTPException(status_code=404, detail="Not found")
-    if req.status != "pending":
-        raise HTTPException(status_code=409, detail="Эта заявка уже обработана")
-
-    amount_dirams = round(data.credited_somoni * 100)
-
-    new_balance = (await db.execute(
-        text(
-            "UPDATE users SET balance_dirams = balance_dirams + :amt "
-            "WHERE id = :uid RETURNING balance_dirams"
-        ),
-        {"uid": req.user_id, "amt": amount_dirams},
-    )).scalar()
-    if new_balance is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    db.add(BalanceTransaction(
-        id=str(uuid.uuid4()),
-        user_id=req.user_id,
-        kind="topup",
-        amount_dirams=amount_dirams,
-        balance_before=new_balance - amount_dirams,
-        balance_after=new_balance,
-        actor_id=admin.id,
-        reason=(data.note or "").strip()[:255] or "web top-up request",
-    ))
-
-    req.status = "approved"
-    req.credited_dirams = amount_dirams
-    req.admin_id = admin.id
-    req.admin_note = (data.note or "").strip()[:255] or None
-    req.resolved_at = datetime.now(timezone.utc)
-    await db.flush()
-
-    user = (await db.execute(select(User).where(User.id == req.user_id))).scalar_one()
-    logger.info(
-        f"Admin {admin.id} approved web top-up {request_id}: "
-        f"{data.credited_somoni} somoni to user {req.user_id} (new balance: {new_balance / 100})"
-    )
-    return _admin_topup_out(req, user)
-
-
-@router.post("/topup-requests/{request_id}/reject", response_model=AdminTopupRequestOut)
-async def reject_topup_request(
-    request_id: str,
-    data: AdminTopupReject,
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(BalanceTopupRequest).where(BalanceTopupRequest.id == request_id)
-    )
-    req = result.scalar_one_or_none()
-    if not req:
-        raise HTTPException(status_code=404, detail="Not found")
-    if req.status != "pending":
-        raise HTTPException(status_code=409, detail="Эта заявка уже обработана")
-
-    req.status = "rejected"
-    req.admin_id = admin.id
-    req.admin_note = (data.note or "").strip()[:255] or None
-    req.resolved_at = datetime.now(timezone.utc)
-    await db.flush()
-
-    user = (await db.execute(select(User).where(User.id == req.user_id))).scalar_one()
-    logger.info(f"Admin {admin.id} rejected web top-up {request_id} for user {req.user_id}")
-    return _admin_topup_out(req, user)
-
-
-@router.get("/pay-instructions", response_model=PayInstructionsOut)
-async def admin_get_pay_instructions(admin: User = Depends(get_current_admin)):
-    return PayInstructionsOut(text=await telegram_service.get_pay_instructions())
-
-
-@router.put("/pay-instructions", response_model=PayInstructionsOut)
-async def admin_set_pay_instructions(
-    data: PayInstructionsUpdate,
-    admin: User = Depends(get_current_admin),
-):
-    """Change the card/requisites every teacher is shown — from the web.
-
-    This decides where every teacher's money goes, so the same two
-    guarantees the Telegram `/paycontrol` path has apply here too: the
-    change is append-only audited (see `set_pay_instructions_web`), and
-    every Telegram admin is told, by Telegram, that it happened —
-    best-effort and never blocking the save itself, because a teacher
-    waiting on a corrected card number should not wait on Telegram's
-    API being reachable.
-    """
-    previous = await telegram_service.set_pay_instructions_web(data.text.strip(), admin.id)
-    logger.warning(f"Admin {admin.id} changed pay instructions via web console")
-
-    try:
-        admin_ids = await telegram_service.all_admin_ids()
-        settings = get_telegram_settings()
-        client = TelegramClient(
-            settings.TELEGRAM_ADMIN_BOT_TOKEN if settings.has_separate_admin_bot else None
-        )
-        message = (
-            f"⚠️ Реквизиты оплаты изменены через веб-консоль "
-            f"администратором {admin.full_name}.\n\n"
-            f"Было:\n{(previous or '').strip() or '(пусто)'}\n\n"
-            f"Стало:\n{data.text.strip() or '(пусто)'}"
-        )
-        for chat_id in admin_ids:
-            try:
-                await client.send_message(chat_id, message)
-            except (TelegramApiError, TelegramTransportError) as e:
-                logger.error(f"Pay-instructions change notice to {chat_id} failed: {e}")
-    except Exception as e:
-        # Never let a notification failure undo or mask the save above —
-        # the text is already changed and audited by this point.
-        logger.error(f"Could not notify Telegram admins of pay-instructions change: {e}")
-
-    return PayInstructionsOut(text=data.text.strip())

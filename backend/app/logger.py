@@ -1,5 +1,4 @@
 import logging
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -16,39 +15,7 @@ LOG_DIR.mkdir(exist_ok=True)
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-class RedactingFormatter(logging.Formatter):
-    def __init__(self, *args, original=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.original = original
-
-    def format(self, record):
-        rendered = self.original.format(record) if self.original else super().format(record)
-        try:
-            from app.config import get_settings
-            settings = get_settings()
-            for name in type(settings).model_fields:
-                if any(part in name for part in ("TOKEN", "SECRET", "PASSWORD", "API_KEY")):
-                    value = getattr(settings, name, None)
-                    if isinstance(value, str) and value:
-                        rendered = rendered.replace(value, "[REDACTED]")
-        except Exception:
-            pass
-        rendered = re.sub(r"[0-9]+:[A-Za-z0-9_-]{30,}", "[BOT_TOKEN]", rendered)
-        return re.sub(r"(postgres(?:ql)?(?:\+\w+)?://)[^\s/@]+:[^\s/@]+@", r"\1[REDACTED]@", rendered)
-
-
-formatter = RedactingFormatter(LOG_FORMAT, DATE_FORMAT)
-
-
-def install_secret_redaction():
-    loggers = [logging.getLogger()] + [item for item in logging.root.manager.loggerDict.values()
-                                      if isinstance(item, logging.Logger)]
-    for logger in loggers:
-        for handler in logger.handlers:
-            if not isinstance(handler.formatter, RedactingFormatter):
-                handler.setFormatter(RedactingFormatter(original=handler.formatter or logging.Formatter()))
-    for name in ("httpx", "httpcore"):
-        logging.getLogger(name).setLevel(logging.WARNING)
+formatter = logging.Formatter(LOG_FORMAT, DATE_FORMAT)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
