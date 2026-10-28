@@ -17,6 +17,22 @@ BACKEND = Path(__file__).resolve().parent.parent
 BOT_FIELDS = ("DASTYOR_BOT_API_TOKEN", "DASTYOR_BOT_ROOT_ADMIN_ID",
               "DASTYOR_STANDALONE_BOT_USERNAME", "DASTYOR_STANDALONE_TELEGRAM_TOKEN")
 
+LEGACY_BASELINE_COLUMNS = {
+    "users": {"id", "full_name", "hashed_password", "role", "created_at"},
+    "telegram_admins": {"id", "telegram_user_id", "added_at", "revoked"},
+    "payment_requests": {
+        "id", "public_code", "user_id", "chat_id", "requested_dirams",
+        "status", "created_at",
+    },
+}
+POST_BASELINE_COLUMNS = {
+    "users": {"admin_tier"},
+    "telegram_admins": {"reviewed_at"},
+    "payment_requests": {
+        "client_request_key", "receipt_kind", "standalone_notification_sent_at",
+    },
+}
+
 
 class ConfigurationError(RuntimeError):
     pass
@@ -67,7 +83,8 @@ def migration_scripts() -> ScriptDirectory:
     return scripts
 
 
-def database_report(settings, *, require_current: bool = True) -> dict:
+def database_report(settings, *, require_current: bool = True,
+                    allow_legacy_baseline: bool = False) -> dict:
     """Inspect the configured DB in a READ ONLY transaction. Never run DDL."""
     validate_backend_config(settings)
     scripts = migration_scripts()
@@ -85,7 +102,26 @@ def database_report(settings, *, require_current: bool = True) -> dict:
                 raise ConfigurationError("Database has multiple Alembic revisions; migration review required")
             if not current:
                 if "users" in tables:
-                    raise ConfigurationError("Existing database has no Alembic revision; baseline audit required. Do not stamp head")
+                    if not allow_legacy_baseline:
+                        raise ConfigurationError("Existing database has no Alembic revision; baseline audit required")
+                    for table, required_columns in LEGACY_BASELINE_COLUMNS.items():
+                        if table not in tables:
+                            raise ConfigurationError(f"Legacy baseline audit failed: missing table {table}")
+                        actual_columns = {c["name"] for c in inspector.get_columns(table)}
+                        missing = required_columns - actual_columns
+                        if missing:
+                            raise ConfigurationError(
+                                f"Legacy baseline audit failed: {table} missing columns "
+                                + ", ".join(sorted(missing))
+                            )
+                        unexpected_new = POST_BASELINE_COLUMNS[table] & actual_columns
+                        if unexpected_new:
+                            raise ConfigurationError(
+                                f"Legacy baseline audit failed: {table} has unversioned post-baseline columns "
+                                + ", ".join(sorted(unexpected_new))
+                            )
+                    return {"database": "legacy", "revision": None,
+                            "head": head, "pending": True}
                 if tables - {"alembic_version"}:
                     raise ConfigurationError("Unversioned non-empty database; schema audit required")
                 if require_current:

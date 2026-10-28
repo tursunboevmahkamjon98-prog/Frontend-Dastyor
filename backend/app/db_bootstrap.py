@@ -30,10 +30,18 @@ def _alembic_config() -> Config:
 def run() -> None:
     install_secret_redaction()
     settings = get_settings()
-    report = database_report(settings, require_current=False)
+    report = database_report(
+        settings, require_current=False, allow_legacy_baseline=True
+    )
     cfg = _alembic_config()
     if report["revision"]:
         logger.info("db_bootstrap: alembic_version present, running upgrade head")
+        upgrade(cfg, "head")
+        return
+    if report["database"] == "legacy":
+        logger.info("db_bootstrap: legacy schema audit passed; stamping baseline")
+        stamp(cfg, "c848a5a360d1")
+        logger.info("db_bootstrap: applying migrations from legacy baseline")
         upgrade(cfg, "head")
         return
     # Do not stamp an empty database ahead of successful initialization.
