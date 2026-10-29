@@ -22,30 +22,12 @@ from app.limits import GENERATION_PRICE_DIRAMS
 
 
 class TelegramSettings(BaseSettings):
-    # The @BotFather token. No default: a missing token must stop the bot
-    # at startup with a clear message, never fall through to an empty
-    # string that turns every API call into a confusing 401.
-    TELEGRAM_BOT_TOKEN: str = ""
-
-    # The bot's @username without the @. Used only to build the deep link
-    # the app opens; it is not a secret and it is not proof of anything.
-    TELEGRAM_BOT_USERNAME: str = ""
-
-    # A SECOND @BotFather bot, used only to review payments.
-    #
-    # Why two bots rather than one that behaves differently per chat: the
-    # teacher-facing bot is public — anyone can find and message it — and
-    # every receipt a teacher uploads carries a name, part of a card
-    # number and an amount. Routing the review channel through its own
-    # bot means the approve/reject buttons physically do not exist in the
-    # public bot's update stream, so a bug in the authorization check
-    # cannot expose them. It also keeps the owner's review chat out of a
-    # bot whose chat list is full of teachers.
-    #
-    # Empty = fall back to the single-bot arrangement: reviews go to the
-    # admin ids through the user bot, exactly as before. That keeps an
-    # existing deployment working when it pulls this change.
+    # Only this token is used by the worker and payment notifications.
     TELEGRAM_ADMIN_BOT_TOKEN: str = ""
+
+    # Retained for legacy link data; never used to start a public bot.
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""
 
     # Language of the review messages and buttons. Russian by default:
     # the reviewer is one known person, not the Tajik-speaking teachers
@@ -151,45 +133,12 @@ class TelegramSettings(BaseSettings):
 
     @property
     def configured(self) -> bool:
-        return bool(self.TELEGRAM_BOT_TOKEN and self.TELEGRAM_BOT_USERNAME)
-
-    @property
-    def has_separate_admin_bot(self) -> bool:
-        """True when reviews should go through their own bot.
-
-        A token identical to the user bot's is treated as "no separate
-        bot" rather than started twice — two pollers on one token fight
-        over getUpdates and Telegram answers 409 to whichever asks
-        second, which looks like the bot randomly ignoring people.
-        """
-        token = self.TELEGRAM_ADMIN_BOT_TOKEN.strip()
-        return bool(token) and token != self.TELEGRAM_BOT_TOKEN.strip()
-
-    @staticmethod
-    def _token_state(token: str) -> str:
-        if not token:
-            return "MISSING"
-        # The numeric prefix before ':' is the bot's own id and is public
-        # (it is in every getMe response); the secret is the part after
-        # it, which never appears here.
-        return f"set (bot id {token.split(':', 1)[0]})"
+        """Legacy public-bot links are disabled."""
+        return False
 
     def redacted(self) -> str:
-        """A safe one-line summary for logs and health output."""
-        if self.has_separate_admin_bot:
-            admin_state = self._token_state(self.TELEGRAM_ADMIN_BOT_TOKEN)
-        elif self.TELEGRAM_ADMIN_BOT_TOKEN.strip():
-            admin_state = "SAME AS USER BOT (ignored)"
-        else:
-            admin_state = "none (reviews go through the user bot)"
-        return (
-            f"token={self._token_state(self.TELEGRAM_BOT_TOKEN)} username="
-            f"{self.TELEGRAM_BOT_USERNAME or 'MISSING'} "
-            f"admin_bot={admin_state} "
-            f"admin_lang={self.TELEGRAM_ADMIN_LANGUAGE} "
-            f"admins={len(self.admin_ids)} "
-            f"pay_instructions={'set' if self.TELEGRAM_PAY_INSTRUCTIONS else 'MISSING'}"
-        )
+        return (f"admin_bot={'set' if self.TELEGRAM_ADMIN_BOT_TOKEN else 'MISSING'} "
+                f"admins={len(self.admin_ids)}")
 
     def deep_link(self, token: str) -> str:
         """The universal https link. Works without Telegram installed."""

@@ -2,20 +2,19 @@ import { BookOpen, Presentation, ClipboardCheck, Lightbulb, ClipboardList, Gamep
 import type { MaterialType } from "./api";
 import type { MessageKey } from "./messages";
 
+/* accentVar names the CSS custom property (not a Tailwind class) holding
+ * this type's icon color, for the few spots that need the raw color value
+ * in an inline style (e.g. var(${cfg.accentVar})) rather than a class. */
 export const MATERIAL_TYPE_CONFIG: Record<
   MaterialType,
-  { label: string; icon: typeof BookOpen; bg: string; color: string }
+  { label: string; icon: typeof BookOpen; bg: string; color: string; accentVar: string }
 > = {
-  konspekt: { label: "Конспект", icon: BookOpen, bg: "bg-note-bg", color: "text-note-icon" },
-  lektsiya: { label: "Лекция", icon: Lightbulb, bg: "bg-lecture-bg", color: "text-lecture-icon" },
-  test: { label: "Тест", icon: ClipboardCheck, bg: "bg-test-bg", color: "text-test-icon" },
-  prezentatsiya: { label: "Презентация", icon: Presentation, bg: "bg-pres-bg", color: "text-pres-icon" },
-  
-  
-  
-  
-  amaliy: { label: "Практические задания", icon: ClipboardList, bg: "bg-amaliy-bg", color: "text-amaliy-icon" },
-  igra: { label: "Игра", icon: Gamepad2, bg: "bg-igra-bg", color: "text-igra-icon" },
+  konspekt: { label: "Конспект", icon: BookOpen, bg: "bg-note-bg", color: "text-note-icon", accentVar: "--color-note-icon" },
+  lektsiya: { label: "Лекция", icon: Lightbulb, bg: "bg-lecture-bg", color: "text-lecture-icon", accentVar: "--color-lecture-icon" },
+  test: { label: "Тест", icon: ClipboardCheck, bg: "bg-test-bg", color: "text-test-icon", accentVar: "--color-test-icon" },
+  prezentatsiya: { label: "Презентация", icon: Presentation, bg: "bg-pres-bg", color: "text-pres-icon", accentVar: "--color-pres-icon" },
+  amaliy: { label: "Практические задания", icon: ClipboardList, bg: "bg-amaliy-bg", color: "text-amaliy-icon", accentVar: "--color-amaliy-icon" },
+  igra: { label: "Игра", icon: Gamepad2, bg: "bg-igra-bg", color: "text-igra-icon", accentVar: "--color-igra-icon" },
 };
 
 export const MATERIAL_TYPES: MaterialType[] = ["konspekt", "lektsiya", "test", "prezentatsiya", "amaliy", "igra"];

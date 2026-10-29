@@ -369,18 +369,21 @@ export default function MaterialViewerPage() {
       <div className="mb-5 flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm font-medium text-text-secondary"
+          className="flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-sm font-medium text-text-secondary shadow-[0_2px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:text-text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
           Назад
         </button>
-        <button onClick={handleDelete} className="text-text-tertiary hover:text-primary">
+        <button
+          onClick={handleDelete}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-light bg-white text-text-tertiary shadow-[0_2px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:text-primary"
+        >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
       <div className="mb-6 flex items-start gap-3">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${config.bg}`}>
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${config.bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]`}>
           <Icon className={`h-5 w-5 ${config.color}`} />
         </div>
         <div>
@@ -397,7 +400,7 @@ export default function MaterialViewerPage() {
           <button
             onClick={handleUndo}
             disabled={undoing}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-surface px-3 py-1.5 text-xs font-medium text-primary-dark shadow-sm hover:bg-primary-50 disabled:opacity-60"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/15 bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark shadow-[0_2px_0_0_var(--color-primary-50)] transition-all duration-150 hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
           >
             {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
             Отменить
@@ -409,7 +412,7 @@ export default function MaterialViewerPage() {
         <div className="mb-3 flex flex-wrap gap-2">
           <button
             onClick={() => setPresenting(true)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm shadow-primary/25 transition hover:bg-primary-dark"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-primary-light to-primary py-2.5 text-sm font-semibold text-white shadow-[0_3px_0_0_var(--color-primary-dark),0_10px_20px_-6px_rgba(220,38,38,0.4)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_var(--color-primary-dark),0_12px_22px_-6px_rgba(220,38,38,0.45)] active:translate-y-0.5 active:shadow-[0_1px_0_0_var(--color-primary-dark)]"
           >
             <Play className="h-4 w-4" />
             Показать на весь экран
@@ -417,7 +420,7 @@ export default function MaterialViewerPage() {
           {}
           <button
             onClick={() => router.push(`/dashboard/presentations/${id}/edit`)}
-            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface-muted"
+            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5"
           >
             <Pencil className="h-4 w-4" />
             Редактировать
@@ -430,7 +433,7 @@ export default function MaterialViewerPage() {
         <div className="mb-3 flex">
           <button
             onClick={() => router.push(`/dashboard/tests/${id}/edit`)}
-            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface-muted"
+            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5"
           >
             <Pencil className="h-4 w-4" />
             Редактировать тест
@@ -455,7 +458,7 @@ export default function MaterialViewerPage() {
                 key={f}
                 onClick={() => handleDownload(f)}
                 disabled={downloading !== null}
-                className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary hover:bg-surface-muted disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-xl border border-border-light bg-white px-3.5 py-2 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary disabled:pointer-events-none disabled:opacity-60"
               >
                 {downloading === f ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 .{f}
@@ -474,7 +477,7 @@ export default function MaterialViewerPage() {
                 key={f}
                 onClick={() => handleDownload(f)}
                 disabled={downloading !== null}
-                className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-medium text-text-primary hover:bg-surface-muted disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-xl border border-border-light bg-white px-3.5 py-2 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary disabled:pointer-events-none disabled:opacity-60"
               >
                 {downloading === f ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 .{f}
@@ -486,7 +489,7 @@ export default function MaterialViewerPage() {
 
       {}
       {type !== "igra" && (
-      <div className="mb-6 rounded-2xl border border-border-light bg-surface p-3">
+      <div className="mb-6 rounded-2xl border border-border-light bg-white p-3 shadow-[0_3px_0_0_var(--color-border-light),0_14px_28px_-14px_rgba(220,38,38,0.1)]">
         {chatError && <p className="mb-2 px-1 text-xs text-primary-dark">{chatError}</p>}
         <form
           onSubmit={(e) => {
@@ -506,7 +509,7 @@ export default function MaterialViewerPage() {
           <button
             type="submit"
             disabled={chatSubmitting || !chatInstruction.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white disabled:opacity-40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-primary-light to-primary text-white shadow-[0_2px_0_0_var(--color-primary-dark)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_var(--color-primary-dark)] active:translate-y-px active:shadow-[0_1px_0_0_var(--color-primary-dark)] disabled:pointer-events-none disabled:opacity-40"
           >
             {chatSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           </button>

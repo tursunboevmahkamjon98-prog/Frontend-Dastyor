@@ -47,6 +47,14 @@
   /* Borders/dividers */
   --color-border: #f3d9d8;
   --color-border-light: #faeceb;
+
+  /* Secondary accent — aliased to the existing igra/violet category color
+   * rather than a newly invented hue, so a second brand color doesn't get
+   * decided by whoever happens to touch a file next. primary-accent is
+   * just primary under a name some newer screens reach for. */
+  --color-secondary: #7c3aed;
+  --color-secondary-50: #ede9fe;
+  --color-primary-accent: #dc2626;
 }
 
 @theme inline {
@@ -78,8 +86,27 @@
   --color-warning: var(--color-warning);
   --color-border: var(--color-border);
   --color-border-light: var(--color-border-light);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-50: var(--color-secondary-50);
+  --color-primary-accent: var(--color-primary-accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Type scale — the "soft 3D" pages (book upload, lessons) use these names
+   * directly instead of Tailwind's default sm/base/lg/xl scale. */
+  --text-micro: 0.6875rem;
+  --text-meta: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-subheading: 1.0625rem;
+  --text-title: 1.5rem;
+  --text-display: 1.875rem;
+
+  /* Radius/shadow names used by the same pages, matching the lip-shadow
+   * "raised card" language used across the rest of the redesigned app. */
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+  --shadow-card: 0 3px 0 0 var(--color-border-light), 0 14px 28px -12px rgba(0, 0, 0, 0.08);
+  --shadow-card-lift: 0 4px 0 0 var(--color-border-light), 0 20px 36px -12px rgba(220, 38, 38, 0.14);
 }
 
 body {

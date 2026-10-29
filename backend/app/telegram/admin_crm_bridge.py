@@ -90,7 +90,7 @@ async def finance_report_text_all_time_legacy(telegram_user_id: int) -> str:
 
 async def finance_report_text(telegram_user_id: int) -> str:
     if not await service.has_admin_permission(telegram_user_id, "reports.view"):
-        return "Ruxsat yo‘q: moliyaviy hisobot faqat vakolatli adminlar uchun."
+        return "⛔ Недостаточно прав для просмотра финансового отчёта."
     async with async_session() as db:
         requests = (await db.execute(text(
             "SELECT COUNT(DISTINCT user_id) AS people, "
@@ -109,13 +109,13 @@ async def finance_report_text(telegram_user_id: int) -> str:
             "WHERE spent_at >= now() - interval '7 days'"
         ))).scalar_one() / 100
     return (
-        "📊 Haftalik moliyaviy hisobot (so‘nggi 7 kun):\n"
-        f"So‘rov yuborgan odamlar: {requests.people}\n"
-        f"Tasdiqlandi: {requests.approved} · rad etildi: {requests.rejected} · kutilmoqda: {requests.waiting}\n"
-        f"Tasdiqlangan tushum: {topup_total:.2f} somoni\n"
-        f"Qayd etilgan xarajat: {expense_total:.2f} somoni\n"
-        f"Sof farq: {topup_total - expense_total:.2f} somoni\n\n"
-        "AI/server xarajatlari faqat Xarajatlar bo‘limiga kiritilgan bo‘lsa hisoblanadi."
+        "📈 Финансовый отчёт за последние 7 дней:\n"
+        f"Пользователей с заявками: {requests.people}\n"
+        f"Подтверждено: {requests.approved} · отклонено: {requests.rejected} · ожидает: {requests.waiting}\n"
+        f"Подтверждённые поступления: {topup_total:.2f} сомони\n"
+        f"Учтённые расходы: {expense_total:.2f} сомони\n"
+        f"Разница поступлений и расходов: {topup_total - expense_total:.2f} сомони\n\n"
+        "Расходы на ИИ и сервер учитываются, если они внесены в раздел «Расходы»."
     )
 
 

@@ -263,9 +263,7 @@ async def _sync_pay_instructions_from_cards(db: AsyncSession, admin: User, key: 
         from app.telegram.config import get_telegram_settings
 
         settings = get_telegram_settings()
-        client = TelegramClient(
-            settings.TELEGRAM_ADMIN_BOT_TOKEN if settings.has_separate_admin_bot else None
-        )
+        client = TelegramClient()
         message = (
             f"⚠️ Реквизиты оплаты изменены через страницу «Карты» "
             f"администратором {admin.full_name}.\n\n"

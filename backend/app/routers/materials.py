@@ -20,6 +20,7 @@ from app.schemas import (
     GenerateRequest, GenerateResponse,
     GenerateKonspektStreamRequest,
     GenerateAllRequest,
+    BookGenerateRequest,
     RegenerateItemRequest,
     RetryLessonImageRequest,
     RegenerateGameRequest,
@@ -43,7 +44,7 @@ from app.export_builder import (
     build_presentation_pptx, build_konspekt_pdf, build_lecture_pdf, build_test_pdf, build_presentation_pdf,
     build_practical_pdf, _PRACTICAL_UI,
 )
-from app import limits, pptx_pdf
+from app import limits, pptx_pdf, book_sources
 from app.security import enforce_user_quota
 from app.logger import get_logger
 from app.i18n import get_message
@@ -53,6 +54,7 @@ settings = get_settings()
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/materials", tags=["materials"])
+_BOOK_PARSE_SEM = asyncio.Semaphore(1)
 
 _MATERIAL_MODELS = {
     "konspekt": Konspekt,
@@ -1271,6 +1273,102 @@ async def chat_edit_endpoint(
 
 
 
+
+def _book_error(exc: book_sources.BookError) -> HTTPException:
+    code = str(exc)
+    status = 404 if code == "not_found" else 413 if code == "file_too_large" else 422
+    return HTTPException(status_code=status, detail=code)
+
+
+@router.post("/book-sources")
+async def upload_book_source(file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    try:
+        raw = await file.read(book_sources.MAX_BYTES + 1)
+        if len(raw) > book_sources.MAX_BYTES:
+            raise book_sources.BookError("file_too_large")
+        try:
+            await asyncio.wait_for(_BOOK_PARSE_SEM.acquire(), timeout=5)
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(status_code=503, detail="extraction_busy") from exc
+        task = asyncio.create_task(asyncio.to_thread(book_sources.extract_pdf, raw, file.filename or "", file.content_type))
+        try:
+            extracted = await asyncio.wait_for(asyncio.shield(task), timeout=60)
+        finally:
+            if task.done():
+                _BOOK_PARSE_SEM.release()
+            else:
+                def release_when_done(done_task: asyncio.Task) -> None:
+                    try:
+                        done_task.exception()
+                    except BaseException:
+                        pass
+                    _BOOK_PARSE_SEM.release()
+                task.add_done_callback(release_when_done)
+        return book_sources.save(user.id, extracted)
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(status_code=422, detail="extraction_timeout") from exc
+    finally:
+        await file.close()
+
+
+@router.get("/book-sources/{source_id}")
+async def get_book_source(source_id: str, user: User = Depends(get_current_user)):
+    try:
+        return book_sources.public_metadata(book_sources.load(user.id, source_id))
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+
+
+def _book_selection(data: BookGenerateRequest, user: User):
+    try:
+        record = book_sources.load(user.id, data.source_id)
+        source = book_sources.select_context(record, data.scope, data.topic.strip() or None,
+                                            data.chapter_index, data.page_start, data.page_end)
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    request_data = data.model_copy(update={"topic": data.topic.strip() or record["title"]})
+    return request_data, source
+
+
+@router.post("/generate-from-book")
+async def generate_from_book(data: BookGenerateRequest, user: User = Depends(get_current_user),
+                             db: AsyncSession = Depends(get_db)):
+    request_data, source = _book_selection(data, user)
+    return await _generate_all_impl(request_data, user, db, source)
+
+
+@router.post("/generate-from-book-stream")
+async def generate_from_book_stream(data: BookGenerateRequest, request: Request,
+                                    user: User = Depends(get_current_user)):
+    request_data, source = _book_selection(data, user)
+    async def event_stream():
+        async with async_session() as db:
+            task = asyncio.create_task(_generate_all_impl(request_data, user, db, source))
+            try:
+                yield _keepalive_frame()
+                while True:
+                    try:
+                        payload = await asyncio.wait_for(asyncio.shield(task), timeout=GENERATE_KEEPALIVE_SECONDS)
+                        break
+                    except asyncio.TimeoutError:
+                        if await request.is_disconnected():
+                            task.cancel()
+                            return
+                        yield _keepalive_frame()
+                await asyncio.wait_for(db.commit(), timeout=20.0)
+                yield f"data: {json.dumps({'type': 'complete', **payload}, ensure_ascii=False)}\n\n"
+            except HTTPException as exc:
+                await db.rollback()
+                yield f"data: {json.dumps({'type': 'error', 'message': exc.detail, 'status': exc.status_code}, ensure_ascii=False)}\n\n"
+            except Exception as exc:
+                await db.rollback()
+                logger.error(f"generate-from-book-stream failed for user {user.id}: {exc}", exc_info=True)
+                yield f"data: {json.dumps({'type': 'error', 'message': get_message('ai_busy', data.language)}, ensure_ascii=False)}\n\n"
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+
 _GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy"]
 
 
@@ -1278,6 +1376,7 @@ async def _generate_all_impl(
     data: GenerateAllRequest,
     user: User,
     db: AsyncSession,
+    source_context: dict | None = None,
 ) -> dict:
     if data.types:
         types_to_generate = [t for t in _GENERATE_ALL_TYPES if t in set(data.types)]
@@ -1310,6 +1409,7 @@ async def _generate_all_impl(
                 question_count=data.question_count or 10,
                 test_type=data.test_type,
                 types=types_to_generate,
+                source_text=source_context.get("text") if source_context else None,
             )
         logger.info(f"generate-all memory after: {memory_report()}")
         if result.get("errors"):
@@ -1397,6 +1497,7 @@ async def _generate_all_impl(
             "skipped": skipped or None,
             "was_free": {t: (t in free_types) for t in saved_ids},
             "balance_somoni": (await limits.current_balance(user.id)) / 100,
+            "source": {k: source_context[k] for k in ("document_title", "scope", "page_start", "page_end", "used_pages", "chapter", "selection_is_excerpt", "unreadable_pages")} if source_context else None,
         }
 
     except asyncio.CancelledError:

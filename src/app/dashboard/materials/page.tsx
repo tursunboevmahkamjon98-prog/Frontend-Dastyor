@@ -2,14 +2,39 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Search, Star, Trash2, FolderOpen, ChevronRight, Undo2, CheckSquare, Square, X, Copy, Loader2 } from "lucide-react";
-import { materialsApi, MaterialOut, MaterialType } from "@/lib/api";
+import { Search, Star, Trash2, FolderOpen, ChevronRight, Undo2, CheckSquare, Square, X, Copy, Loader2, Download } from "lucide-react";
+import { materialsApi, downloadMaterial, MaterialOut, MaterialType } from "@/lib/api";
 import { MATERIAL_TYPE_CONFIG, LIBRARY_TYPES, MATERIAL_TYPE_LABEL_KEY } from "@/lib/material-types";
 import { useT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
 
 type Item = MaterialOut & { type: MaterialType };
 type Tab = "all" | MaterialType;
+
+/* Mirrors [type]/[id]/page.tsx's own maps — the list row only has the
+ * summary MaterialOut, not the parsed content, so downloading from here
+ * fetches the full item on click rather than guessing from list data. */
+const CONTENT_FIELD: Record<MaterialType, "content" | "slides_json" | "questions_json" | "tasks_json" | "game_json"> = {
+  konspekt: "content",
+  lektsiya: "content",
+  prezentatsiya: "slides_json",
+  test: "questions_json",
+  amaliy: "tasks_json",
+  igra: "game_json",
+};
+
+/* The viewer page offers a choice of formats; the list row has room for one
+ * icon, so this is each type's first (most useful) format from that list.
+ * "igra" never reaches this page (LIBRARY_TYPES excludes it) — the entry
+ * exists only so indexing by the broader MaterialType type-checks. */
+const DOWNLOAD_FORMAT: Record<MaterialType, "docx" | "pptx"> = {
+  konspekt: "docx",
+  lektsiya: "docx",
+  test: "docx",
+  prezentatsiya: "pptx",
+  amaliy: "docx",
+  igra: "docx",
+};
 
 const CURRICULUM_STATUS_KEY: Record<string, MessageKey> = {
   draft: "materials.statusDraft",
@@ -19,7 +44,7 @@ const CURRICULUM_STATUS_KEY: Record<string, MessageKey> = {
 };
 
 const FILTER_SELECT =
-  "rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text-secondary outline-none focus:border-primary";
+  "rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-text-secondary shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none focus:border-primary";
 
 export default function MaterialsPage() {
   const t = useT();
@@ -133,9 +158,27 @@ export default function MaterialsPage() {
       const copy = await materialsApi.duplicate(item.type, item.id);
       setItems((prev) => [{ ...copy, type: item.type }, ...prev]);
     } catch {
-      
+
     } finally {
       setDuplicatingKey(null);
+    }
+  }
+
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  async function download(item: Item) {
+    const key = `${item.type}:${item.id}`;
+    setDownloadingKey(key);
+    try {
+      const full = await materialsApi.get(item.type, item.id);
+      const raw = full[CONTENT_FIELD[item.type]];
+      if (!raw) return;
+      const content = JSON.parse(raw);
+      const language = typeof content.language === "string" ? content.language : "Русский";
+      await downloadMaterial(DOWNLOAD_FORMAT[item.type], { material_type: item.type, content, language });
+    } catch {
+
+    } finally {
+      setDownloadingKey(null);
     }
   }
 
@@ -231,7 +274,7 @@ export default function MaterialsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("materials.search")}
-          className="w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none focus:border-primary"
+          className="w-full rounded-xl border border-border bg-white py-2.5 pl-10 pr-4 text-sm text-text-primary shadow-[inset_0_2px_3px_rgba(0,0,0,0.04)] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
         />
       </div>
 
@@ -287,7 +330,7 @@ export default function MaterialsPage() {
             const selected = selectedIds.has(key);
             const body = (
               <>
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.bg}`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]`}>
                   <Icon className={`h-5 w-5 ${config.color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -301,8 +344,10 @@ export default function MaterialsPage() {
             return (
               <div
                 key={key}
-                className={`flex items-center gap-3 rounded-2xl border p-3.5 transition ${
-                  selectMode && selected ? "border-primary bg-primary-50" : "border-border-light bg-surface"
+                className={`flex items-center gap-3 rounded-2xl border p-3.5 transition-all duration-150 ${
+                  selectMode && selected
+                    ? "border-primary bg-primary-50"
+                    : "border-border-light bg-white shadow-[0_2px_0_0_var(--color-border-light)] hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_3px_0_0_var(--color-primary-50),0_10px_20px_-10px_rgba(220,38,38,0.15)]"
                 }`}
               >
                 {selectMode ? (
@@ -340,6 +385,18 @@ export default function MaterialsPage() {
                     )}
                     <button onClick={() => remove(item)} className="shrink-0 p-1.5 text-text-tertiary hover:text-primary">
                       <Trash2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => download(item)}
+                      disabled={downloadingKey === key}
+                      title={t("materials.download")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-primary-light to-primary text-white shadow-[0_2px_0_0_var(--color-primary-dark)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_var(--color-primary-dark)] active:translate-y-px active:shadow-[0_1px_0_0_var(--color-primary-dark)] disabled:pointer-events-none disabled:opacity-60"
+                    >
+                      {downloadingKey === key ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
                     </button>
                   </>
                 )}
@@ -385,8 +442,10 @@ function TabChip({ active, onClick, children }: { active: boolean; onClick: () =
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition ${
-        active ? "bg-primary text-white" : "bg-surface-muted text-text-secondary"
+      className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 ${
+        active
+          ? "bg-gradient-to-b from-primary-light to-primary text-white shadow-[0_3px_0_0_var(--color-primary-dark)]"
+          : "border border-border-light bg-white text-text-secondary hover:border-primary/25 hover:text-text-primary"
       }`}
     >
       {children}

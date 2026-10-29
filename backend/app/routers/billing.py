@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import BalanceTopupRequest, PaymentRequest, TelegramAccount, User
+from app.models import BalanceTopupRequest, PaymentRequest, User
 from app.schemas import (
     BalanceOut, PayInstructionsOut, TelegramLinkCodeOut, TelegramLinkOut, TelegramLinkStatusOut,
     TopupRequestOut,
@@ -22,6 +22,7 @@ from app.telegram import service as telegram_service
 from app.telegram.ocr import cross_check, scan_receipt
 from app.telegram.api import TelegramApiError, TelegramClient, TelegramTransportError
 from app.telegram.config import get_telegram_settings
+from app.telegram.admin_ui import review as review_keyboard
 
 logger = get_logger(__name__)
 
@@ -79,33 +80,12 @@ async def get_balance(user: User = Depends(get_current_user)):
 
 @router.get("/telegram/status", response_model=TelegramLinkStatusOut)
 async def telegram_link_status(user: User = Depends(get_current_user)):
-    """Whether this account already has a Telegram chat bound to it.
-
-    The app calls this to decide what the Telegram button says — "link"
-    or "open" — and to hide the button entirely on a deployment where the
-    bot has not been configured, rather than offering a dead link.
-    """
-    status = await telegram_service.link_status(user.id)
-    return TelegramLinkStatusOut(**status)
+    return TelegramLinkStatusOut(linked=False, bot_configured=False, bot_username="")
 
 
 @router.get("/telegram/standalone-status", response_model=TelegramLinkStatusOut)
 async def standalone_telegram_link_status(user: User = Depends(get_current_user)):
-    """Status of the separate bot used by the balance page."""
-    from app.config import get_settings
-    import re
-
-    settings = get_settings()
-    status = await telegram_service.link_status(user.id)
-    username = settings.DASTYOR_STANDALONE_BOT_USERNAME.strip().lstrip("@")
-    status["bot_username"] = username
-    status["bot_configured"] = bool(
-        re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", username)
-        and len(settings.DASTYOR_BOT_API_TOKEN) >= 32
-        and settings.DASTYOR_STANDALONE_TELEGRAM_TOKEN
-        and settings.DASTYOR_BOT_ROOT_ADMIN_ID > 0
-    )
-    return TelegramLinkStatusOut(**status)
+    return TelegramLinkStatusOut(linked=False, bot_configured=False, bot_username="")
 
 
 @router.delete("/telegram/link", response_model=TelegramLinkStatusOut)
@@ -135,74 +115,7 @@ async def delete_telegram_link(user: User = Depends(get_current_user)):
 
 @router.post("/telegram/link", response_model=TelegramLinkOut)
 async def create_telegram_link(user: User = Depends(get_current_user)):
-    """Mint a single-use deep link that binds this account to a Telegram chat.
-
-    This is the only new HTTP route in the payment feature, and it is
-    behind the same ``get_current_user`` JWT dependency as everything
-    else — there is no unauthenticated endpoint anywhere in the flow, and
-    in particular nothing that can approve a payment over HTTP.
-
-    What goes into the link is one opaque random token and nothing else:
-    no email, no phone, no balance, no access token, no user id. The
-    backend stores only ``sha256(token)`` alongside the authenticated
-    user id, so the link is useless to anyone who finds it after it has
-    been redeemed or expired.
-
-    Throttled per user because a stolen session should not be able to
-    mint an unbounded supply of valid linking tokens.
-    """
-    settings = get_telegram_settings()
-    if not settings.configured:
-        # 503, not 500: the server is fine, the owner has not set
-        # TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME yet. The app shows a
-        # "not available yet" message instead of a broken button.
-        raise HTTPException(
-            status_code=503,
-            detail="Telegram payment bot is not configured on this server",
-        )
-
-    # 30/hour, not 10.
-    #
-    # The throttle guards against a stolen session minting tokens in
-    # bulk, but that buys an attacker nothing: a token is single-use,
-    # dies in five minutes, and redeeming it binds the chat to the
-    # authenticated account it was minted for — never to the attacker's.
-    #
-    # The cost of setting it too low is concrete, and was hit in
-    # practice: when Telegram fails to open (an ISP blocking t.me, for
-    # instance) a teacher presses the button again, and at ten per hour
-    # they are locked out mid-problem by their own retries — with a
-    # generic "too many requests" that explains none of it.
-    try:
-        await enforce_user_quota(user.id, "telegram_link", max_attempts=30,
-                                 window_seconds=3600)
-    except HTTPException as e:
-        if e.status_code != 429:
-            raise
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                "Слишком много попыток привязки за последний час. "
-                "Подождите немного и попробуйте снова — ваш аккаунт в "
-                "порядке, это ограничение Dastyor, а не Telegram."
-            ),
-            headers=e.headers,
-        ) from None
-
-    issued = await telegram_service.issue_link_token(user.id)
-    expires_in = max(
-        0, int((issued.expires_at - datetime.now(timezone.utc)).total_seconds())
-    )
-
-    logger.info(f"Telegram link requested by user {user.id}")
-    return TelegramLinkOut(
-        deep_link=issued.deep_link,
-        app_link=issued.app_link,
-        start_command=issued.start_command,
-        bot_username=issued.bot_username,
-        expires_at=issued.expires_at,
-        expires_in_seconds=expires_in,
-    )
+    raise HTTPException(status_code=410, detail="Payments are submitted on the website. The Telegram bot is for admins only.")
 
 
 @router.get("/pay-instructions", response_model=PayInstructionsOut)
@@ -218,50 +131,12 @@ async def get_pay_instructions(user: User = Depends(get_current_user)):
 
 @router.post("/telegram/standalone-link", response_model=TelegramLinkOut)
 async def create_standalone_telegram_link(user: User = Depends(get_current_user)):
-    """Issue the existing one-use link token for the separate Telegram bot."""
-    from app.config import get_settings
-    import re
-
-    bot_settings = get_settings()
-    username = bot_settings.DASTYOR_STANDALONE_BOT_USERNAME.strip().lstrip("@")
-    if (not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", username)
-            or len(bot_settings.DASTYOR_BOT_API_TOKEN) < 32
-            or not bot_settings.DASTYOR_STANDALONE_TELEGRAM_TOKEN
-            or bot_settings.DASTYOR_BOT_ROOT_ADMIN_ID <= 0):
-        raise HTTPException(status_code=503, detail="Standalone bot is not configured")
-    await enforce_user_quota(user.id, "standalone_telegram_link", max_attempts=30,
-                             window_seconds=3600)
-    issued = await telegram_service.issue_link_token(user.id, bot_username=username)
-    return TelegramLinkOut(
-        deep_link=issued.deep_link, app_link=issued.app_link,
-        start_command=issued.start_command, bot_username=issued.bot_username,
-        expires_at=issued.expires_at,
-        expires_in_seconds=max(0, int((issued.expires_at - datetime.now(timezone.utc)).total_seconds())),
-    )
+    raise HTTPException(status_code=410, detail="Payments are submitted on the website. The Telegram bot is for admins only.")
 
 
 @router.post("/telegram/standalone-code", response_model=TelegramLinkCodeOut)
 async def create_standalone_telegram_code(user: User = Depends(get_current_user)):
-    """Issue a short-lived code from the logged-in account for manual bot linking."""
-    from app.config import get_settings
-    import re
-
-    settings = get_settings()
-    username = settings.DASTYOR_STANDALONE_BOT_USERNAME.strip().lstrip("@")
-    if (not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", username)
-            or len(settings.DASTYOR_BOT_API_TOKEN) < 32
-            or not settings.DASTYOR_STANDALONE_TELEGRAM_TOKEN
-            or settings.DASTYOR_BOT_ROOT_ADMIN_ID <= 0):
-        raise HTTPException(status_code=503, detail="Standalone bot is not configured")
-    await enforce_user_quota(user.id, "standalone_telegram_code", max_attempts=15,
-                             window_seconds=3600)
-    issued = await telegram_service.issue_link_code(user.id)
-    return TelegramLinkCodeOut(
-        code=issued.code,
-        bot_username=username,
-        expires_at=issued.expires_at,
-        expires_in_seconds=max(0, int((issued.expires_at - datetime.now(timezone.utc)).total_seconds())),
-    )
+    raise HTTPException(status_code=410, detail="Payments are submitted on the website. The Telegram bot is for admins only.")
 
 
 @router.post("/topup-requests", response_model=TopupRequestOut, status_code=201)
@@ -306,12 +181,7 @@ async def create_topup_request(
         receipt_path = f"/uploads/receipts/{filename}"
 
     dirams = round(amount_somoni * 100)
-    chat_id = int((await db.execute(
-        select(TelegramAccount.chat_id).where(
-            TelegramAccount.user_id == user.id,
-            TelegramAccount.revoked.is_(False),
-        )
-    )).scalar_one_or_none() or 0)
+    chat_id = 0  # Web payments have no customer Telegram chat.
     request = await telegram_service.create_payment_request(user.id, chat_id, dirams)
     scan = scan_receipt(raw, mime)
     scan.sender = sender_wallet
@@ -323,23 +193,18 @@ async def create_topup_request(
         scan=scan, stored_path=receipt_path,
     )
 
-    settings = get_telegram_settings()
     admin_ids = sorted(await telegram_service.all_admin_ids())
     if admin_ids:
-        token = settings.TELEGRAM_ADMIN_BOT_TOKEN if settings.has_separate_admin_bot else None
         try:
-            async with TelegramClient(token) as client:
+            async with TelegramClient() as client:
                 caption = (
-                    f"Yangi balans to‘ldirish: {request.public_code}\n"
-                    f"Foydalanuvchi: {user.full_name} (#{user.short_id or '—'})\n"
-                    f"Bank: {bank_name}\nHamyon: {sender_wallet}\n"
-                    f"So‘rov: {amount_somoni:.2f} somoni\n"
-                    "Chekni bank ilovasida tekshirib, keyin qaror qiling."
+                    f"🔔 Новая заявка на пополнение: {request.public_code}\n"
+                    f"Пользователь: {user.full_name} (#{user.short_id or '—'})\n"
+                    f"Банк: {bank_name}\nКошелёк отправителя: {sender_wallet}\n"
+                    f"Сумма: {amount_somoni:.2f} сомони\n"
+                    "Проверьте поступление в банковском приложении, затем выберите действие."
                 )
-                keyboard = {"inline_keyboard": [
-                    [{"text": "Tasdiqlash", "callback_data": f"pay:ok:{request.id}"}],
-                    [{"text": "Rad etish", "callback_data": f"pay:no:{request.id}"}],
-                ]}
+                keyboard = review_keyboard(request.id)
                 for admin_id in admin_ids:
                     try:
                         is_pdf = mime == "application/pdf"

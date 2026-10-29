@@ -30,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/dashboard" style={{ textDecoration: "underline" }}>
           ← к сайту
         </Link>
+        <Link href="/admin/roles" style={{ marginLeft: 16, textDecoration: "underline" }}>Администраторы</Link>
       </div>
       {children}
     </div>

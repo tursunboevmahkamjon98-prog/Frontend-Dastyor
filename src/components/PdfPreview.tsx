@@ -53,17 +53,17 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
   }
 
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl border border-border-light bg-surface">
-      <div className="flex items-center justify-end gap-2 border-b border-border-light px-3 py-2">
+    <div className="mb-6 overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_3px_0_0_var(--color-border-light),0_14px_28px_-12px_rgba(0,0,0,0.08)]">
+      <div className="flex items-center justify-end gap-2 border-b border-border-light bg-surface-muted/50 px-3 py-2.5">
         <a
           href={url ?? undefined}
           target="_blank"
           rel="noreferrer"
           aria-disabled={!url}
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
             url
-              ? "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
-              : "pointer-events-none text-text-tertiary opacity-50"
+              ? "border-border-light bg-white text-text-secondary shadow-[0_2px_0_0_var(--color-border-light)] hover:-translate-y-0.5 hover:text-text-primary"
+              : "pointer-events-none border-transparent text-text-tertiary opacity-50"
           }`}
         >
           <ExternalLink className="h-3.5 w-3.5" />
@@ -72,7 +72,7 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
         <button
           onClick={handleDownload}
           disabled={!url || downloading}
-          className="flex items-center gap-1.5 rounded-lg bg-surface-muted px-2.5 py-1.5 text-xs font-medium text-text-primary transition hover:bg-primary-50 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg bg-gradient-to-b from-primary-light to-primary px-2.5 py-1.5 text-xs font-semibold text-white shadow-[0_2px_0_0_var(--color-primary-dark)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_var(--color-primary-dark)] active:translate-y-px active:shadow-[0_1px_0_0_var(--color-primary-dark)] disabled:pointer-events-none disabled:opacity-50"
         >
           {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           {t("material.download")}

@@ -11,7 +11,7 @@ export default function PhoneInput({
   autoFocus?: boolean;
 }) {
   return (
-    <div className="flex overflow-hidden rounded-xl border border-border bg-surface transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
+    <div className="flex overflow-hidden rounded-xl border border-border bg-white shadow-[inset_0_2px_3px_rgba(0,0,0,0.04)] transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
       <span className="flex items-center border-r border-border-light bg-surface-muted px-3.5 text-sm font-medium text-text-secondary">
         +992
       </span>

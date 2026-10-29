@@ -8,8 +8,8 @@
   "theme_color": "#dc2626",
   "icons": [
     {
-      "src": "/logo.png",
-      "sizes": "256x256",
+      "src": "/brand/dastyor-icon.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

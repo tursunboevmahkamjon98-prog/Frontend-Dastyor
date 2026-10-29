@@ -23,6 +23,11 @@ export default function ForgotPasswordPage() {
   const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const inputClass =
+    "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-text-primary shadow-[inset_0_2px_3px_rgba(0,0,0,0.04)] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
+  const buttonClass =
+    "w-full rounded-xl bg-gradient-to-b from-primary-light to-primary py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_var(--color-primary-dark),0_10px_20px_-6px_rgba(220,38,38,0.4)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_5px_0_0_var(--color-primary-dark),0_12px_24px_-6px_rgba(220,38,38,0.45)] active:translate-y-0.5 active:shadow-[0_1px_0_0_var(--color-primary-dark)] disabled:pointer-events-none disabled:opacity-60 disabled:hover:translate-y-0";
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -102,7 +107,7 @@ export default function ForgotPasswordPage() {
     <AuthLayout>
         <div className="mb-8 lg:text-left">
           {}
-          <img src="/logo.png" alt="Dastyor" className="mb-4 h-11 w-11 lg:hidden" />
+          <img src="/brand/dastyor-mark.webp" alt="Dastyor" className="mb-4 h-11 w-auto lg:hidden" />
           <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">{t("forgot.title")}</h1>
           <p className="mt-1.5 text-sm text-text-secondary">
             {step === "phone" && t("forgot.stepPhone")}
@@ -111,7 +116,7 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border-light bg-surface p-6 shadow-sm shadow-black/[0.03]">
+        <div className="rounded-[1.75rem] border border-border-light bg-white p-6 shadow-[0_4px_0_0_var(--color-border-light),0_20px_40px_-12px_rgba(220,38,38,0.12)] sm:p-7">
           {error && (
             <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-dark">{error}</div>
           )}
@@ -125,7 +130,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={submitting || phone.length !== 9}
-                className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-60"
+                className={buttonClass}
               >
                 {submitting ? t("forgot.sending") : t("forgot.send")}
               </button>
@@ -143,14 +148,14 @@ export default function ForgotPasswordPage() {
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-center text-lg tracking-[0.5em] text-text-primary outline-none focus:border-primary"
+                  className={`${inputClass} text-center text-lg tracking-[0.5em]`}
                   placeholder="000000"
                 />
               </div>
               <button
                 type="submit"
                 disabled={submitting || code.length !== 6}
-                className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-60"
+                className={buttonClass}
               >
                 {submitting ? t("forgot.checking") : t("login.verify")}
               </button>
@@ -175,14 +180,14 @@ export default function ForgotPasswordPage() {
                   minLength={6}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text-primary outline-none focus:border-primary"
+                  className={inputClass}
                   placeholder={t("register.passwordPlaceholder")}
                 />
               </div>
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:opacity-60"
+                className={buttonClass}
               >
                 {submitting ? t("forgot.saving") : t("forgot.save")}
               </button>

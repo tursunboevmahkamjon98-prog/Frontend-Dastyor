@@ -46,9 +46,11 @@ def scrub(text: object) -> str:
     pasted traceback, or a second bot's token in the same line.
     """
     out = str(text)
-    token = get_telegram_settings().TELEGRAM_BOT_TOKEN
-    if token:
-        out = out.replace(token, "<BOT_TOKEN>")
+    settings = get_telegram_settings()
+    for name in ("TELEGRAM_ADMIN_BOT_TOKEN", "TELEGRAM_BOT_TOKEN"):
+        token = getattr(settings, name, "")
+        if token:
+            out = out.replace(token, "<BOT_TOKEN>")
     return _TOKEN_SHAPE.sub("<BOT_TOKEN>", out)
 
 
@@ -124,12 +126,10 @@ class TelegramClient:
     def __init__(self, token: str | None = None, *, max_attempts: int = 4,
                  timeout: float = 40.0):
         settings = get_telegram_settings()
-        self._token = token or settings.TELEGRAM_BOT_TOKEN
+        self._token = (token or settings.TELEGRAM_ADMIN_BOT_TOKEN).strip()
         if not self._token:
             raise RuntimeError(
-                "TELEGRAM_BOT_TOKEN is not set. Put it in backend/.env.telegram "
-                "(gitignored) or in the process environment - never in .env, "
-                "which this repository commits."
+                "TELEGRAM_ADMIN_BOT_TOKEN is not set. Configure backend/.env or the environment."
             )
         self._max_attempts = max_attempts
         self._client = httpx.AsyncClient(

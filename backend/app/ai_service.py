@@ -2651,7 +2651,7 @@ async def _render_slide_images(content: dict, topic: str) -> None:
 
         results = await asyncio.wait_for(
             asyncio.gather(*(_one(slide) for slide in wanted), return_exceptions=True),
-            timeout=75.0,
+            timeout=35.0,
         )
         fetched: list[tuple[dict, dict]] = [
             r for r in results if isinstance(r, tuple)
@@ -4048,6 +4048,7 @@ async def generate_all_materials(
     question_count: int = 10,
     test_type: str | None = None,
     types: list[str] | None = None,
+    source_text: str | None = None,
 ) -> dict:
     import asyncio
 
@@ -4073,6 +4074,7 @@ async def generate_all_materials(
                     question_count=question_count if mt == "test" else None,
                     test_type=test_type if mt == "test" else None,
                     template=_default_template_for(mt, subject, grade),
+                    source_text=source_text,
                 )
             except Exception as e:
                 logger.warning(f"generate_all: {mt} FAILED: {e}")

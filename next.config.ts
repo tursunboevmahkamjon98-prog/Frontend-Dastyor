@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
   
   
   
-  allowedDevOrigins: ["*.trycloudflare.com"],
+  allowedDevOrigins: ["*.trycloudflare.com", "127.0.0.1", "localhost"],
 };
 
 export default nextConfig;

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.database import init_db, async_session
 from app.config import get_settings
 from app.diagnostics import memory_report
-from app.routers import auth, materials, admin, billing, qr_auth, admin_crm, bot_api
+from app.routers import auth, materials, admin, billing, qr_auth, admin_crm
 from app.auth import hash_password
 from app.models import User
 from app.logger import get_logger
@@ -124,7 +124,6 @@ app.include_router(materials.router)
 app.include_router(materials.lessons_router)
 app.include_router(admin.router)
 app.include_router(admin_crm.router)
-app.include_router(bot_api.router)
 app.include_router(billing.router)
 app.include_router(qr_auth.router)
 
