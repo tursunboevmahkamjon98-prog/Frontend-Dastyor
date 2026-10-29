@@ -62,6 +62,12 @@ async def init_db():
         # either way, so having it in both places costs nothing.
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
 
+        # create_all creates missing tables, but does not add columns to
+        # existing ones. Provisioning the admin selects every User column
+        # immediately after init_db, so upgrades must add admin_tier here.
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_tier VARCHAR(20)"
+        ))
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)"
         ))
@@ -232,6 +238,18 @@ async def init_db():
             "WHERE actor_telegram_id IS NOT NULL"
         ))
 
+        # Older payment-bot deployments already have this table. Keep
+        # their rows and add the nullable fields expected by the model.
+        for _col, _type in (
+            ("client_request_key", "VARCHAR(100) UNIQUE"),
+            ("receipt_kind", "VARCHAR(20)"),
+            ("standalone_notification_sent_at", "TIMESTAMPTZ"),
+        ):
+            await conn.execute(text(
+                f"ALTER TABLE payment_requests "
+                f"ADD COLUMN IF NOT EXISTS {_col} {_type}"
+            ))
+
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_payment_requests_user_created "
             "ON payment_requests (user_id, created_at DESC)"
@@ -296,6 +314,10 @@ async def init_db():
         await conn.execute(text(
             "ALTER TABLE telegram_admins "
             "ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE telegram_admins "
+            "ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ"
         ))
 
         # Lets "/addadmin @username" resolve from our own records; the
