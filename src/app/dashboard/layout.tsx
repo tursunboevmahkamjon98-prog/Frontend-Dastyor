@@ -11,6 +11,7 @@ import { API_ORIGIN } from "@/lib/api";
 import { useT, useAccountLocale } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
 import AppUpdateBanner from "@/components/AppUpdateBanner";
+import BillingLink from "@/components/BillingLink";
 
 type NavItem = { href: string; labelKey: MessageKey; icon: typeof Home; exact?: boolean };
 
@@ -112,8 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {}
-        <Link
-          href="/dashboard/billing"
+        <BillingLink
           className="group mx-3 mb-3 flex items-center gap-3 rounded-xl border border-border-light bg-white p-3 shadow-[0_2px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_3px_0_0_var(--color-border-light),0_8px_16px_-8px_rgba(220,38,38,0.15)]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary shadow-[inset_0_-2px_3px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110">
@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="shrink-0 rounded-lg bg-gradient-to-b from-primary-light to-primary px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-[0_2px_0_0_var(--color-primary-dark)]">
             {t("profile.topUp")}
           </span>
-        </Link>
+        </BillingLink>
 
         {}
         <Link

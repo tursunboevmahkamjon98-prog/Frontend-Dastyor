@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { BILLING_ENABLED } from "./src/lib/features";
 
 
 
@@ -20,6 +21,13 @@ const nextConfig: NextConfig = {
   
   
   output: "standalone",
+  async redirects() {
+    return BILLING_ENABLED ? [] : [{
+      source: "/dashboard/billing/:path*",
+      destination: "/dashboard",
+      permanent: false,
+    }];
+  },
   
   
   

@@ -9,6 +9,7 @@ import { authApi, ApiError, API_ORIGIN } from "@/lib/api";
 import { LANGUAGES } from "@/lib/material-types";
 import { useT, useLocale } from "@/lib/i18n";
 import { localeFromAccountLanguage } from "@/lib/messages";
+import BillingLink from "@/components/BillingLink";
 
 const FIELD =
   "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-text-primary shadow-[inset_0_2px_3px_rgba(0,0,0,0.04)] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -35,8 +36,7 @@ export default function ProfilePage() {
       </div>
 
       {}
-      <Link
-        href="/dashboard/billing"
+      <BillingLink
         className="group mb-6 flex items-center gap-4 rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_14px_28px_-12px_rgba(220,38,38,0.1)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_var(--color-border-light),0_18px_32px_-12px_rgba(220,38,38,0.16)]"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 shadow-[inset_0_-2px_3px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110">
@@ -52,7 +52,7 @@ export default function ProfilePage() {
         <span className="shrink-0 rounded-xl bg-gradient-to-b from-primary-light to-primary px-4 py-2.5 text-xs font-semibold text-white shadow-[0_3px_0_0_var(--color-primary-dark)]">
           {t("profile.topUp")}
         </span>
-      </Link>
+      </BillingLink>
 
       <div className="mb-6 divide-y divide-border-light overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_3px_0_0_var(--color-border-light),0_14px_28px_-12px_rgba(0,0,0,0.06)]">
         <MenuRow icon={Lock} label={t("profile.password")} onClick={() => setOpenModal("password")} />
