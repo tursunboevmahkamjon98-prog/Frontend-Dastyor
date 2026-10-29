@@ -99,32 +99,29 @@ export default function MaterialsPage() {
     
   }, [tab]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const types = tab === "all" ? LIBRARY_TYPES : [tab];
-      const results = await Promise.all(
-        types.map(async (t) => {
-          const list = await materialsApi.list(t, { q: query || undefined });
-          return list.map((m) => ({ ...m, type: t }));
-        })
-      );
-      const merged = results.flat().sort((a, b) => {
-        if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      setItems(merged);
+      const summaries = await materialsApi.library({
+        type: tab === "all" ? undefined : tab,
+        q: query || undefined,
+      }, signal);
+      if (!signal?.aborted) setItems(summaries);
     } catch {
-      setItems([]);
+      if (!signal?.aborted) setItems([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [tab, query]);
 
   useEffect(() => {
-    const t = setTimeout(load, 250); 
-    return () => clearTimeout(t);
-  }, [load]);
+    const controller = new AbortController();
+    const timer = setTimeout(() => { void load(controller.signal); }, query ? 250 : 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [load, query]);
 
   
   

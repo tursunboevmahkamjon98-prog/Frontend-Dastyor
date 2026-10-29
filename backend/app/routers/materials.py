@@ -3,10 +3,10 @@ import json
 import io
 import secrets
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, literal, union_all
 from app.database import get_db, async_session, released
 from app.models import User, Konspekt, Presentation, Test, Lecture, PracticalTask, Game, GameAttempt
 from app.schemas import (
@@ -113,21 +113,18 @@ def require_game_access(user: User, material_type: str) -> None:
 @router.get("/stats", response_model=DashboardStats)
 async def get_stats(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     try:
-        k = await db.execute(select(func.count()).where(Konspekt.owner_id == user.id))
-        t = await db.execute(select(func.count()).where(Test.owner_id == user.id))
-        p = await db.execute(select(func.count()).where(Presentation.owner_id == user.id))
-        l = await db.execute(select(func.count()).where(Lecture.owner_id == user.id))
-        a = await db.execute(select(func.count()).where(PracticalTask.owner_id == user.id))
-        g = await db.execute(select(func.count()).where(Game.owner_id == user.id))
-
-        stats = DashboardStats(
-            konspekt_count=k.scalar() or 0,
-            test_count=t.scalar() or 0,
-            presentation_count=p.scalar() or 0,
-            lecture_count=l.scalar() or 0,
-            practical_count=a.scalar() or 0,
-            game_count=g.scalar() or 0,
-        )
+        # Independent scalar counts avoid both six database round trips
+        # and the row multiplication that a join between these tables causes.
+        counts = await db.execute(select(*(
+            select(func.count()).where(model.owner_id == user.id)
+            .scalar_subquery().label(name)
+            for model, name in (
+                (Konspekt, "konspekt_count"), (Test, "test_count"),
+                (Presentation, "presentation_count"), (Lecture, "lecture_count"),
+                (PracticalTask, "practical_count"), (Game, "game_count"),
+            )
+        )))
+        stats = DashboardStats(**counts.mappings().one())
         logger.info(f"Stats fetched for user {user.email}: k={stats.konspekt_count} t={stats.test_count} p={stats.presentation_count}")
         return stats
     except Exception as e:
@@ -135,6 +132,58 @@ async def get_stats(user: User = Depends(get_current_user), db: AsyncSession = D
         raise HTTPException(status_code=500, detail="Failed to fetch statistics")
 
 
+
+
+def _summary_query(user_id: str, *, types: list[str], q: str = "",
+                   subject: str | None = None, grade: str | None = None,
+                   page: int = 1, page_size: int = 20,
+                   favorites_first: bool = False):
+    queries = []
+    for type_name in types:
+        model = _MATERIAL_MODELS[type_name]
+        query = select(
+            model.id, literal(type_name).label("type"), model.title,
+            model.subject, model.grade, model.is_favorite,
+            model.created_at, model.updated_at,
+        ).where(model.owner_id == user_id)
+        if q:
+            query = query.where(model.title.ilike(f"%{q}%"))
+        if subject:
+            query = query.where(model.subject == subject)
+        if grade:
+            query = query.where(model.grade == grade)
+        if favorites_first:
+            query = query.order_by(model.is_favorite.desc())
+        queries.append(query.order_by(model.created_at.desc())
+                       .offset((page - 1) * page_size).limit(page_size))
+    summaries = union_all(*queries).subquery()
+    query = select(summaries)
+    if favorites_first:
+        query = query.order_by(summaries.c.is_favorite.desc())
+    return query.order_by(summaries.c.created_at.desc())
+
+
+@router.get("/library")
+async def list_library(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    material_type: str | None = None,
+    q: str = "",
+    subject: str | None = None,
+    grade: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+):
+    if material_type is not None and material_type not in _MATERIAL_MODELS:
+        raise HTTPException(status_code=422, detail="Unknown material type")
+    types = [material_type] if material_type else [key for key in _MATERIAL_MODELS if key != "igra"]
+    # List rows never need the large generated text/slide JSON. Detail,
+    # download and duplicate operations still use the full-item endpoints.
+    result = await db.execute(_summary_query(
+        user.id, types=types, q=q, subject=subject, grade=grade,
+        page=page, page_size=page_size, favorites_first=True,
+    ))
+    return [dict(row) for row in result.mappings().all()]
 
 
 @router.get("/search")
@@ -145,29 +194,10 @@ async def search_materials(
     subject: str | None = None,
     grade: str | None = None,
 ):
-    results = []
-    for model_cls, type_name in [(Konspekt, "konspekt"), (Test, "test"), (Presentation, "prezentatsiya"), (Lecture, "lektsiya"),
-                                 (PracticalTask, "amaliy"), (Game, "igra")]:
-        query = select(model_cls).where(model_cls.owner_id == user.id)
-        if q:
-            query = query.where(model_cls.title.ilike(f"%{q}%"))
-        if subject:
-            query = query.where(model_cls.subject == subject)
-        if grade:
-            query = query.where(model_cls.grade == grade)
-        items = (await db.execute(query.order_by(model_cls.created_at.desc()).limit(20))).scalars().all()
-        for item in items:
-            results.append({
-                "id": item.id,
-                "type": type_name,
-                "title": item.title,
-                "subject": item.subject,
-                "grade": item.grade,
-                "is_favorite": item.is_favorite,
-                "created_at": item.created_at.isoformat(),
-            })
-    results.sort(key=lambda x: x["created_at"], reverse=True)
-    return results
+    result = await db.execute(_summary_query(
+        user.id, types=list(_MATERIAL_MODELS), q=q, subject=subject, grade=grade,
+    ))
+    return [dict(row) for row in result.mappings().all()]
 
 
 

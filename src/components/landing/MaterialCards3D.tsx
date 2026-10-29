@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, RoundedBox } from "@react-three/drei";
 import type { Group } from "three";
+import { useSceneActivity } from "@/lib/use-scene-activity";
 
 /* Replaces an earlier attempt at a 3D character mascot — a hand-built
  * humanoid from spheres/capsules reads as a weird blob rather than a cute
@@ -59,14 +60,14 @@ function Card({ position, rotation, size, accent, lines }: CardSpec) {
   );
 }
 
-function CardStack() {
+function CardStack({ active }: { active: boolean }) {
   const group = useRef<Group>(null);
   useFrame((_, delta) => {
-    if (group.current) group.current.rotation.y += delta * 0.15;
+    if (active && group.current) group.current.rotation.y += delta * 0.15;
   });
 
   return (
-    <Float speed={1.2} rotationIntensity={0.12} floatIntensity={0.55}>
+    <Float enabled={active} speed={1.2} rotationIntensity={0.12} floatIntensity={0.55}>
       <group ref={group}>
         {CARDS.map((card, i) => (
           <Card key={i} {...card} />
@@ -77,15 +78,16 @@ function CardStack() {
 }
 
 export default function MaterialCards3D({ className }: { className?: string }) {
+  const { containerRef, entered, active } = useSceneActivity();
   return (
-    <div className={className}>
-      <Canvas camera={{ position: [0, 0.3, 5.2], fov: 32 }} dpr={[1, 2]}>
+    <div ref={containerRef} className={className}>
+      {entered && <Canvas frameloop={active ? "always" : "demand"} camera={{ position: [0, 0.3, 5.2], fov: 32 }} dpr={[1, 2]}>
         <ambientLight intensity={0.9} />
         <directionalLight position={[3, 5, 4]} intensity={1.15} />
         <directionalLight position={[-4, 1, -3]} intensity={0.35} color="#ffd9d9" />
         <pointLight position={[0, -1, 3]} intensity={0.2} color="#ffe4e4" />
-        <CardStack />
-      </Canvas>
+        <CardStack active={active} />
+      </Canvas>}
     </div>
   );
 }

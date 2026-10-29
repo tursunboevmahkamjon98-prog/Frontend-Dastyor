@@ -329,6 +329,12 @@ const CONTENT_FIELD_BY_TYPE: Record<MaterialType, "content" | "slides_json" | "q
 export const materialsApi = {
   stats: () => request<DashboardStats>("/materials/stats"),
   search: (q: string) => request<SearchResultItem[]>(`/materials/search?q=${encodeURIComponent(q)}`),
+  library: (params: { type?: MaterialType; q?: string } = {}, signal?: AbortSignal) => {
+    const qs = new URLSearchParams();
+    if (params.type) qs.set("material_type", params.type);
+    if (params.q) qs.set("q", params.q);
+    return request<(MaterialOut & { type: MaterialType })[]>(`/materials/library?${qs}`, { signal });
+  },
   list: (type: MaterialType, params: { q?: string } = {}) => {
     const qs = params.q ? `?q=${encodeURIComponent(params.q)}` : "";
     return request<MaterialOut[]>(`${LIST_PATH[type]}${qs}`);
