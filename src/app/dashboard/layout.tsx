@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet } from "lucide-react";
+import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { markBackNavigationListener } from "@/lib/back-navigation";
@@ -36,7 +36,7 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useT();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   useAccountLocale(user?.language);
   const router = useRouter();
   const pathname = usePathname();
@@ -148,6 +148,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="block truncate text-xs text-text-tertiary">{user.phone ?? user.email}</span>
           </span>
         </Link>
+
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            router.replace("/login");
+          }}
+          className="mx-3 mb-3 flex items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5 text-sm font-semibold text-text-secondary transition hover:border-primary/20 hover:bg-primary-50 hover:text-primary"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {t("profile.logout")}
+        </button>
       </aside>
 
       {}
