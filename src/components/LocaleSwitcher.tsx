@@ -11,7 +11,7 @@ export default function LocaleSwitcher({ className = "" }: { className?: string 
 
   return (
     <div
-      className={`inline-flex shrink-0 rounded-xl border border-border-light bg-surface p-0.5 ${className}`}
+      className={`inline-flex shrink-0 rounded-full border border-border-light bg-white/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${className}`}
       role="group"
       aria-label="Language"
     >
@@ -24,7 +24,7 @@ export default function LocaleSwitcher({ className = "" }: { className?: string 
             onClick={() => setLocale(code)}
             aria-pressed={active}
             aria-label={label}
-            className={`rounded-[10px] px-2 py-1.5 text-xs font-medium transition sm:px-3 ${
+            className={`rounded-full px-2.5 py-1.5 text-xs font-medium transition sm:px-3 ${
               active
                 ? "bg-primary-50 font-semibold text-primary"
                 : "text-text-tertiary hover:text-text-primary"

@@ -454,6 +454,7 @@ const ru = {
   "value.testTypeOpenEnded": "Открытый вопрос",
 
   
+  "landing.nav.home": "Главная",
   "landing.nav.features": "Возможности",
   "landing.nav.how": "Как это работает",
   "landing.nav.samples": "Примеры",
@@ -1049,6 +1050,7 @@ const tg: Messages = {
   "value.testTypeOpenEnded": "Саволи кушод",
 
   
+  "landing.nav.home": "Асосӣ",
   "landing.nav.features": "Имкониятҳо",
   "landing.nav.how": "Чӣ тавр кор мекунад",
   "landing.nav.samples": "Намунаҳо",
@@ -1637,6 +1639,7 @@ const en: Messages = {
   "value.testTypeOpenEnded": "Open-ended question",
 
   
+  "landing.nav.home": "Home",
   "landing.nav.features": "Features",
   "landing.nav.how": "How it works",
   "landing.nav.samples": "Samples",
