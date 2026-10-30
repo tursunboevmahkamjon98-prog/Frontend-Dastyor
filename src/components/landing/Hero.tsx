@@ -3,10 +3,10 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { Sparkles, Check, ArrowRight } from "lucide-react";
+import { Sparkles, Check, ArrowRight, Gamepad2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { SUBJECTS, LANGUAGES } from "@/lib/material-types";
-import { FACTS, FEATURES } from "./constants";
+import { FACTS, FEATURES, featureTitleKey } from "./constants";
 
 /* WebGL has no server-side representation, so the card stack loads
  * client-only. The loading placeholder matches the canvas footprint to
@@ -75,6 +75,15 @@ export default function Hero() {
           <p className="mt-5 max-w-xl text-base text-text-secondary sm:text-lg">
             {t("landing.hero.subtitle")}
           </p>
+
+          <div className="mt-6 flex max-w-xl flex-wrap justify-center gap-2 lg:justify-start">
+            {FEATURES.filter(({ id }) => id === "konspekt" || id === "test" || id === "prezentatsiya" || id === "igra").map(({ id, icon: Icon, bg, color }) => (
+              <span key={id} className={`inline-flex items-center gap-1.5 rounded-full border border-white/80 px-3 py-1.5 text-xs font-semibold shadow-[0_2px_0_0_var(--color-border-light)] ${bg} ${color}`}>
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {t(featureTitleKey(id))}
+              </span>
+            ))}
+          </div>
 
           {/* The right column's full 3D composition only renders at lg+ —
               below that this compact canvas is the only 3D a visitor on a
@@ -167,6 +176,24 @@ export default function Hero() {
             >
               <Check className="h-3.5 w-3.5" />
               {t("landing.hero.chipReady")}
+            </div>
+            <div className="absolute bottom-[5%] left-[2%] z-30 w-[52%] max-w-[15rem] rounded-2xl border border-white bg-white p-3 shadow-[0_20px_45px_-16px_rgba(41,19,21,0.3)] sm:p-3.5" style={{ animation: "landing-float 5.8s ease-in-out -2s infinite" }}>
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-igra-bg text-igra-icon">
+                  <Gamepad2 className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-bold text-text-primary sm:text-xs">{t("landing.feature.igra.title")}</p>
+                  <p className="line-clamp-2 text-[9px] leading-snug text-text-tertiary sm:text-[10px]">{t("landing.feature.igra.desc")}</p>
+                </div>
+              </div>
+              <div className="mt-2.5 grid grid-cols-4 gap-1.5" aria-hidden="true">
+                {(["A", "B", "C", "D"] as const).map((answer, index) => (
+                  <span key={answer} className={`grid aspect-square place-items-center rounded-lg text-[10px] font-bold ${index === 1 ? "bg-igra-icon text-white shadow-[0_2px_0_0_#5b21b6]" : "border border-igra-icon/15 bg-igra-bg/60 text-igra-icon"}`}>
+                    {answer}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
