@@ -8,6 +8,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
+import { featureDescKey } from "./landing/constants";
 
 export type Sample = {
   
@@ -19,7 +20,6 @@ export type Sample = {
   
   aspect: string;
   
-  span: string;
 };
 
 
@@ -31,17 +31,19 @@ export type Sample = {
 
 
 const SAMPLES: Sample[] = [
-  { id: "konspekt", labelKey: "type.konspekt", icon: BookOpen, pages: 6, aspect: "595/842", span: "" },
-  { id: "lektsiya", labelKey: "type.lektsiya", icon: Lightbulb, pages: 4, aspect: "595/842", span: "" },
-  { id: "test", labelKey: "type.test", icon: ClipboardCheck, pages: 3, aspect: "595/842", span: "" },
-  { id: "amaliy", labelKey: "type.amaliy", icon: ClipboardList, pages: 2, aspect: "595/842", span: "" },
-  { id: "prezentatsiya", labelKey: "type.prezentatsiya", icon: Presentation, pages: 11, aspect: "16/9", span: "col-span-2" },
+  { id: "konspekt", labelKey: "type.konspekt", icon: BookOpen, pages: 6, aspect: "595/842" },
+  { id: "lektsiya", labelKey: "type.lektsiya", icon: Lightbulb, pages: 4, aspect: "595/842" },
+  { id: "test", labelKey: "type.test", icon: ClipboardCheck, pages: 3, aspect: "595/842" },
+  { id: "amaliy", labelKey: "type.amaliy", icon: ClipboardList, pages: 2, aspect: "595/842" },
+  { id: "prezentatsiya", labelKey: "type.prezentatsiya", icon: Presentation, pages: 11, aspect: "16/9" },
 ];
 
 export default function SamplesGallery() {
   const { locale, t } = useLocale();
   const samples = SAMPLES;
   const [open, setOpen] = useState<Sample | null>(null);
+  const [selected, setSelected] = useState<Sample>(SAMPLES[0]);
+  const SelectedIcon = selected.icon;
   
   
   
@@ -79,39 +81,74 @@ export default function SamplesGallery() {
   return (
     <>
       {}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-        {samples.map((sample) => (
-          <figure
-            key={sample.id}
-            className={`group overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 ${sample.span}`}
-          >
+      <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:gap-2.5 lg:overflow-visible lg:pb-0">
+          {samples.map((sample, index) => {
+            const Icon = sample.icon;
+            const active = selected.id === sample.id;
+            return (
+              <button
+                key={sample.id}
+                type="button"
+                onClick={() => setSelected(sample)}
+                aria-pressed={active}
+                className={`group flex min-w-[190px] flex-1 items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-200 lg:min-w-0 ${active
+                  ? "border-primary/25 bg-white shadow-[0_3px_0_0_var(--color-primary-50),0_14px_28px_-14px_rgba(220,38,38,0.25)]"
+                  : "border-transparent bg-white/55 hover:border-border-light hover:bg-white"
+                }`}
+              >
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl transition ${active ? "bg-primary text-white shadow-[0_3px_0_0_var(--color-primary-dark)]" : "bg-surface-muted text-text-tertiary group-hover:bg-primary-50 group-hover:text-primary"}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-text-primary">{t(sample.labelKey)}</span>
+                  <span className="mt-0.5 block text-xs text-text-tertiary">{sample.pages} {unit(sample.pages, sample.id)}</span>
+                </span>
+                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${active ? "bg-primary-50 text-primary" : "text-text-tertiary"}`}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative isolate overflow-hidden rounded-[1.75rem] border border-border-light bg-gradient-to-br from-white via-white to-primary-50/70 p-3 shadow-[0_3px_0_0_var(--color-border-light),0_24px_48px_-30px_rgba(127,29,29,0.35)] sm:p-5">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-note-icon/10 blur-3xl" aria-hidden />
+          <div className="relative flex min-h-[25rem] items-center justify-center overflow-hidden rounded-[1.25rem] border border-white/80 bg-[radial-gradient(ellipse_at_50%_45%,rgba(255,255,255,0.95),rgba(255,245,244,0.7)_72%)] px-4 py-12 sm:min-h-[31rem] sm:px-8 sm:py-10">
+            <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(var(--color-primary)_0.6px,transparent_0.6px)] [background-size:20px_20px]" aria-hidden />
+            <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full border border-white bg-white/90 px-3 py-1.5 text-xs font-semibold text-text-secondary shadow-sm backdrop-blur sm:left-5 sm:top-5">
+              <SelectedIcon className="h-3.5 w-3.5 text-primary" />
+              {t(selected.labelKey)}
+            </div>
+            <span className="absolute right-4 top-4 z-10 rounded-full border border-white bg-white/90 px-3 py-1.5 text-xs font-semibold text-text-tertiary shadow-sm backdrop-blur sm:right-5 sm:top-5">
+              {selected.pages} {unit(selected.pages, selected.id)}
+            </span>
+            <img
+              key={selected.id}
+              src={`/samples/${selected.id}/1.png`}
+              alt={`${t("landing.samples.exampleAlt")}: ${t(selected.labelKey)}`}
+              loading="lazy"
+              className={`relative z-[1] h-auto max-h-[min(66vh,34rem)] object-contain drop-shadow-[0_24px_28px_rgba(41,19,21,0.2)] transition duration-300 ${selected.aspect === "16/9" ? "w-full max-w-5xl rounded-xl" : "w-auto max-w-[78%] rounded-sm sm:max-w-[58%]"}`}
+              style={{ aspectRatio: selected.aspect }}
+            />
+            <div className="absolute bottom-4 left-4 z-10 text-[10px] font-semibold tracking-[0.18em] text-primary/45 sm:bottom-5 sm:left-5">DASTYOR · {String(samples.indexOf(selected) + 1).padStart(2, "0")}</div>
+          </div>
+          <div className="flex flex-col gap-3 px-2 pb-1 pt-4 sm:flex-row sm:items-center sm:justify-between sm:px-1 sm:pt-5">
+            <div>
+              <h3 className="text-base font-bold text-text-primary sm:text-lg">{t(selected.labelKey)}</h3>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-text-secondary">{t(featureDescKey(selected.id))}</p>
+            </div>
             <button
               type="button"
-              onClick={() => setOpen(sample)}
-              className="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              aria-label={`${t(sample.labelKey)}: ${t("landing.samples.viewAll")} (${sample.pages})`}
+              onClick={() => setOpen(selected)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-border-light bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-[0_2px_0_0_var(--color-border-light)] transition hover:-translate-y-0.5 hover:border-primary/20 hover:text-primary"
             >
-              <div
-                className="relative overflow-hidden bg-surface-muted"
-                style={{ aspectRatio: sample.aspect }}
-              >
-                <img
-                  src={`/samples/${sample.id}/1.png`}
-                  alt={`${t("landing.samples.exampleAlt")}: ${t(sample.labelKey)}`}
-                  loading="lazy"
-                  className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
-                />
-                <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-                  {sample.pages} {unit(sample.pages, sample.id)}
-                </span>
-              </div>
-              <figcaption className="flex items-center gap-2 px-3 py-2.5">
-                <sample.icon className="h-4 w-4 shrink-0 text-primary" />
-                <span className="text-xs font-semibold text-text-primary">{t(sample.labelKey)}</span>
-              </figcaption>
+              {t("landing.samples.viewAll")}
+              <span aria-hidden="true">↗</span>
             </button>
-          </figure>
-        ))}
+          </div>
+        </div>
       </div>
 
       {open && mounted && createPortal(
