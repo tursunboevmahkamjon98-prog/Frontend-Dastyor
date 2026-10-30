@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet, LogOut } from "lucide-react";
+import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet, LogOut, Gamepad2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { markBackNavigationListener } from "@/lib/back-navigation";
@@ -13,7 +13,7 @@ import type { MessageKey } from "@/lib/messages";
 import AppUpdateBanner from "@/components/AppUpdateBanner";
 import BillingLink from "@/components/BillingLink";
 
-type NavItem = { href: string; labelKey: MessageKey; icon: typeof Home; exact?: boolean };
+type NavItem = { href: string; labelKey: MessageKey; icon: typeof Home; exact?: boolean; external?: boolean };
 
 
 const NAV_ITEMS: NavItem[] = [
@@ -26,7 +26,15 @@ const NAV_ITEMS: NavItem[] = [
 
 
 const CREATE_ITEM = NAV_ITEMS.find((i) => i.href === "/dashboard/create")!;
-const SIDEBAR_ITEMS = NAV_ITEMS.filter((i) => i !== CREATE_ITEM);
+const GAME_ITEM: NavItem = {
+  href: "https://zehn.rahnamo.tj/",
+  labelKey: "landing.feature.igra.title",
+  icon: Gamepad2,
+  external: true,
+};
+const SIDEBAR_ITEMS = NAV_ITEMS.filter((i) => i !== CREATE_ITEM).flatMap((item) =>
+  item.href === "/dashboard/profile" ? [GAME_ITEM, item] : [item]
+);
 
 
 
@@ -93,21 +101,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {SIDEBAR_ITEMS.map(({ href, labelKey, icon: Icon, exact }) => {
-            const active = isActive(pathname, href, exact);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                  active
-                    ? "bg-primary-50 font-semibold text-primary"
-                    : "font-medium text-text-secondary hover:bg-surface-muted hover:text-text-primary"
-                }`}
-              >
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
-                {t(labelKey)}
-              </Link>
+          {SIDEBAR_ITEMS.map(({ href, labelKey, icon: Icon, exact, external }) => {
+            const active = !external && isActive(pathname, href, exact);
+            const className = `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+              active
+                ? "bg-primary-50 font-semibold text-primary"
+                : "font-medium text-text-secondary hover:bg-surface-muted hover:text-text-primary"
+            }`;
+            const content = <><Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />{t(labelKey)}</>;
+            return external ? (
+              <a key={href} href={href} className={className}>{content}</a>
+            ) : (
+              <Link key={href} href={href} className={className}>{content}</Link>
             );
           })}
         </nav>
