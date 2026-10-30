@@ -1,7 +1,6 @@
 import SubjectsCarousel from "@/components/SubjectsCarousel";
 import Header from "@/components/landing/Header";
 import Hero from "@/components/landing/Hero";
-import Samples from "@/components/landing/Samples";
 import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Trust from "@/components/landing/Trust";
@@ -14,7 +13,6 @@ export default function LandingPage() {
     <main className="flex min-h-screen flex-col overflow-x-clip bg-background">
       <Header />
       <Hero />
-      <Samples />
       <Features />
       <HowItWorks />
       <div id="subjects">

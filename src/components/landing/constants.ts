@@ -44,7 +44,6 @@ export const TRUST = [
 export const NAV_LINKS = [
   { href: "#features", label: "landing.nav.features" },
   { href: "#how", label: "landing.nav.how" },
-  { href: "#samples", label: "landing.nav.samples" },
   { href: "#subjects", label: "landing.nav.subjects" },
   { href: "#faq", label: "landing.nav.faq" },
 ] as const;
