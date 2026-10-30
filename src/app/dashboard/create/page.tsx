@@ -162,39 +162,14 @@ export default function CreatePage() {
   }
 
   if (submitting) {
+    const names = selected.map((type) => t(MATERIAL_TYPE_LABEL_KEY[type])).join(", ");
     return (
-      <div className="relative mx-auto flex min-h-[min(72vh,42rem)] max-w-3xl items-center justify-center overflow-hidden px-4 py-8 text-center sm:px-6">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.08] blur-3xl" aria-hidden />
-        <section className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-border-light bg-white shadow-[0_4px_0_0_var(--color-border-light),0_28px_70px_-32px_rgba(127,29,29,0.32)]" role="status" aria-live="polite" aria-busy="true">
-          <div className="h-1.5 overflow-hidden bg-primary-50">
-            <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary-light to-primary shadow-[0_0_14px_rgba(220,38,38,0.4)]" style={{ animation: "lab-sweep 1.8s ease-in-out infinite" }} />
-          </div>
-          <div className="px-6 py-9 sm:px-12 sm:py-12">
-            <div className="relative mx-auto mb-6 grid h-20 w-20 place-items-center rounded-[1.65rem] bg-gradient-to-br from-primary-50 via-white to-primary-50 shadow-[inset_0_-3px_6px_rgba(220,38,38,0.08),0_8px_24px_-12px_rgba(220,38,38,0.3)]">
-              <Sparkles className="h-9 w-9 text-primary" />
-              <span className="absolute -right-1 -top-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-white text-primary shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </span>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">{t("create.generating")}</h1>
-            <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-text-secondary">{t("create.generatingHint")}</p>
-            <div className="mt-7 flex flex-wrap justify-center gap-2">
-              {selected.map((type) => {
-                const { icon: Icon, bg, color } = MATERIAL_TYPE_CONFIG[type];
-                return (
-                  <span key={type} className={`inline-flex items-center gap-2 rounded-full border border-border-light px-3.5 py-2 text-xs font-semibold text-text-primary ${bg}`}>
-                    <Icon className={`h-4 w-4 ${color}`} />
-                    {t(MATERIAL_TYPE_LABEL_KEY[type])}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border-light bg-surface-muted/70 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{t("create.topicTitle")}</p>
-              <p className="mt-1 truncate text-sm font-semibold text-text-primary">{topic}</p>
-            </div>
-          </div>
-        </section>
+      <div className="mx-auto flex min-h-[min(65vh,38rem)] max-w-xl flex-col items-center justify-center px-4 py-10 text-center" role="status" aria-live="polite" aria-busy="true">
+        <Loader2 className="mb-5 h-9 w-9 animate-spin text-primary" />
+        <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{t("create.generating")}</h1>
+        <p className="mt-3 text-sm text-text-secondary">{names}</p>
+        <p className="mt-1 max-w-full truncate text-sm text-text-tertiary">{topic}</p>
+        <p className="mt-5 max-w-md text-xs leading-relaxed text-text-tertiary">{t("create.generatingHint")}</p>
       </div>
     );
   }
