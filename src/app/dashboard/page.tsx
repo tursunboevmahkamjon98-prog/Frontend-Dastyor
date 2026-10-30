@@ -72,6 +72,7 @@ export default function DashboardHome() {
     [stats]
   );
   const maxCount = stats ? Math.max(1, ...LIBRARY_TYPES.map((type) => stats[STAT_KEYS[type]])) : 1;
+  const { icon: GameIcon, bg: gameBg, color: gameColor } = MATERIAL_TYPE_CONFIG.igra;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 lg:max-w-6xl lg:px-8">
@@ -165,6 +166,15 @@ export default function DashboardHome() {
                 </Link>
               );
             })}
+            <a
+              href="https://zehn.rahnamo.tj/"
+              className="group rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_4px_0_0_var(--color-primary-50),0_16px_28px_-10px_rgba(220,38,38,0.18)]"
+            >
+              <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${gameBg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110`}>
+                <GameIcon className={`h-5 w-5 ${gameColor}`} />
+              </div>
+              <p className="font-semibold text-text-primary">{t("landing.feature.igra.title")}</p>
+            </a>
           </div>
 
           {}
