@@ -49,26 +49,13 @@ export default function Hero() {
             <Sparkles className="h-3.5 w-3.5" />
             {t("landing.hero.badge")}
           </div>
-          <h1 className="max-w-xl text-4xl font-extrabold tracking-tight text-text-primary sm:text-6xl">
-            {t("landing.hero.title")}{" "}
-            <span className="relative inline-block whitespace-nowrap">
-              <span className="relative bg-gradient-to-r from-primary via-primary-light to-primary bg-clip-text text-transparent">
-                {t("landing.hero.titleAccent")}
-              </span>
-              <svg
-                viewBox="0 0 220 14"
-                className="pointer-events-none absolute -bottom-2 left-0 h-3 w-full text-primary/70 sm:-bottom-3"
-                fill="none"
-                aria-hidden
-              >
-                <path
-                  d="M2 9.5C40 2.5 90 1 130 6C160 9.5 190 4 218 7.5"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  style={{ strokeDasharray: 220, animation: "landing-draw 1s ease-out 1.1s both" }}
-                />
-              </svg>
+          <h1 className="max-w-3xl font-extrabold tracking-tight text-text-primary">
+            <span className="block text-4xl leading-[1.04] sm:text-6xl lg:text-7xl">
+              {t("landing.hero.title")}
+            </span>
+            <span className="mt-3 inline-flex -rotate-1 items-center gap-2 rounded-2xl border border-primary/15 bg-white px-4 py-2 text-3xl leading-none text-primary shadow-[0_5px_0_0_var(--color-border-light),0_14px_26px_-12px_rgba(220,38,38,0.28)] sm:mt-4 sm:gap-3 sm:rounded-[1.35rem] sm:px-6 sm:py-3 sm:text-5xl lg:text-6xl">
+              <Sparkles className="h-7 w-7 shrink-0 sm:h-10 sm:w-10 lg:h-11 lg:w-11" />
+              {t("landing.hero.titleAccent")}
             </span>
           </h1>
           <p className="mt-5 max-w-xl text-base text-text-secondary sm:text-lg">

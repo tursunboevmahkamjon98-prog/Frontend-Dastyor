@@ -462,7 +462,7 @@ const ru = {
   "landing.start": "Начать",
 
   "landing.hero.badge": "Учебные материалы с помощью ИИ",
-  "landing.hero.title": "От темы урока до готового документа —",
+  "landing.hero.title": "Создавайте учебные материалы",
   "landing.hero.titleAccent": "за секунды",
   "landing.hero.subtitle": "Конспект, тест, презентация, лекция, практическое задание и интерактивная игра — или целый месячный учебный план, без ошибок и лишних слов.",
   "landing.hero.ctaPrimary": "Начать бесплатно",
@@ -1057,7 +1057,7 @@ const tg: Messages = {
   "landing.start": "Оғоз",
 
   "landing.hero.badge": "Маводҳои таълимӣ бо ёрии AI",
-  "landing.hero.title": "Аз мавзӯи дарс то ҳуҷҷати тайёр —",
+  "landing.hero.title": "Маводи таълимӣ омода кунед",
   "landing.hero.titleAccent": "дар якчанд сония",
   "landing.hero.subtitle": "Конспект, тест, презентатсия, лексия, супориши амалӣ ва бозии интерактивӣ — ё нақшаи таълимии як моҳ, бе хато ва бе суханони зиёдатӣ.",
   "landing.hero.ctaPrimary": "Ройгон оғоз кунед",
@@ -1645,7 +1645,7 @@ const en: Messages = {
   "landing.start": "Get started",
 
   "landing.hero.badge": "AI-powered teaching materials",
-  "landing.hero.title": "From a lesson topic to a finished document —",
+  "landing.hero.title": "Create lesson materials",
   "landing.hero.titleAccent": "in seconds",
   "landing.hero.subtitle": "Lesson notes, a test, a presentation, a lecture, practical tasks and an interactive game — or a whole month of lesson plans, with no errors and no filler.",
   "landing.hero.ctaPrimary": "Start for free",
