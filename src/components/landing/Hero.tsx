@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import Image from "next/image";
-import { Sparkles, Check, ArrowRight, Gamepad2 } from "lucide-react";
+import { Sparkles, Check, ArrowRight } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { SUBJECTS, LANGUAGES } from "@/lib/material-types";
 import { FACTS, FEATURES, featureTitleKey } from "./constants";
@@ -141,59 +140,29 @@ export default function Hero() {
             style={{ animation: "landing-blob-drift 17s ease-in-out infinite", animationDelay: "-6s" }}
             aria-hidden
           />
-          <div className="relative mx-auto h-[29rem] w-full max-w-[34rem] [perspective:1200px]">
+          <div className="relative mx-auto h-[29rem] w-full max-w-[34rem]">
             <div className="pointer-events-none absolute left-1/2 top-[47%] h-[25rem] w-[25rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.09] blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute bottom-8 left-1/2 h-12 w-[72%] -translate-x-1/2 rounded-[50%] bg-primary/10 blur-2xl" aria-hidden />
-
-            <div className="absolute left-[1%] top-[17%] z-10 w-[49%] rounded-[1.1rem] border border-white bg-white p-1.5 shadow-[0_24px_55px_-20px_rgba(41,19,21,0.38)] sm:p-2" style={{ ["--chip-rot" as string]: "-11deg", animation: "landing-float-chip 6s ease-in-out infinite" }}>
-              <Image src="/samples/test/1.png" alt={`${t("landing.samples.exampleAlt")}: ${t("type.test")}`} width={595} height={842} unoptimized className="h-auto w-full rounded-[0.55rem]" />
-            </div>
-
-            <div className="absolute right-[1%] top-[21%] z-[5] w-[67%] overflow-hidden rounded-[1.05rem] border border-white bg-white p-1.5 shadow-[0_24px_55px_-20px_rgba(41,19,21,0.34)] sm:p-2" style={{ ["--chip-rot" as string]: "8deg", animation: "landing-float-chip 7s ease-in-out -2s infinite" }}>
-              <Image src="/samples/prezentatsiya/1.png" alt={`${t("landing.samples.exampleAlt")}: ${t("type.prezentatsiya")}`} width={1920} height={1080} unoptimized className="h-auto w-full rounded-[0.55rem]" />
-            </div>
-
-            <div className="absolute left-[24%] top-[5%] z-20 w-[51%] overflow-hidden rounded-[1.05rem] border border-white bg-white p-1.5 shadow-[0_30px_65px_-18px_rgba(41,19,21,0.4)] sm:p-2" style={{ ["--chip-rot" as string]: "2deg", animation: "landing-float-chip 5.5s ease-in-out -1s infinite" }}>
-              <Image src="/samples/konspekt/1.png" alt={`${t("landing.samples.exampleAlt")}: ${t("type.konspekt")}`} width={595} height={842} unoptimized className="h-auto w-full rounded-[0.55rem]" />
-            </div>
-
+            <MaterialCards3D className="relative z-10 h-full w-full" />
             <div
-              className="absolute left-0 top-3 z-30 flex items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-xs font-semibold text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(220,38,38,0.25)]"
+              className="absolute left-0 top-3 z-20 flex items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-xs font-semibold text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(220,38,38,0.25)]"
               style={{ ["--chip-rot" as string]: "-3deg", animation: "landing-float-chip 5s ease-in-out infinite" }}
             >
               <Sparkles className="h-3.5 w-3.5" />
               {t("landing.hero.chipAssistant")}
             </div>
             <div
-              className="absolute bottom-6 right-0 z-30 rounded-2xl border border-border-light bg-white px-4 py-2.5 text-xs font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(0,0,0,0.12)]"
+              className="absolute bottom-10 right-0 z-20 rounded-2xl border border-border-light bg-white px-4 py-2.5 text-xs font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(0,0,0,0.12)]"
               style={{ ["--chip-rot" as string]: "2deg", animation: "landing-float-chip 5.5s ease-in-out infinite", animationDelay: "-2s" }}
             >
               {t("landing.hero.chipTypes")}
             </div>
             <div
-              className="absolute right-0 top-[37%] z-30 flex items-center gap-1.5 rounded-2xl border border-border-light bg-white px-3 py-2 text-xs font-semibold text-success shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(5,150,105,0.25)]"
+              className="absolute right-0 top-[37%] z-20 flex items-center gap-1.5 rounded-2xl border border-border-light bg-white px-3 py-2 text-xs font-semibold text-success shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(5,150,105,0.25)]"
               style={{ ["--chip-rot" as string]: "3deg", animation: "landing-float-chip 4.5s ease-in-out infinite", animationDelay: "-1s" }}
             >
               <Check className="h-3.5 w-3.5" />
               {t("landing.hero.chipReady")}
-            </div>
-            <div className="absolute bottom-[5%] left-[2%] z-30 w-[52%] max-w-[15rem] rounded-2xl border border-white bg-white p-3 shadow-[0_20px_45px_-16px_rgba(41,19,21,0.3)] sm:p-3.5" style={{ animation: "landing-float 5.8s ease-in-out -2s infinite" }}>
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-igra-bg text-igra-icon">
-                  <Gamepad2 className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-bold text-text-primary sm:text-xs">{t("landing.feature.igra.title")}</p>
-                  <p className="line-clamp-2 text-[9px] leading-snug text-text-tertiary sm:text-[10px]">{t("landing.feature.igra.desc")}</p>
-                </div>
-              </div>
-              <div className="mt-2.5 grid grid-cols-4 gap-1.5" aria-hidden="true">
-                {(["A", "B", "C", "D"] as const).map((answer, index) => (
-                  <span key={answer} className={`grid aspect-square place-items-center rounded-lg text-[10px] font-bold ${index === 1 ? "bg-igra-icon text-white shadow-[0_2px_0_0_#5b21b6]" : "border border-igra-icon/15 bg-igra-bg/60 text-igra-icon"}`}>
-                    {answer}
-                  </span>
-                ))}
-              </div>
             </div>
           </div>
         </div>
