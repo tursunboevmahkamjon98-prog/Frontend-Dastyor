@@ -20,6 +20,7 @@ from app.lecture_builder import (
     _objective_block, _selfcheck_block, _summary_block, _figure, _visual,
     _pdf_formula_flowable, _plain_to_latex,
 )
+from app.docx_builder import _strip_item_label
 from app.lecture_templates import get_lecture_template
 from app.subject_theme import get_subject_accent_hex
 from app.cover_builder import _SUBJECT_ILLUSTRATIONS
@@ -43,7 +44,7 @@ L10N = {
         'teacher': 'Преподаватель', 'date': 'Дата', 'name': 'Ф.И.О.',
         'duration_value': '1 урок', 'plan': 'Цели урока', 'objective': 'Цель урока',
         'formulas': 'Формулы', 'scheme': 'Схема / Рисунок',
-        'examples': 'Примеры', 'notes': 'Важно',
+        'examples': 'Примеры', 'example': 'Пример', 'notes': 'Важно',
         'worked_examples': 'Решённые примеры', 'solution': 'Решение',
         'practice_problems': 'Практические задачи', 'answers': 'Ответы', 'code': 'Код',
     },
@@ -61,7 +62,7 @@ L10N = {
         'teacher': 'Омӯзгор', 'date': 'Сана', 'name': 'Ном ва насаб',
         'duration_value': '1 дарс', 'plan': 'Мақсадҳои дарс', 'objective': 'Мақсади дарс',
         'formulas': 'Формулаҳо', 'scheme': 'Схема / Расм',
-        'examples': 'Мисолҳо', 'notes': 'Муҳим',
+        'examples': 'Мисолҳо', 'example': 'Мисол', 'notes': 'Муҳим',
         'worked_examples': 'Мисолҳои ҳалшуда', 'solution': 'Ҳал',
         'practice_problems': 'Машқҳои мустақил', 'answers': 'Ҷавобҳо', 'code': 'Код',
     },
@@ -79,7 +80,7 @@ L10N = {
         'teacher': 'Teacher', 'date': 'Date', 'name': 'Name',
         'duration_value': '1 lesson', 'plan': 'Lesson objectives', 'objective': 'Lesson objective',
         'formulas': 'Formulas', 'scheme': 'Diagram / Image',
-        'examples': 'Examples', 'notes': 'Important',
+        'examples': 'Examples', 'example': 'Example', 'notes': 'Important',
         'worked_examples': 'Worked Examples', 'solution': 'Solution',
         'practice_problems': 'Practice Problems', 'answers': 'Answers', 'code': 'Code',
     },
@@ -517,9 +518,24 @@ def _build_notebook_grid_pdf(content: dict, w: dict, d: '_Design', accent: str) 
     return buf
 
 
+# This renderer draws with the lecture template set, but a konspekt's
+# template id is one of the konspekt ids the teacher picked in the UI.
+# Looked up as-is, none of them existed there, so klassik, zamonaviy,
+# minimal, rasmiy and rangli all came out as the same default document.
+# Each maps to the lecture look closest to its UI description.
+_KONSPEKT_TO_LECTURE_TEMPLATE = {
+    'klassik': 'planspekt',
+    'minimal': 'planspekt',
+    'zamonaviy': 'kitob',
+    'rasmiy': 'akademik',
+    'rangli': 'jurnal',
+}
+
+
 def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.BytesIO:
     w = _words(language)
-    tmpl = get_lecture_template(content.get('template'))
+    template_id = str(content.get('template') or '')
+    tmpl = get_lecture_template(_KONSPEKT_TO_LECTURE_TEMPLATE.get(template_id, template_id))
     accent = get_subject_accent_hex(content.get('subject'))
     d = _Design(tmpl, accent, w)
 
@@ -588,6 +604,10 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.By
         section_no[0] += 1
         flowables = _HEADINGS.get(tmpl.heading, _heading_ghost)(label, section_no[0], d)
         _tag_for_toc(flowables, f'{section_no[0]}.  {label}')
+        # Without this a heading could land alone at the foot of a page,
+        # with its content starting on the next one.
+        for f in flowables:
+            f.keepWithNext = 1
         return flowables
 
     if tmpl.contents:
@@ -650,10 +670,10 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.By
         callouts = []
         for text in (content.get('important_notes') or [])[:3]:
             if str(text).strip():
-                callouts.append(('important', 'ВАЖНО', str(text).strip()))
+                callouts.append(('important', w['notes'].upper(), str(text).strip()))
         for text in (content.get('real_life_examples') or [])[:4]:
             if str(text).strip():
-                callouts.append(('example', 'ПРИМЕР', str(text).strip()))
+                callouts.append(('example', w['example'].upper(), _strip_item_label(text)))
         callout_render = _CALLOUTS.get(tmpl.callout, _callout_card)
         body_style = d.body_style(_uid('Body'))
         for i, (head, paragraphs) in enumerate(parts):
@@ -686,7 +706,7 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.By
         story.extend(_grid_bullets([it.get('problem', '') for it in drills], d, numbered=True))
 
     pair_work = str(content.get('pair_work') or '').strip()
-    group_work = _short_list(content.get('group_work'))
+    group_work = [_strip_item_label(t) for t in _short_list(content.get('group_work'))]
     consolidation = str(content.get('consolidation') or '').strip()
     if pair_work or group_work or consolidation:
         story.extend(section(w['activities']))
@@ -705,7 +725,7 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.By
         story.extend(section(w['selfcheck']))
         story.extend(_selfcheck_block(checks, d))
 
-    homework = _short_list(content.get('homework'))
+    homework = [_strip_item_label(t) for t in _short_list(content.get('homework'))]
     if homework:
         story.extend(section(w['homework']))
         story.extend(_plan_block(homework, d))

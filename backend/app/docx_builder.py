@@ -8,13 +8,19 @@ from docx.oxml.ns import qn
 from app.subject_theme import get_subject_accent_rgb
 from app.konspekt_templates import get_template
 
-_GROUP_LABEL_RE = re.compile(
-    r"^\s*(?:Группа|Гурӯҳи?|Group|Guruh)\s*\d+\s*[:.\-—]\s*", re.IGNORECASE
-)
+# The model often prefixes items with their own "Задание 1:" / "Группа 2." /
+# "Пример 3:", which doubled up with the numbering the document adds.
+_ITEM_LABEL_RE = re.compile(
+    r"^\s*(?:Задание|Задача|Пример|Группа|Супориш|Вазифа|Мисол|Гурӯҳи?|Guruh|Task|Example|Group)"
+    r"\s*\d+\s*[:.\-—–]\s*", re.IGNORECASE)
 
 
-def _strip_group_label(task: str) -> str:
-    return _GROUP_LABEL_RE.sub("", str(task), count=1)
+def _strip_item_label(text: str) -> str:
+    text = str(text).strip()
+    stripped = _ITEM_LABEL_RE.sub("", text, count=1).strip()
+    if stripped == text or not stripped:
+        return text
+    return stripped[0].upper() + stripped[1:]
 
 
 def _set_cell_shading(cell, color_hex: str):
@@ -1015,7 +1021,7 @@ def _add_konspekt_body(doc, content: dict, L: dict):
             run.bold = True
             run.font.name = 'Calibri'
             run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-            run = p.add_run(_strip_group_label(task))
+            run = p.add_run(_strip_item_label(task))
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
             run.font.name = 'Calibri'
@@ -1062,7 +1068,7 @@ def _add_konspekt_body(doc, content: dict, L: dict):
                 run.bold = True
                 run.font.name = 'Calibri'
                 run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                run = p.add_run(h)
+                run = p.add_run(_strip_item_label(h))
                 run.font.size = Pt(11)
                 run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
                 run.font.name = 'Calibri'
@@ -2082,14 +2088,14 @@ def _add_lesson_content(doc, content: dict, L: dict):
     if group_work:
         _mono_heading(doc, L.get('group_work', 'Group Work'), size=12)
         for i, task in enumerate(group_work):
-            _mono_para(doc, f"{L.get('group', 'Group')} {i + 1}. {_strip_group_label(task)}")
+            _mono_para(doc, f"{L.get('group', 'Group')} {i + 1}. {_strip_item_label(task)}")
 
     homework = content.get('homework')
     if homework:
         _mono_heading(doc, L.get('homework', 'Homework'), size=12)
         if isinstance(homework, list):
             for i, h in enumerate(homework):
-                _mono_para(doc, f'{i + 1}. {h}')
+                _mono_para(doc, f'{i + 1}. {_strip_item_label(h)}')
         else:
             _mono_para(doc, str(homework))
 

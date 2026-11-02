@@ -39,13 +39,13 @@ _LABELS = {
     "English": {"name": "Student Name", "class": "Grade", "school": "School", "subject": "Subject", "year_prefix": "Academic Year", "teacher": "Teacher", "tag": "LESSON PLAN"},
 }
 _NAKSCHA_LABELS = {
-    "Таджикский": {"grade": "барои синфи", "duration": "Давомнокии дарс: 1 соат",
+    "Таджикский": {"grade": "барои синфи {n}", "duration": "Давомнокии дарс: 1 соат",
                    "subject": "аз фанни", "year": "барои соли таҳсили",
                    "teacher": "Омӯзгор", "topic": "Мавзӯи дарс"},
-    "Русский": {"grade": "для", "duration": "Длительность урока: 1 час",
+    "Русский": {"grade": "для {n} класса", "duration": "Длительность урока: 1 час",
                 "subject": "по предмету", "year": "на учебный год",
                 "teacher": "Учитель", "topic": "Тема урока"},
-    "English": {"grade": "for grade", "duration": "Lesson duration: 1 hour",
+    "English": {"grade": "for grade {n}", "duration": "Lesson duration: 1 hour",
                 "subject": "in", "year": "for the academic year",
                 "teacher": "Teacher", "topic": "Lesson topic"},
 }
@@ -503,7 +503,7 @@ def _build_cover_nakscha(subject: str, title: str, grade: str, language: str) ->
     draw.line([((W - 240) / 2, y), ((W + 240) / 2, y)], fill=_NAK_GOLD, width=5)
     y += 46
 
-    centered(f'{N["grade"]} {_grade_number(grade)}', _font(_FONT_SERIF_BOLD, 62), y, _NAK_RED)
+    centered(N['grade'].format(n=_grade_number(grade)), _font(_FONT_SERIF_BOLD, 62), y, _NAK_RED)
     y += 92
 
     dot_r, gap = 5, 26
