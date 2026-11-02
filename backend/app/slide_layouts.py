@@ -44,6 +44,7 @@ class Ctx:
     character_prop: str = "pointer"
     prop_color: RGBColor | None = None
     topic: str = ""
+    on_accent: RGBColor | None = None
 
 
 
@@ -212,7 +213,7 @@ def _central(ctx, sd) -> bool:
     hpt, hh = _fit(hub, core_d - 0.5, (18, 16, 14, 12), 1.4)
     from app.export_builder import _TEXT_WHITE
     _text(ctx, cx - core_d / 2 + 0.25, cy - hh / 2, core_d - 0.5, hh + 0.3,
-          hub, hpt, True, _TEXT_WHITE, PP_ALIGN.CENTER, font=ctx.title_font)
+          hub, hpt, True, ctx.on_accent or _TEXT_WHITE, PP_ALIGN.CENTER, font=ctx.title_font)
 
     n = len(bullets)
     rx, ry = 4.35, 2.0
@@ -273,7 +274,7 @@ def _flow(ctx, sd) -> bool:
         _shape(ctx, MSO_SHAPE.OVAL, mid - 0.21, top + 0.2, 0.42, 0.42, ctx.accent)
         from app.export_builder import _TEXT_WHITE
         _text(ctx, mid - 0.21, top + 0.26, 0.42, 0.32, str(i + 1), 13,
-              True, _TEXT_WHITE, PP_ALIGN.CENTER)
+              True, ctx.on_accent or _TEXT_WHITE, PP_ALIGN.CENTER)
         bpt, bh = _fit(bp, text_w, (17, 16, 15, 14), 0.9)
         _text(ctx, text_l, top + 0.78 + (0.62 - bh) / 2, text_w, bh + 0.3,
               bp, bpt, True, ctx.ink, PP_ALIGN.CENTER)
@@ -436,7 +437,7 @@ def _comparison(ctx, sd) -> bool:
     _shape(ctx, MSO_SHAPE.OVAL, mid - 0.3, (top + h / 2) - 0.3, 0.6, 0.6, ctx.accent)
     from app.export_builder import _TEXT_WHITE
     _text(ctx, mid - 0.3, (top + h / 2) - 0.2, 0.6, 0.4, "VS", 13, True,
-          _TEXT_WHITE, PP_ALIGN.CENTER)
+          ctx.on_accent or _TEXT_WHITE, PP_ALIGN.CENTER)
     return True
 
 
