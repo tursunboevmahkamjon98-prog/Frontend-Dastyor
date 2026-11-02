@@ -422,6 +422,12 @@ def _pick_content_icon(*texts: str):
     return None
 
 
+_DECK_COVER_LABEL = {
+    "Русский": "ПРЕЗЕНТАЦИЯ", "Таджикский": "ПРЕЗЕНТАТСИЯ",
+    "English": "PRESENTATION",
+    "Английский": "PRESENTATION",
+}
+
 _DECK_AGENDA_LABEL = {
     "Русский": "В ЭТОМ УРОКЕ", "Таджикский": "ДАР ИН ДАРС",
     "English": "IN THIS LESSON",
@@ -1362,24 +1368,30 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
     _cover_line_in = _cover_title_pt * 1.22 / 72.0
     _cover_lines = _estimate_pptx_lines(title_text, _cover_w_in, _cover_title_pt)
     if _cover_lines >= 2:
-        _cover_lines += 1
+        _cover_lines += 0.25
     _cover_title_h = min(3.3, max(0.95, _cover_lines * _cover_line_in + 0.15))
-    _rule_y_in = max(4.35, 2.4 + _cover_title_h + 0.18)
+
+    # Title, rule and description read as one block centred in the space
+    # between the label and the footer, instead of a title pinned high and
+    # a description pushed far below it.
+    _desc_pt = 18
+    _desc_h = (_estimate_pptx_lines(desc, _cover_w_in, _desc_pt) * _desc_pt * 1.3 / 72.0
+               if desc else 0.0)
+    _block_h = _cover_title_h + (0.5 + _desc_h if desc else 0.0)
+    _title_y_in = max(1.5, 1.3 + (6.6 - 1.3 - _block_h) / 2)
+    _rule_y_in = _title_y_in + _cover_title_h + 0.12
 
     slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, 0, on_cover=True)
-    if not (desc and _rule_y_in + 0.25 > 5.05):
+    # Cover art sits in the lower-left corner; skip it when the text block
+    # reaches down into that corner.
+    if _title_y_in + _block_h < 5.05:
         slide_decor.draw_cover(slide, _COVER, _ACCENT, _SUPPORT, _BG)
 
 
     _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(0.85), Inches(0.5), Pt(2.5), _ACCENT)
     _add_text(slide, Inches(1.6), Inches(0.72), Inches(6), Inches(0.35),
-              "ПРЕЗЕНТАЦИЯ", 12, True, _ACCENT)
-
-    badge_w, badge_h = Inches(1.7), Inches(1.05)
-    badge_x, badge_y = _SLIDE_W - badge_w - Inches(0.8), Inches(0.6)
-    _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, badge_x, badge_y, badge_w, badge_h, _ACCENT)
-    _add_text(slide, badge_x, badge_y + Inches(0.16), badge_w, Inches(0.35), f"{total_slides + 1} СЛАЙДОВ", 11, True, _TEXT_WHITE, PP_ALIGN.CENTER)
-    _add_text(slide, badge_x, badge_y + Inches(0.55), badge_w, Inches(0.4), "Dastyor", 15, True, _TEXT_WHITE, PP_ALIGN.CENTER)
+              _DECK_COVER_LABEL.get(str(content.get("language") or "Русский"), "ПРЕЗЕНТАЦИЯ"),
+              12, True, _ACCENT)
 
     _illustration_path = (None if theme.get("subject_template")
                           else get_subject_illustration_path(content.get("subject")))
@@ -1387,16 +1399,15 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
         try:
             with PILImage.open(_illustration_path) as _im:
                 _iw, _ih = _im.size
-            _icon_box_in = 0.65
+            _icon_box_in = 0.9
             _scale = min(_icon_box_in / _iw, _icon_box_in / _ih)
             _icon_w_in, _icon_h_in = _iw * _scale, _ih * _scale
-            _icon_x = badge_x + (badge_w - Inches(_icon_w_in)) / 2
-            _icon_y = badge_y + badge_h + Inches(0.1)
-            slide.shapes.add_picture(_illustration_path, _icon_x, _icon_y, Inches(_icon_w_in), Inches(_icon_h_in))
+            slide.shapes.add_picture(_illustration_path, _SLIDE_W - Inches(_icon_w_in + 0.9),
+                                     Inches(0.6), Inches(_icon_w_in), Inches(_icon_h_in))
         except Exception:
             pass
 
-    _add_text(slide, Inches(0.95), Inches(2.4), Inches(_cover_w_in), Inches(_cover_title_h),
+    _add_text(slide, Inches(0.95), Inches(_title_y_in), Inches(_cover_w_in), Inches(_cover_title_h),
               title_text, _cover_title_pt, True, _INK, font_name=title_font)
 
     _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(_rule_y_in),
@@ -1404,7 +1415,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
 
     if desc:
         _add_text(slide, Inches(1.0), Inches(_rule_y_in + 0.25), Inches(_cover_w_in),
-                  Inches(1.4), desc, 15, False, _MUTED)
+                  Inches(_desc_h + 0.3), desc, _desc_pt, False, _MUTED)
 
     agenda = [str(sd.get("title") or "").strip()
               for sd in slides_data if str(sd.get("title") or "").strip()]
@@ -1418,12 +1429,12 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                   10, True, _ACCENT)
         y_in = plan_top_in + 0.42
         for n, item in enumerate(agenda[:5], 1):
-            lines = _estimate_pptx_lines(item, 3.5, 12)
+            lines = _estimate_pptx_lines(item, 4.0, 15)
             _add_text(slide, Inches(plan_x_in + 0.3), Inches(y_in), Inches(0.35),
-                      Inches(0.3), f"{n}", 12, True, _ACCENT)
-            _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(3.6),
-                      Inches(lines * 0.24), item, 12, False, _INK)
-            y_in += max(0.34, lines * 0.24 + 0.12)
+                      Inches(0.3), f"{n}", 15, True, _ACCENT)
+            _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(4.1),
+                      Inches(lines * 0.29), item, 15, False, _INK)
+            y_in += max(0.42, lines * 0.29 + 0.14)
         if len(agenda) > 5:
             _lang = str(content.get("language") or "Русский")
             _more_n = len(agenda) - 5
@@ -1439,7 +1450,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
     _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(6.85), Inches(11.5), Pt(0.75), _HAIRLINE)
     _add_text(slide, Inches(1.0), Inches(7.0), Inches(9.3), Inches(0.4),
               f"{content.get('subject', '')}  ·  {content.get('grade', '')}".strip(" ·"),
-              11, False, _MUTED)
+              13, False, _MUTED)
 
     _add_logo_badge(slide, on_dark_bg=False)
     _add_transition(slide)

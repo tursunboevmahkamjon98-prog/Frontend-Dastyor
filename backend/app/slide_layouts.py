@@ -96,9 +96,9 @@ def _fit(s, width_in, sizes, max_h_in):
 
 
 def _character(ctx, x, y, h, pose):
-    if ctx.grade_tier == "senior" and ctx.index % 4 != 1:
-        return
-    if ctx.grade_tier == "middle" and ctx.index % 2 == 1:
+    # The stick figure reads as childish past primary school; a teacher
+    # projecting it to a 7th or 10th grade class is embarrassed by it.
+    if ctx.grade_tier != "junior":
         return
     slide_characters.draw(ctx.slide, x, y, h, ctx.accent,
                           ctx.prop_color or ctx.support,
@@ -124,7 +124,7 @@ def draw_callout(ctx, kind, text, x, y, w) -> float:
     kind = str(kind or "important").lower()
     label = _CALLOUT_LABEL.get(kind, _CALLOUT_LABEL["important"]).get(
         ctx.language, _CALLOUT_LABEL.get(kind, _CALLOUT_LABEL["important"])["Русский"])
-    pt, text_h = _fit(text, w - 0.7, (14, 13, 12, 11), 1.5)
+    pt, text_h = _fit(text, w - 0.7, (16, 15, 14, 13), 1.5)
     h = max(0.78, text_h + 0.62)
 
     if kind == "important":
@@ -187,7 +187,7 @@ def _hero(ctx, sd) -> bool:
           font=ctx.title_font)
     y = top + h + 0.3
     if rest:
-        rpt, rh = _fit(rest, text_w, (17, 16, 15, 14), 1.5)
+        rpt, rh = _fit(rest, text_w, (20, 18, 17, 16), 1.5)
         _text(ctx, LEFT_IN, y, text_w, rh + 0.25, rest, rpt, False, ctx.muted)
         y += rh + 0.2
 
@@ -226,10 +226,12 @@ def _central(ctx, sd) -> bool:
         ang = math.degrees(math.atan2(py - ey, px - ex))
         _shape(ctx, MSO_SHAPE.RECTANGLE, (ex + px) / 2 - length / 2,
                (ey + py) / 2, length, 0.018, ctx.accent_soft, rotation=ang)
-        bpt, bh = _fit(bp, node_w - 0.4, (13, 12, 11), node_h - 0.24)
+        bpt, bh = _fit(bp, node_w - 0.4, (16, 15, 14, 13), node_h - 0.24)
+        # Filled with the slide background so the spoke ends at the node's
+        # border instead of running through the label.
         _shape(ctx, MSO_SHAPE.ROUNDED_RECTANGLE, px - node_w / 2, py - node_h / 2,
-               node_w, max(node_h, bh + 0.24), None, line=ctx.accent, line_pt=1.25,
-               adjust=0.2)
+               node_w, max(node_h, bh + 0.24), RGBColor(*ctx.bg), line=ctx.accent,
+               line_pt=1.25, adjust=0.2)
         _shape(ctx, MSO_SHAPE.OVAL, px - node_w / 2 - 0.11, py - 0.11, 0.22, 0.22,
                ctx.accent)
         _text(ctx, px - node_w / 2 + 0.2, py - bh / 2 - 0.02, node_w - 0.4,
@@ -250,28 +252,36 @@ def _flow(ctx, sd) -> bool:
     body_probe = _clean(sd.get("body"))
     body_h_probe = 0.0
     if body_probe:
-        _, body_h_probe = _fit(body_probe, WIDTH_IN - 3.0, (15, 14, 13, 12), 2.0)
+        _, body_h_probe = _fit(body_probe, WIDTH_IN - 3.0, (18, 17, 16, 15), 2.0)
         body_h_probe += 0.42
     top = TOP_IN + max(0.2, (BOTTOM_IN - TOP_IN - step_h - body_h_probe) / 2)
+    # The default 50% adjust cut a 0.85" notch into each arrow, which the
+    # label box ignored, so text ran into the arrow edges. A shallower notch
+    # and a label inset by its depth keep the text inside the arrow body.
+    notch_adj = 0.28
+    notch = notch_adj * step_h
     for i, bp in enumerate(bullets):
         x = LEFT_IN + i * (step_w + gap)
         shp = MSO_SHAPE.PENTAGON if i == 0 else MSO_SHAPE.CHEVRON
-        _shape(ctx, shp, x, top, step_w + (point if i else 0), step_h,
+        shape_w = step_w + (point if i else 0)
+        _shape(ctx, shp, x, top, shape_w, step_h,
                ctx.accent_soft if i % 2 == 0 else None,
-               line=None if i % 2 == 0 else ctx.accent, line_pt=1.25)
-        _shape(ctx, MSO_SHAPE.OVAL, x + step_w / 2 - 0.21, top + 0.2, 0.42, 0.42,
-               ctx.accent)
+               line=None if i % 2 == 0 else ctx.accent, line_pt=1.25, adjust=notch_adj)
+        text_l = x + (notch if i else 0) + 0.18
+        text_w = x + shape_w - notch - 0.12 - text_l
+        mid = text_l + text_w / 2
+        _shape(ctx, MSO_SHAPE.OVAL, mid - 0.21, top + 0.2, 0.42, 0.42, ctx.accent)
         from app.export_builder import _TEXT_WHITE
-        _text(ctx, x + step_w / 2 - 0.21, top + 0.26, 0.42, 0.32, str(i + 1), 13,
+        _text(ctx, mid - 0.21, top + 0.26, 0.42, 0.32, str(i + 1), 13,
               True, _TEXT_WHITE, PP_ALIGN.CENTER)
-        bpt, bh = _fit(bp, step_w - 0.6, (14, 13, 12, 11), 0.9)
-        _text(ctx, x + 0.3, top + 0.78 + (0.62 - bh) / 2, step_w - 0.6, bh + 0.3,
+        bpt, bh = _fit(bp, text_w, (17, 16, 15, 14), 0.9)
+        _text(ctx, text_l, top + 0.78 + (0.62 - bh) / 2, text_w, bh + 0.3,
               bp, bpt, True, ctx.ink, PP_ALIGN.CENTER)
 
     body = _clean(sd.get("body"))
     y = top + step_h + 0.42
     if body:
-        bpt, bh = _fit(body, WIDTH_IN - 3.0, (15, 14, 13, 12), BOTTOM_IN - y - 0.1)
+        bpt, bh = _fit(body, WIDTH_IN - 3.0, (18, 17, 16, 15), BOTTOM_IN - y - 0.1)
         _text(ctx, LEFT_IN, y, WIDTH_IN - 3.0, bh + 0.3, body, bpt, False, ctx.muted)
     _character(ctx, 11.15, BOTTOM_IN - 1.9, 1.75, "point_left")
     return True
@@ -289,12 +299,12 @@ def _bignumber(ctx, sd) -> bool:
 
     y = TOP_IN + 0.7
     for bp in rest[:4]:
-        bpt, bh = _fit(bp, 5.1, (17, 16, 15, 14), 1.2)
+        bpt, bh = _fit(bp, 5.1, (20, 19, 18, 17), 1.2)
         _text(ctx, 6.95, y, 5.1, bh + 0.3, bp, bpt, False, ctx.ink)
         y += bh + 0.42
     body = _clean(sd.get("body"))
     if body and y < BOTTOM_IN - 0.9:
-        bpt, bh = _fit(body, 5.1, (14, 13, 12), BOTTOM_IN - y - 0.2)
+        bpt, bh = _fit(body, 5.1, (17, 16, 15), BOTTOM_IN - y - 0.2)
         _text(ctx, 6.95, y + 0.1, 5.1, bh + 0.3, body, bpt, False, ctx.muted)
     _character(ctx, 2.6, BOTTOM_IN - 2.2, 2.1, "point_right")
     return True
@@ -340,7 +350,7 @@ def _split_image(ctx, sd) -> bool:
         y += bh + 0.34
     body = _clean(sd.get("body"))
     if body and y < BOTTOM_IN - 0.7:
-        bpt, bh = _fit(body, tw_in, (15, 14, 13, 12), BOTTOM_IN - y - 0.35)
+        bpt, bh = _fit(body, tw_in, (18, 17, 16, 15), BOTTOM_IN - y - 0.35)
         _text(ctx, tx, y + 0.12, tw_in, bh + 0.3, body, bpt, False, ctx.muted)
         y += bh + 0.3
     _callout(ctx, sd, tx, y + 0.2, tw_in)
@@ -443,7 +453,7 @@ def _magazine(ctx, sd) -> bool:
 
     _text(ctx, LEFT_IN, top - 0.16, 0.7, 1.0, first[:1], 58, True, ctx.accent,
           font=ctx.title_font)
-    pt, h1 = _fit(first[1:], col_w - 0.62, (15, 14, 13), BOTTOM_IN - top)
+    pt, h1 = _fit(first[1:], col_w - 0.62, (17, 16, 15), BOTTOM_IN - top)
     _text(ctx, LEFT_IN + 0.62, top, col_w - 0.62, h1 + 0.3, first[1:], pt, False,
           ctx.ink)
     if second:
