@@ -295,17 +295,21 @@ async def ensure_contact_account(telegram_user_id: int, chat_id: int,
                 await db.commit()
                 return
 
+            # Through the ORM, not a raw INSERT: User has several
+            # NOT NULL columns (phone_verified, language, the free_*
+            # usage counters...) whose defaults live only in the Python
+            # class, not the database — a hand-written INSERT here would
+            # have to keep that list in sync by hand and silently break
+            # the moment it drifted.
             from app.auth import hash_password
-            user_id = str(uuid.uuid4())
-            await conn.execute(text(
-                "INSERT INTO users (id, full_name, hashed_password, role, created_at) "
-                "VALUES (:id, :name, :pw, 'user', now()) "
-                "ON CONFLICT DO NOTHING"
-            ), {
-                "id": user_id,
-                "name": (first_name or normalized or "Telegram").strip()[:120],
-                "pw": hash_password(secrets.token_urlsafe(32)),
-            })
+            from app.models import User
+            user = User(
+                full_name=(first_name or normalized or "Telegram").strip()[:120],
+                hashed_password=hash_password(secrets.token_urlsafe(32)),
+            )
+            db.add(user)
+            await db.flush()
+            user_id = user.id
             await conn.execute(text(
                 "INSERT INTO telegram_accounts "
                 "(id, user_id, chat_id, telegram_user_id, username, "
