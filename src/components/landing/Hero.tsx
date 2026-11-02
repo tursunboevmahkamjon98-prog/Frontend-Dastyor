@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { Sparkles, Check, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { SUBJECTS, LANGUAGES } from "@/lib/material-types";
+import TeacherStage from "./TeacherStage";
 import { FACTS, FEATURES, featureTitleKey } from "./constants";
-
-/* WebGL has no server-side representation, so the card stack loads
- * client-only. The loading placeholder matches the canvas footprint to
- * avoid a layout jump once it mounts. */
-const MaterialCards3D = dynamic(() => import("./MaterialCards3D"), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-full bg-primary/5" />,
-});
 
 const STATS = [
   { value: String(FEATURES.length), key: "landing.stat.types" },
@@ -43,7 +36,7 @@ export default function Hero() {
         aria-hidden
       />
 
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 pt-14 pb-10 sm:pt-20 lg:grid-cols-[1.08fr_0.92fr] lg:gap-6">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 pt-14 pb-10 sm:pt-20 lg:grid-cols-[1.08fr_0.92fr] lg:items-start lg:gap-6">
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary-50 px-3.5 py-1.5 text-xs font-semibold text-primary-dark">
             <Sparkles className="h-3.5 w-3.5" />
@@ -71,11 +64,11 @@ export default function Hero() {
             ))}
           </div>
 
-          {/* The right column's full 3D composition only renders at lg+ —
-              below that this compact canvas is the only 3D a visitor on a
-              phone or a narrow window ever sees. */}
-          <div className="relative my-2 h-48 w-48 sm:h-56 sm:w-56 lg:hidden">
-            <MaterialCards3D className="h-full w-full" />
+          {/* The right column's full illustration only shows at lg+ —
+              below that this smaller teacher is what a phone or narrow
+              window visitor sees. */}
+          <div className="relative my-2 flex h-48 items-center justify-center sm:h-56 lg:hidden">
+            <Image src="/hero/teacher.png" alt="" width={740} height={740} priority className="h-full w-auto object-contain" />
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -127,31 +120,7 @@ export default function Hero() {
             style={{ animation: "landing-blob-drift 17s ease-in-out infinite", animationDelay: "-6s" }}
             aria-hidden
           />
-          <div className="relative mx-auto h-[29rem] w-full max-w-[34rem]">
-            <div className="pointer-events-none absolute left-1/2 top-[47%] h-[25rem] w-[25rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.09] blur-3xl" aria-hidden />
-            <div className="pointer-events-none absolute bottom-8 left-1/2 h-12 w-[72%] -translate-x-1/2 rounded-[50%] bg-primary/10 blur-2xl" aria-hidden />
-            <MaterialCards3D className="relative z-10 h-full w-full" />
-            <div
-              className="absolute left-0 top-3 z-20 flex items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-xs font-semibold text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(220,38,38,0.25)]"
-              style={{ ["--chip-rot" as string]: "-3deg", animation: "landing-float-chip 5s ease-in-out infinite" }}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("landing.hero.chipAssistant")}
-            </div>
-            <div
-              className="absolute bottom-10 right-0 z-20 rounded-2xl border border-border-light bg-white px-4 py-2.5 text-xs font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(0,0,0,0.12)]"
-              style={{ ["--chip-rot" as string]: "2deg", animation: "landing-float-chip 5.5s ease-in-out infinite", animationDelay: "-2s" }}
-            >
-              {t("landing.hero.chipTypes")}
-            </div>
-            <div
-              className="absolute right-0 top-[37%] z-20 flex items-center gap-1.5 rounded-2xl border border-border-light bg-white px-3 py-2 text-xs font-semibold text-success shadow-[0_3px_0_0_var(--color-border-light),0_10px_20px_-6px_rgba(5,150,105,0.25)]"
-              style={{ ["--chip-rot" as string]: "3deg", animation: "landing-float-chip 4.5s ease-in-out infinite", animationDelay: "-1s" }}
-            >
-              <Check className="h-3.5 w-3.5" />
-              {t("landing.hero.chipReady")}
-            </div>
-          </div>
+          <TeacherStage />
         </div>
       </div>
     </section>

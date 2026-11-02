@@ -384,6 +384,13 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Magic-dust particles scattered around the hero illustration — each dot
+ * gets its own animation-delay so they twinkle out of sync. */
+@keyframes landing-sparkle-twinkle {
+  0%, 100% { transform: scale(0.4); opacity: 0; }
+  50% { transform: scale(1); opacity: 0.9; }
+}
+
 /* Squiggle underline beneath the hero's accent word — draws itself in
  * once on load using the same stroke-dashoffset trick as an SVG "signature"
  * animation, so the emphasis lands a beat after the headline appears. */
