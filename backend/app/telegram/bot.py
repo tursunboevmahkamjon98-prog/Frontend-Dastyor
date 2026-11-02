@@ -550,9 +550,17 @@ class PaymentBot:
         message = update.get("message") or {}
         chat = message.get("chat") or {}
         chat_id = chat.get("id")
-        sender_id = (message.get("from") or {}).get("id")
+        sender = message.get("from") or {}
+        sender_id = sender.get("id")
         if chat.get("type") != "private" or chat_id is None or sender_id != chat_id:
             return
+        # Recorded before the admin gate below, on purpose: this is what
+        # makes "/addadmin @username" resolve that username later at
+        # all — a non-admin is rejected right after, but having written
+        # once is now enough to be found and promoted by name.
+        await service.ensure_contact_account(
+            sender_id, chat_id, sender.get("username"), sender.get("first_name")
+        )
         if not await service.is_admin(sender_id):
             await self.admin_client.send_message(chat_id, "🔒 Этот бот доступен только администраторам Dastyor.")
             return

@@ -256,6 +256,75 @@ def normalize_username(raw: str | None) -> str | None:
     return cleaned or None
 
 
+async def ensure_contact_account(telegram_user_id: int, chat_id: int,
+                                 username: str | None,
+                                 first_name: str | None) -> None:
+    """Make ``/addadmin @username`` resolvable for anyone who has written
+    to the admin bot at all, not only people who linked a real Dastyor
+    account first.
+
+    Deliberately weaker than the linking flow: a message proves only
+    that the sender controls *a* Telegram account with that numeric id
+    right now, never that they are who a stale, reusable @username might
+    suggest later (see TelegramAccount.username's own docstring on that).
+    Grants still go to ``telegram_user_id``, never to the name, so this
+    cannot by itself hand anyone power — a super-admin still has to pick
+    the right entry. Accepted as a deliberate convenience/security
+    trade-off; keep it that way, do not quietly make this the only path.
+
+    A placeholder User backs the TelegramAccount row because grants are
+    authorized through User.role (see TelegramAdmin's docstring) and
+    there is no other place to attach one. Its password hash is random
+    and never handed out, so the row cannot be logged into.
+    """
+    normalized = normalize_username(username)
+    try:
+        async with async_session() as db:
+            conn = await db.connection()
+            existing = (await conn.execute(text(
+                "SELECT 1 FROM telegram_accounts "
+                "WHERE telegram_user_id = :tg AND revoked = FALSE"
+            ), {"tg": telegram_user_id})).scalar()
+            if existing:
+                await conn.execute(text(
+                    "UPDATE telegram_accounts SET username = :u, chat_id = :chat, "
+                    "  last_seen_at = now() "
+                    "WHERE telegram_user_id = :tg AND revoked = FALSE "
+                    "  AND (username IS DISTINCT FROM :u OR chat_id IS DISTINCT FROM :chat)"
+                ), {"u": normalized, "chat": chat_id, "tg": telegram_user_id})
+                await db.commit()
+                return
+
+            from app.auth import hash_password
+            user_id = str(uuid.uuid4())
+            await conn.execute(text(
+                "INSERT INTO users (id, full_name, hashed_password, role, created_at) "
+                "VALUES (:id, :name, :pw, 'user', now()) "
+                "ON CONFLICT DO NOTHING"
+            ), {
+                "id": user_id,
+                "name": (first_name or normalized or "Telegram").strip()[:120],
+                "pw": hash_password(secrets.token_urlsafe(32)),
+            })
+            await conn.execute(text(
+                "INSERT INTO telegram_accounts "
+                "(id, user_id, chat_id, telegram_user_id, username, "
+                " linked_at, last_seen_at, revoked) "
+                "VALUES (:id, :uid, :chat, :tg, :u, now(), now(), FALSE) "
+                "ON CONFLICT (chat_id) DO UPDATE SET "
+                "  telegram_user_id = EXCLUDED.telegram_user_id, "
+                "  username = EXCLUDED.username, last_seen_at = now(), revoked = FALSE"
+            ), {
+                "id": str(uuid.uuid4()), "uid": user_id, "chat": chat_id,
+                "tg": telegram_user_id, "u": normalized,
+            })
+            await db.commit()
+    except Exception as e:
+        # A missed contact only means /addadmin @name needs one more
+        # message from that person later; never worth failing theirs.
+        logger.warning(f"Could not record bot contact {telegram_user_id}: {e}")
+
+
 async def remember_username(telegram_user_id: int | None,
                             username: str | None) -> None:
     """Refresh the stored @username for a linked account.
