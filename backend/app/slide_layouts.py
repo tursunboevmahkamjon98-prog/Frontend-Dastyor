@@ -599,7 +599,13 @@ def _looks_like_comparison(sd) -> bool:
     return any(w in title for w in _VS_WORDS)
 
 
-_NUM_RE = re.compile(r"^[^\d]{0,12}?(\d[\d\s.,]{0,9}\s*%?)\s*(.*)$")
+# The number must open the bullet (only a sign or currency may precede it).
+# An earlier pattern skipped up to 12 leading non-digits and threw them away,
+# so "D > 0 — два корня" became a huge "0" beside "— два корня": the
+# condition vanished and the slide stated something false.
+_NUM_RE = re.compile(r"^\s*([~≈+\-−]?\s*[$€£₽]?\d[\d\s.,]{0,9}\s*%?)\s*(.*)$")
+# A number followed by a comparison is half of a formula ("0 < x < 1"), not a stat.
+_FORMULA_TAIL_RE = re.compile(r"^[<>=≤≥≠]")
 
 
 def _extract_number(bullets):
@@ -610,9 +616,13 @@ def _extract_number(bullets):
         num = m.group(1).strip()
         if len(bp) > 42 or not num or len(num) > 7:
             continue
+        tail = m.group(2).strip()
+        if _FORMULA_TAIL_RE.match(tail):
+            continue
+        tail = tail.lstrip("—–-:· ").strip()
         rest = [b for j, b in enumerate(bullets) if j != i]
-        if m.group(2).strip():
-            rest = [m.group(2).strip()] + rest
+        if tail:
+            rest = [tail] + rest
         if not rest:
             continue
         return num, rest

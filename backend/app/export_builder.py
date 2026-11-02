@@ -1274,14 +1274,53 @@ def _pptx_math_runs(paragraph) -> None:
         parent.remove(r)
 
 
+# PowerPoint ignores mc:AlternateContent inside a paragraph, so an equation
+# wrapped there rendered as nothing. It only honours the switch around the
+# whole shape: Choice is the shape with a14:m inline, Fallback the same shape
+# with plain runs, which is how PowerPoint itself saves equations.
+def _lift_math_to_shape(sp) -> None:
+    import copy
+    from lxml import etree
+
+    ac_tag = f"{{{_MC_NS}}}AlternateContent"
+    if next(sp.iter(ac_tag), None) is None:
+        return
+
+    choice_sp = copy.deepcopy(sp)
+    for ac in list(choice_sp.iter(ac_tag)):
+        m = ac.find(f"{{{_MC_NS}}}Choice/{{{_A14_NS}}}m")
+        if m is None:
+            ac.getparent().remove(ac)
+        else:
+            ac.getparent().replace(ac, m)
+
+    fallback_sp = copy.deepcopy(sp)
+    for ac in list(fallback_sp.iter(ac_tag)):
+        parent = ac.getparent()
+        index = list(parent).index(ac)
+        fallback = ac.find(f"{{{_MC_NS}}}Fallback")
+        for offset, run in enumerate(list(fallback) if fallback is not None else []):
+            parent.insert(index + offset, run)
+        parent.remove(ac)
+
+    tree = sp.getparent()
+    wrapper = etree.Element(ac_tag, nsmap={"mc": _MC_NS})
+    choice = etree.SubElement(wrapper, f"{{{_MC_NS}}}Choice", nsmap={"a14": _A14_NS})
+    choice.set("Requires", "a14")
+    choice.append(choice_sp)
+    etree.SubElement(wrapper, f"{{{_MC_NS}}}Fallback").append(fallback_sp)
+    tree.replace(sp, wrapper)
+
+
 def _typeset_math_pptx(prs) -> None:
     for slide in prs.slides:
-        for shape in slide.shapes:
+        for shape in list(slide.shapes):
             try:
                 if not shape.has_text_frame:
                     continue
                 for paragraph in shape.text_frame.paragraphs:
                     _pptx_math_runs(paragraph)
+                _lift_math_to_shape(shape._element)
             except Exception:
                 continue
 
