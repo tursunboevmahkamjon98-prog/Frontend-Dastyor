@@ -281,6 +281,21 @@ async def ensure_contact_account(telegram_user_id: int, chat_id: int,
     try:
         async with async_session() as db:
             conn = await db.connection()
+            if normalized:
+                # A username is unique on Telegram at any moment, so if
+                # :tg holds it now, no OTHER row's copy can still be
+                # current — it is a stale leftover from a rename or a
+                # released-and-reclaimed handle. Left in place, a later
+                # "/addadmin @name" lookup (WHERE username = :u, no
+                # other tiebreaker) could resolve to that stale row
+                # instead of this one — exactly the wrong-account grant
+                # this fixes. Clearing it, never revoking it, since that
+                # other row may still be a real, separately-linked
+                # account that simply does not hold this name anymore.
+                await conn.execute(text(
+                    "UPDATE telegram_accounts SET username = NULL "
+                    "WHERE username = :u AND telegram_user_id IS DISTINCT FROM :tg"
+                ), {"u": normalized, "tg": telegram_user_id})
             existing = (await conn.execute(text(
                 "SELECT 1 FROM telegram_accounts "
                 "WHERE telegram_user_id = :tg AND revoked = FALSE"
