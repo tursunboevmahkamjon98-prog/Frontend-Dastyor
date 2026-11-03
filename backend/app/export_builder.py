@@ -101,7 +101,7 @@ class Paragraph(_RLParagraph):
 
 from app.logger import get_logger
 from app.subject_theme import get_subject_accent_hex, get_subject_accent_rgb, get_subject_illustration_path
-from app import slide_decor, pptx_shapes, slide_layouts, slide_characters
+from app import slide_decor, pptx_shapes, slide_layouts, slide_characters, deck_design
 from app.konspekt_templates import get_template
 
 logger = get_logger(__name__)
@@ -421,6 +421,12 @@ def _pick_content_icon(*texts: str):
             return shape
     return None
 
+
+_DECK_COVER_LABEL = {
+    "Русский": "ПРЕЗЕНТАЦИЯ", "Таджикский": "ПРЕЗЕНТАТСИЯ",
+    "English": "PRESENTATION",
+    "Английский": "PRESENTATION",
+}
 
 _DECK_AGENDA_LABEL = {
     "Русский": "В ЭТОМ УРОКЕ", "Таджикский": "ДАР ИН ДАРС",
@@ -793,74 +799,75 @@ def _pptx_bullet_grid_natural_heights(bullets: list[str], col_w_in: float, font_
 
 def _draw_bullet_card(slide, card: str, x_in: float, y_in: float, w_in: float,
                       h_in: float, accent: RGBColor, border: RGBColor,
-                      support: RGBColor) -> None:
+                      support: RGBColor, fill: RGBColor = _TEXT_WHITE) -> None:
     L, T, W, H = Inches(x_in), Inches(y_in), Inches(w_in), Inches(h_in)
 
     if card == "sharp":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, Pt(3.5), H, accent)
     elif card == "tab":
         shp = _add_shape(slide, MSO_SHAPE.ROUND_2_SAME_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T + H - Pt(3), W, Pt(3), accent)
     elif card == "hex":
         _add_shape(slide, MSO_SHAPE.SNIP_2_DIAG_RECTANGLE, L, T, W, H,
-                   _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                   fill, line_rgb=border, line_width=Pt(1.25))
     elif card == "pill":
         shp = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         try:
             shp.adjustments[0] = 0.5
         except Exception:
             pass
     elif card == "legend":
-        shp = _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        shp = _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                          line_rgb=accent, line_width=Pt(1.0))
         try:
             shp.line.dash_style = MSO_LINE_DASH_STYLE.DASH
         except Exception:
             pass
     elif card == "plaque":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.0))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, Pt(4), accent)
     elif card == "window":
         _add_shape(slide, MSO_SHAPE.ROUND_2_SAME_RECTANGLE, L, T, W, H,
-                   _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                   fill, line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T + Inches(0.26), W, Pt(1), border)
     elif card == "quote":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill)
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, Pt(5), H, support)
     elif card == "framed":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.5))
         inset = Inches(0.055)
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L + inset, T + inset,
-                   W - inset * 2, H - inset * 2, _TEXT_WHITE,
+                   W - inset * 2, H - inset * 2, fill,
                    line_rgb=support, line_width=Pt(0.75))
     elif card == "bubble":
         shp = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         try:
             shp.adjustments[0] = 0.22
         except Exception:
             pass
         _add_shape(slide, MSO_SHAPE.ISOSCELES_TRIANGLE, L + Inches(0.45),
-                   T + H - Inches(0.02), Inches(0.26), Inches(0.2), _TEXT_WHITE,
+                   T + H - Inches(0.02), Inches(0.26), Inches(0.2), fill,
                    line_rgb=border, line_width=Pt(1.0))
     elif card == "ornate":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
         d = Inches(0.11)
         for cx, cy in ((L, T), (L + W - d, T), (L, T + H - d), (L + W - d, T + H - d)):
             _add_shape(slide, MSO_SHAPE.DIAMOND, cx, cy, d, d, support)
     else:
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
 
 
-def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: list[float], accent: RGBColor, accent_soft: RGBColor, ink: RGBColor, pastel: bool = False, card: str = "rounded", marker: str = "number", kind: str = "") -> None:
+def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: list[float], accent: RGBColor, accent_soft: RGBColor, ink: RGBColor, pastel: bool = False, card: str = "rounded", marker: str = "number", kind: str = "",
+                      card_fill: RGBColor = _TEXT_WHITE, badge_ink: RGBColor = _TEXT_WHITE) -> None:
     left_in = _CONTENT_X_IN
     total_w_in = _CONTENT_W_IN
     col_gap_in = 0.3
@@ -898,7 +905,7 @@ def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: lis
             else:
                 card_badge_color = accent
                 _draw_bullet_card(slide, card, x_in, y_in, this_w_in, row_h_in,
-                                  accent, border_color, accent_soft)
+                                  accent, border_color, accent_soft, card_fill)
 
             badge_top_in = y_in - protrude_in
             icon = _pick_content_icon(bp)
@@ -911,11 +918,11 @@ def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: lis
             badge_cy = Inches(badge_top_in + badge_d_in / 2)
             if icon is not None:
                 _add_icon_badge(slide, badge_cx, badge_cy, Inches(badge_d_in),
-                                icon, card_badge_color, _TEXT_WHITE,
+                                icon, card_badge_color, badge_ink,
                                 badge_shape=badge_shape)
             else:
                 _add_number_badge(slide, badge_cx, badge_cy, Inches(badge_d_in),
-                                  j + 1, card_badge_color, _TEXT_WHITE,
+                                  j + 1, card_badge_color, badge_ink,
                                   badge_shape=badge_shape,
                                   label=_marker_label(marker, j + 1))
 
@@ -1274,14 +1281,53 @@ def _pptx_math_runs(paragraph) -> None:
         parent.remove(r)
 
 
+# PowerPoint ignores mc:AlternateContent inside a paragraph, so an equation
+# wrapped there rendered as nothing. It only honours the switch around the
+# whole shape: Choice is the shape with a14:m inline, Fallback the same shape
+# with plain runs, which is how PowerPoint itself saves equations.
+def _lift_math_to_shape(sp) -> None:
+    import copy
+    from lxml import etree
+
+    ac_tag = f"{{{_MC_NS}}}AlternateContent"
+    if next(sp.iter(ac_tag), None) is None:
+        return
+
+    choice_sp = copy.deepcopy(sp)
+    for ac in list(choice_sp.iter(ac_tag)):
+        m = ac.find(f"{{{_MC_NS}}}Choice/{{{_A14_NS}}}m")
+        if m is None:
+            ac.getparent().remove(ac)
+        else:
+            ac.getparent().replace(ac, m)
+
+    fallback_sp = copy.deepcopy(sp)
+    for ac in list(fallback_sp.iter(ac_tag)):
+        parent = ac.getparent()
+        index = list(parent).index(ac)
+        fallback = ac.find(f"{{{_MC_NS}}}Fallback")
+        for offset, run in enumerate(list(fallback) if fallback is not None else []):
+            parent.insert(index + offset, run)
+        parent.remove(ac)
+
+    tree = sp.getparent()
+    wrapper = etree.Element(ac_tag, nsmap={"mc": _MC_NS})
+    choice = etree.SubElement(wrapper, f"{{{_MC_NS}}}Choice", nsmap={"a14": _A14_NS})
+    choice.set("Requires", "a14")
+    choice.append(choice_sp)
+    etree.SubElement(wrapper, f"{{{_MC_NS}}}Fallback").append(fallback_sp)
+    tree.replace(sp, wrapper)
+
+
 def _typeset_math_pptx(prs) -> None:
     for slide in prs.slides:
-        for shape in slide.shapes:
+        for shape in list(slide.shapes):
             try:
                 if not shape.has_text_frame:
                     continue
                 for paragraph in shape.text_frame.paragraphs:
                     _pptx_math_runs(paragraph)
+                _lift_math_to_shape(shape._element)
             except Exception:
                 continue
 
@@ -1310,100 +1356,121 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
     _INK = theme["ink"]
     _MUTED = theme["muted"]
     _BG = theme["bg"]
+    _design = deck_design.for_theme(theme, content.get("language"))
+    if _design:
+        _BG = _hex_tuple(_design.bg)
+        _INK = _hex_rgb(_design.ink)
+        _MUTED = _hex_rgb(_design.muted)
+        _ACCENT = _hex_rgb(_design.accent)
+        _ACCENT_DARK = _hex_rgb(_design.accent_dark)
+        _ACCENT_SOFT = _hex_rgb(_design.accent_soft)
+        _SUPPORT = _ACCENT_SOFT
+        title_font = _design.title_font
+        theme = dict(theme, body_font=_design.body_font, badge=False, pastel=False, spiral=False)
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _set_slide_bg(slide, *_BG)
-    if theme.get("spiral"):
-        _pptx_notebook_lines(slide)
-        _pptx_spiral_margin(slide)
+    if _design:
+        deck_design.draw_cover(slide, _design, content,
+                               [str(sd.get("title") or "").strip() for sd in slides_data])
+        _add_transition(slide)
+    else:
+        _set_slide_bg(slide, *_BG)
+        if theme.get("spiral"):
+            _pptx_notebook_lines(slide)
+            _pptx_spiral_margin(slide)
 
-    _cover_w_in = 6.7 if len([1 for sd in slides_data if sd.get("title")]) >= 4 else 10.8
-    _cover_pt_full = int(theme.get("cover_title_pt") or 46)
-    _cover_title_pt = int(_cover_pt_full * 0.87) if _cover_w_in < 10 else _cover_pt_full
-    _cover_line_in = _cover_title_pt * 1.22 / 72.0
-    _cover_lines = _estimate_pptx_lines(title_text, _cover_w_in, _cover_title_pt)
-    if _cover_lines >= 2:
-        _cover_lines += 1
-    _cover_title_h = min(3.3, max(0.95, _cover_lines * _cover_line_in + 0.15))
-    _rule_y_in = max(4.35, 2.4 + _cover_title_h + 0.18)
+        _cover_w_in = 6.7 if len([1 for sd in slides_data if sd.get("title")]) >= 4 else 10.8
+        _cover_pt_full = int(theme.get("cover_title_pt") or 46)
+        _cover_title_pt = int(_cover_pt_full * 0.87) if _cover_w_in < 10 else _cover_pt_full
+        _cover_line_in = _cover_title_pt * 1.22 / 72.0
+        _cover_lines = _estimate_pptx_lines(title_text, _cover_w_in, _cover_title_pt)
+        if _cover_lines >= 2:
+            _cover_lines += 0.25
+        _cover_title_h = min(3.3, max(0.95, _cover_lines * _cover_line_in + 0.15))
 
-    slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, 0, on_cover=True)
-    if not (desc and _rule_y_in + 0.25 > 5.05):
-        slide_decor.draw_cover(slide, _COVER, _ACCENT, _SUPPORT, _BG)
+        # Title, rule and description read as one block centred in the space
+        # between the label and the footer, instead of a title pinned high and
+        # a description pushed far below it.
+        _desc_pt = 18
+        _desc_h = (_estimate_pptx_lines(desc, _cover_w_in, _desc_pt) * _desc_pt * 1.3 / 72.0
+                   if desc else 0.0)
+        _block_h = _cover_title_h + (0.5 + _desc_h if desc else 0.0)
+        _title_y_in = max(1.5, 1.3 + (6.6 - 1.3 - _block_h) / 2)
+        _rule_y_in = _title_y_in + _cover_title_h + 0.12
+
+        slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, 0, on_cover=True)
+        # Cover art sits in the lower-left corner; skip it when the text block
+        # reaches down into that corner.
+        if _title_y_in + _block_h < 5.05:
+            slide_decor.draw_cover(slide, _COVER, _ACCENT, _SUPPORT, _BG)
 
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(0.85), Inches(0.5), Pt(2.5), _ACCENT)
-    _add_text(slide, Inches(1.6), Inches(0.72), Inches(6), Inches(0.35),
-              "ПРЕЗЕНТАЦИЯ", 12, True, _ACCENT)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(0.85), Inches(0.5), Pt(2.5), _ACCENT)
+        _add_text(slide, Inches(1.6), Inches(0.72), Inches(6), Inches(0.35),
+                  _DECK_COVER_LABEL.get(str(content.get("language") or "Русский"), "ПРЕЗЕНТАЦИЯ"),
+                  12, True, _ACCENT)
 
-    badge_w, badge_h = Inches(1.7), Inches(1.05)
-    badge_x, badge_y = _SLIDE_W - badge_w - Inches(0.8), Inches(0.6)
-    _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, badge_x, badge_y, badge_w, badge_h, _ACCENT)
-    _add_text(slide, badge_x, badge_y + Inches(0.16), badge_w, Inches(0.35), f"{total_slides + 1} СЛАЙДОВ", 11, True, _TEXT_WHITE, PP_ALIGN.CENTER)
-    _add_text(slide, badge_x, badge_y + Inches(0.55), badge_w, Inches(0.4), "Dastyor", 15, True, _TEXT_WHITE, PP_ALIGN.CENTER)
+        _illustration_path = (None if theme.get("subject_template")
+                              else get_subject_illustration_path(content.get("subject")))
+        if _illustration_path:
+            try:
+                with PILImage.open(_illustration_path) as _im:
+                    _iw, _ih = _im.size
+                _icon_box_in = 0.9
+                _scale = min(_icon_box_in / _iw, _icon_box_in / _ih)
+                _icon_w_in, _icon_h_in = _iw * _scale, _ih * _scale
+                slide.shapes.add_picture(_illustration_path, _SLIDE_W - Inches(_icon_w_in + 0.9),
+                                         Inches(0.6), Inches(_icon_w_in), Inches(_icon_h_in))
+            except Exception:
+                pass
 
-    _illustration_path = (None if theme.get("subject_template")
-                          else get_subject_illustration_path(content.get("subject")))
-    if _illustration_path:
-        try:
-            with PILImage.open(_illustration_path) as _im:
-                _iw, _ih = _im.size
-            _icon_box_in = 0.65
-            _scale = min(_icon_box_in / _iw, _icon_box_in / _ih)
-            _icon_w_in, _icon_h_in = _iw * _scale, _ih * _scale
-            _icon_x = badge_x + (badge_w - Inches(_icon_w_in)) / 2
-            _icon_y = badge_y + badge_h + Inches(0.1)
-            slide.shapes.add_picture(_illustration_path, _icon_x, _icon_y, Inches(_icon_w_in), Inches(_icon_h_in))
-        except Exception:
-            pass
+        _add_text(slide, Inches(0.95), Inches(_title_y_in), Inches(_cover_w_in), Inches(_cover_title_h),
+                  title_text, _cover_title_pt, True, _INK, font_name=title_font)
 
-    _add_text(slide, Inches(0.95), Inches(2.4), Inches(_cover_w_in), Inches(_cover_title_h),
-              title_text, _cover_title_pt, True, _INK, font_name=title_font)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(_rule_y_in),
+                   Inches(0.9), Pt(3), _ACCENT)
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(_rule_y_in),
-               Inches(0.9), Pt(3), _ACCENT)
+        if desc:
+            _add_text(slide, Inches(1.0), Inches(_rule_y_in + 0.25), Inches(_cover_w_in),
+                      Inches(_desc_h + 0.3), desc, _desc_pt, False, _MUTED)
 
-    if desc:
-        _add_text(slide, Inches(1.0), Inches(_rule_y_in + 0.25), Inches(_cover_w_in),
-                  Inches(1.4), desc, 15, False, _MUTED)
+        agenda = [str(sd.get("title") or "").strip()
+                  for sd in slides_data if str(sd.get("title") or "").strip()]
+        if len(agenda) >= 4:
+            plan_x_in, plan_top_in = 8.05, 2.45
+            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(plan_x_in), Inches(plan_top_in),
+                       Pt(2.5), Inches(3.5), _ACCENT_SOFT)
+            _add_text(slide, Inches(plan_x_in + 0.3), Inches(plan_top_in), Inches(4.0),
+                      Inches(0.3), _DECK_AGENDA_LABEL.get(
+                          str(content.get("language") or "Русский"), "В ЭТОМ УРОКЕ"),
+                      10, True, _ACCENT)
+            y_in = plan_top_in + 0.42
+            for n, item in enumerate(agenda[:5], 1):
+                lines = _estimate_pptx_lines(item, 4.0, 15)
+                _add_text(slide, Inches(plan_x_in + 0.3), Inches(y_in), Inches(0.35),
+                          Inches(0.3), f"{n}", 15, True, _ACCENT)
+                _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(4.1),
+                          Inches(lines * 0.29), item, 15, False, _INK)
+                y_in += max(0.42, lines * 0.29 + 0.14)
+            if len(agenda) > 5:
+                _lang = str(content.get("language") or "Русский")
+                _more_n = len(agenda) - 5
+                more = _DECK_AGENDA_MORE.get(_lang, "ещё {n} {word}")
+                _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(3.6),
+                          Inches(0.3),
+                          more.format(n=_more_n, word=_agenda_more_word(_lang, _more_n)).strip(),
+                          11, False, _MUTED)
 
-    agenda = [str(sd.get("title") or "").strip()
-              for sd in slides_data if str(sd.get("title") or "").strip()]
-    if len(agenda) >= 4:
-        plan_x_in, plan_top_in = 8.05, 2.45
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(plan_x_in), Inches(plan_top_in),
-                   Pt(2.5), Inches(3.5), _ACCENT_SOFT)
-        _add_text(slide, Inches(plan_x_in + 0.3), Inches(plan_top_in), Inches(4.0),
-                  Inches(0.3), _DECK_AGENDA_LABEL.get(
-                      str(content.get("language") or "Русский"), "В ЭТОМ УРОКЕ"),
-                  10, True, _ACCENT)
-        y_in = plan_top_in + 0.42
-        for n, item in enumerate(agenda[:5], 1):
-            lines = _estimate_pptx_lines(item, 3.5, 12)
-            _add_text(slide, Inches(plan_x_in + 0.3), Inches(y_in), Inches(0.35),
-                      Inches(0.3), f"{n}", 12, True, _ACCENT)
-            _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(3.6),
-                      Inches(lines * 0.24), item, 12, False, _INK)
-            y_in += max(0.34, lines * 0.24 + 0.12)
-        if len(agenda) > 5:
-            _lang = str(content.get("language") or "Русский")
-            _more_n = len(agenda) - 5
-            more = _DECK_AGENDA_MORE.get(_lang, "ещё {n} {word}")
-            _add_text(slide, Inches(plan_x_in + 0.72), Inches(y_in), Inches(3.6),
-                      Inches(0.3),
-                      more.format(n=_more_n, word=_agenda_more_word(_lang, _more_n)).strip(),
-                      11, False, _MUTED)
+        if theme.get("pastel"):
+            _pptx_sticker_decorations(slide)
 
-    if theme.get("pastel"):
-        _pptx_sticker_decorations(slide)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(6.85), Inches(11.5), Pt(0.75), _HAIRLINE)
+        _add_text(slide, Inches(1.0), Inches(7.0), Inches(9.3), Inches(0.4),
+                  f"{content.get('subject', '')}  ·  {content.get('grade', '')}".strip(" ·"),
+                  13, False, _MUTED)
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(6.85), Inches(11.5), Pt(0.75), _HAIRLINE)
-    _add_text(slide, Inches(1.0), Inches(7.0), Inches(9.3), Inches(0.4),
-              f"{content.get('subject', '')}  ·  {content.get('grade', '')}".strip(" ·"),
-              11, False, _MUTED)
-
-    _add_logo_badge(slide, on_dark_bg=False)
-    _add_transition(slide)
+        _add_logo_badge(slide, on_dark_bg=False)
+        _add_transition(slide)
 
     def _name_slide(slide, layout_name):
         try:
@@ -1414,6 +1481,10 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
     def _finish_slide(slide, i, notes):
         if notes:
             slide.notes_slide.notes_text_frame.text = notes
+        if _design:
+            deck_design.draw_footer(slide, _design, i, total_slides)
+            _add_transition(slide)
+            return
 
         footer_w_in = _CONTENT_W_IN
         _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(7.1), Inches(footer_w_in), Pt(2.25), _HAIRLINE)
@@ -1432,99 +1503,109 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
 
     for i, sd in enumerate(slides_data):
         slide = prs.slides.add_slide(prs.slide_layouts[6])
-        _set_slide_bg(slide, *_BG)
-        if theme.get("spiral"):
-            _pptx_notebook_lines(slide)
-            _pptx_spiral_margin(slide)
-            _pptx_washi_tape(slide, 0.75, 0.1, _PLAYFUL_PALETTE[i % len(_PLAYFUL_PALETTE)])
-        slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, i)
+        if _design:
+            deck_design.paint_background(slide, _design)
+        else:
+            _set_slide_bg(slide, *_BG)
+            if theme.get("spiral"):
+                _pptx_notebook_lines(slide)
+                _pptx_spiral_margin(slide)
+                _pptx_washi_tape(slide, 0.75, 0.1, _PLAYFUL_PALETTE[i % len(_PLAYFUL_PALETTE)])
+            slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, i)
 
         title_str = sd.get("title", f"Слайд {i + 1}")
 
         band_h_in = 1.15
-        header_style = theme["header"]
-        title_ink = _TEXT_WHITE if header_style == "band" else _INK
-        counter_ink = _TEXT_WHITE if header_style == "band" else _MUTED
+        if _design:
+            header_style = "design"
+            deck_design.draw_header(slide, _design, i + 1,
+                                    _kind_label(str(sd.get("kind") or "").strip().lower(),
+                                                content.get("language")),
+                                    title_str)
+        else:
+            header_style = theme["header"]
+            title_ink = _TEXT_WHITE if header_style == "band" else _INK
+            counter_ink = _TEXT_WHITE if header_style == "band" else _MUTED
 
-        if header_style == "band":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, _SLIDE_W, Inches(1.5), _ACCENT)
-        elif header_style == "hexband":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, _SLIDE_W, Inches(0.1), _ACCENT)
-            _add_shape(slide, MSO_SHAPE.HEXAGON, Inches(0.62), Inches(0.37),
-                       Inches(0.2), Inches(0.2), _ACCENT)
-        elif header_style == "index":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.66), Inches(0.33),
-                       Pt(3), Inches(0.95), _ACCENT)
-        elif header_style == "lozenge":
-            _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.72), Inches(0.33),
-                       Inches(0.62), Inches(0.3), _ACCENT_SOFT)
-        elif header_style == "initial":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.6), Inches(0.58),
-                       Pt(5), Inches(0.78), _ACCENT)
+            if header_style == "band":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, _SLIDE_W, Inches(1.5), _ACCENT)
+            elif header_style == "hexband":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, _SLIDE_W, Inches(0.1), _ACCENT)
+                _add_shape(slide, MSO_SHAPE.HEXAGON, Inches(0.62), Inches(0.37),
+                           Inches(0.2), Inches(0.2), _ACCENT)
+            elif header_style == "index":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.66), Inches(0.33),
+                           Pt(3), Inches(0.95), _ACCENT)
+            elif header_style == "lozenge":
+                _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.72), Inches(0.33),
+                           Inches(0.62), Inches(0.3), _ACCENT_SOFT)
+            elif header_style == "initial":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.6), Inches(0.58),
+                           Pt(5), Inches(0.78), _ACCENT)
 
-        _number_x = 0.9 if header_style not in ("prompt",) else 1.12
-        if header_style == "prompt":
-            _add_text(slide, Inches(0.86), Inches(0.33), Inches(0.3), Inches(0.3),
-                      ">", 14, True, _ACCENT, font_name="Consolas")
-        _add_text(slide, Inches(_number_x), Inches(0.35), Inches(8.6), Inches(0.3),
-                  f"{i + 1:02d}", 13, True,
-                  _TEXT_WHITE if header_style == "band" else _ACCENT)
-        _kind_text = _kind_label(str(sd.get("kind") or "").strip().lower(),
-                                 content.get("language"))
-        if _kind_text:
-            _add_text(slide, Inches(_number_x + 0.45), Inches(0.37), Inches(4.2), Inches(0.3),
-                      f"· {_kind_text}", 10, True,
-                      _TEXT_WHITE if header_style == "band" else _MUTED)
-        _add_text(slide, Inches(0.9), Inches(0.62), Inches(9.6), Inches(0.7),
-                  title_str.upper() if theme["title_caps"] else title_str,
-                  int(theme.get("title_pt") or (24 if theme["title_caps"] else 27)),
-                  True, title_ink, font_name=title_font)
+            _number_x = 0.9 if header_style not in ("prompt",) else 1.12
+            if header_style == "prompt":
+                _add_text(slide, Inches(0.86), Inches(0.33), Inches(0.3), Inches(0.3),
+                          ">", 14, True, _ACCENT, font_name="Consolas")
+            _add_text(slide, Inches(_number_x), Inches(0.35), Inches(8.6), Inches(0.3),
+                      f"{i + 1:02d}", 13, True,
+                      _TEXT_WHITE if header_style == "band" else _ACCENT)
+            _kind_text = _kind_label(str(sd.get("kind") or "").strip().lower(),
+                                     content.get("language"))
+            if _kind_text:
+                _add_text(slide, Inches(_number_x + 0.45), Inches(0.37), Inches(4.2), Inches(0.3),
+                          f"· {_kind_text}", 10, True,
+                          _TEXT_WHITE if header_style == "band" else _MUTED)
+            _add_text(slide, Inches(0.9), Inches(0.62), Inches(9.6), Inches(0.7),
+                      title_str.upper() if theme["title_caps"] else title_str,
+                      int(theme.get("title_pt") or (24 if theme["title_caps"] else 27)),
+                      True, title_ink, font_name=title_font)
 
-        if header_style == "rule":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.32), Inches(1.1), Pt(3), _ACCENT)
-        elif header_style == "underline":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
-        elif header_style == "index":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.34), Inches(2.2), Pt(1.5), _ACCENT_SOFT)
-        elif header_style == "measure":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
-            for _t in range(12):
-                _tall = _t % 4 == 0
-                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9 + _t * (11.5 / 12)),
-                           Inches(1.36 - (0.09 if _tall else 0.05)), Pt(1.25),
-                           Inches(0.09 if _tall else 0.05),
-                           _ACCENT if _tall else _HAIRLINE)
-        elif header_style == "hexband":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.34), Inches(1.6), Pt(2.5), _ACCENT)
-        elif header_style == "lozenge":
-            _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.9), Inches(1.3),
-                       Inches(1.5), Pt(5), _ACCENT)
-        elif header_style == "masthead":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.3), Inches(11.5), Pt(2.5), _ACCENT)
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.4), Inches(11.5), Pt(0.75), _ACCENT_SOFT)
-        elif header_style == "prompt":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.33), Inches(0.75), Pt(2.5), _ACCENT)
-        elif header_style == "ornamental":
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.37), Inches(4.6), Pt(1), _ACCENT_SOFT)
-            for _d in range(3):
-                _add_shape(slide, MSO_SHAPE.DIAMOND, Inches(4.75 + _d * 0.22), Inches(1.31),
-                           Inches(0.11), Inches(0.11), _ACCENT if _d == 1 else _ACCENT_SOFT)
-        _add_text(slide, Inches(9.9), Inches(0.35), Inches(1.7), Inches(0.3),
-                  f"{i + 1} / {total_slides}", 10, False, counter_ink, PP_ALIGN.RIGHT)
-        if theme["badge"] and header_style != "band":
-            badge_d = Inches(0.6)
-            badge_cx, badge_cy = Inches(12.15), Inches(0.65)
-            _add_shape(slide, MSO_SHAPE.OVAL, badge_cx - badge_d / 2, badge_cy - badge_d / 2, badge_d, badge_d, _ACCENT_SOFT)
-            icon_d = badge_d * 0.42
-            _marker_glyph = _MARKER_GLYPH_SHAPE.get(_MARKER)
-            if theme.get("pastel"):
-                _corner_shape = _PLAYFUL_ICON_SHAPES[i % len(_PLAYFUL_ICON_SHAPES)]
-            elif _marker_glyph is not None:
-                _corner_shape = _marker_glyph
-            else:
-                _corner_shape = _ICON_SHAPES[i % len(_ICON_SHAPES)]
-            _add_shape(slide, _corner_shape, badge_cx - icon_d / 2, badge_cy - icon_d / 2, icon_d, icon_d, _ACCENT)
+            if header_style == "rule":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.32), Inches(1.1), Pt(3), _ACCENT)
+            elif header_style == "underline":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
+            elif header_style == "index":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.34), Inches(2.2), Pt(1.5), _ACCENT_SOFT)
+            elif header_style == "measure":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
+                for _t in range(12):
+                    _tall = _t % 4 == 0
+                    _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9 + _t * (11.5 / 12)),
+                               Inches(1.36 - (0.09 if _tall else 0.05)), Pt(1.25),
+                               Inches(0.09 if _tall else 0.05),
+                               _ACCENT if _tall else _HAIRLINE)
+            elif header_style == "hexband":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.34), Inches(1.6), Pt(2.5), _ACCENT)
+            elif header_style == "lozenge":
+                _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.9), Inches(1.3),
+                           Inches(1.5), Pt(5), _ACCENT)
+            elif header_style == "masthead":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.3), Inches(11.5), Pt(2.5), _ACCENT)
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.4), Inches(11.5), Pt(0.75), _ACCENT_SOFT)
+            elif header_style == "prompt":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.36), Inches(11.5), Pt(1.25), _HAIRLINE)
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.33), Inches(0.75), Pt(2.5), _ACCENT)
+            elif header_style == "ornamental":
+                _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(0.9), Inches(1.37), Inches(4.6), Pt(1), _ACCENT_SOFT)
+                for _d in range(3):
+                    _add_shape(slide, MSO_SHAPE.DIAMOND, Inches(4.75 + _d * 0.22), Inches(1.31),
+                               Inches(0.11), Inches(0.11), _ACCENT if _d == 1 else _ACCENT_SOFT)
+            _add_text(slide, Inches(9.9), Inches(0.35), Inches(1.7), Inches(0.3),
+                      f"{i + 1} / {total_slides}", 10, False, counter_ink, PP_ALIGN.RIGHT)
+            if theme["badge"] and header_style != "band":
+                badge_d = Inches(0.6)
+                badge_cx, badge_cy = Inches(12.15), Inches(0.65)
+                _add_shape(slide, MSO_SHAPE.OVAL, badge_cx - badge_d / 2, badge_cy - badge_d / 2, badge_d, badge_d, _ACCENT_SOFT)
+                icon_d = badge_d * 0.42
+                _marker_glyph = _MARKER_GLYPH_SHAPE.get(_MARKER)
+                if theme.get("pastel"):
+                    _corner_shape = _PLAYFUL_ICON_SHAPES[i % len(_PLAYFUL_ICON_SHAPES)]
+                elif _marker_glyph is not None:
+                    _corner_shape = _marker_glyph
+                else:
+                    _corner_shape = _ICON_SHAPES[i % len(_ICON_SHAPES)]
+                _add_shape(slide, _corner_shape, badge_cx - icon_d / 2, badge_cy - icon_d / 2, icon_d, icon_d, _ACCENT)
 
         bullets = sd.get("bullet_points", [])
         notes = sd.get("speaker_notes", "")
@@ -1553,6 +1634,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                 index=i, total=total_slides, image_path=image_path,
                 image_credit=str((slide_image or {}).get("credit") or ""),
                 character_prop=_char_prop, prop_color=_PROP_COLOR,
+                on_accent=_hex_rgb(_design.on_accent) if _design else None,
                 topic=str(content.get("title") or ""),
             )
             _layout_used = slide_layouts.draw(_ctx, sd, _last_layout)
@@ -1693,7 +1775,9 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
             _panel_style = _KIND_PANEL.get(slide_kind)
             if _panel_style:
                 _draw_kind_panel(slide, _panel_style, cursor, grid_h, _ACCENT, _ACCENT_SOFT)
-            _pptx_bullet_grid(slide, cursor, bullets, row_heights, _ACCENT, _ACCENT_SOFT, _INK, pastel=bool(theme.get("pastel")), card=_CARD, marker=_MARKER, kind=slide_kind)
+            _pptx_bullet_grid(slide, cursor, bullets, row_heights, _ACCENT, _ACCENT_SOFT, _INK, pastel=bool(theme.get("pastel")), card=_CARD, marker=_MARKER, kind=slide_kind,
+                              card_fill=_ACCENT_SOFT if _design and _design.dark else _TEXT_WHITE,
+                              badge_ink=_hex_rgb(_design.on_accent) if _design else _TEXT_WHITE)
             cursor += grid_h
         else:
             for j, bp in enumerate(bullets):
