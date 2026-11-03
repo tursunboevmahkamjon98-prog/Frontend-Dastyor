@@ -1667,8 +1667,15 @@ def _plan_flatten_docx(value):
 
 
 def build_konspekt_docx(content: dict, language: str = 'Русский') -> io.BytesIO:
-    doc = Document()
     L = _DOCX_LABELS.get(language, _DOCX_LABELS['Русский'])
+    if str(content.get('template') or '') in ('', 'klassik'):
+        # Same per-subject design as the default konspekt PDF.
+        from app import konspekt_design_docx, subject_templates
+        from app.deck_design import FAMILY_OF
+        family = FAMILY_OF.get(subject_templates.resolve(content.get('subject'),
+                                                         content.get('grade')).id, 'general')
+        return konspekt_design_docx.build(content, L, language, family)
+    doc = Document()
 
     style = doc.styles['Normal']
     style.font.name = 'Calibri'
