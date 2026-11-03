@@ -1,3 +1,5 @@
+import re
+
 import httpx
 from app.config import get_settings
 
@@ -8,6 +10,9 @@ TWILIO_MESSAGES_URL = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages
 ROBITA_BASE = "https://sms.robita.tj"
 ROBITA_LOGIN_URL = f"{ROBITA_BASE}/auth"
 ROBITA_SEND_URL = f"{ROBITA_BASE}/home?page=message&send=one_done"
+_CSRF_RE = re.compile(r'name="csrf"\s+value="([^"]+)"')
+# Signed-in pages expose the token to their own JS, which appends it to every POST.
+_PAGE_CSRF_RE = re.compile(r'var CSRF_TOKEN = "([^"]+)"')
 
 
 class RobitaClient:
@@ -15,6 +20,7 @@ class RobitaClient:
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
         self._logged_in = False
+        self._csrf = ""
 
     async def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -24,11 +30,20 @@ class RobitaClient:
     async def _login(self) -> bool:
         client = await self._ensure_client()
         try:
+            # The portal rejects a login without the CSRF token from its form.
+            page = await client.get(ROBITA_LOGIN_URL)
+            match = _CSRF_RE.search(page.text)
             resp = await client.post(
                 ROBITA_LOGIN_URL,
-                data={"login": settings.ROBITA_LOGIN, "password": settings.ROBITA_PASSWORD},
+                data={
+                    "csrf": match.group(1) if match else "",
+                    "login": settings.ROBITA_LOGIN,
+                    "password": settings.ROBITA_PASSWORD,
+                },
             )
-            self._logged_in = resp.status_code < 400 and "Отправка SMS" in resp.text
+            token = _PAGE_CSRF_RE.search(resp.text)
+            self._csrf = token.group(1) if token else ""
+            self._logged_in = resp.status_code < 400 and "Отправка SMS" in resp.text and bool(self._csrf)
             return self._logged_in
         except Exception as e:
             print(f"[SMS/Robita] login failed: {e}")
@@ -46,6 +61,7 @@ class RobitaClient:
             return await client.post(
                 ROBITA_SEND_URL,
                 data={
+                    "csrf": self._csrf,
                     "customer": customer,
                     "sender": settings.ROBITA_SENDER,
                     "text": text,
