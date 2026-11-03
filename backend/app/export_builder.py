@@ -799,74 +799,75 @@ def _pptx_bullet_grid_natural_heights(bullets: list[str], col_w_in: float, font_
 
 def _draw_bullet_card(slide, card: str, x_in: float, y_in: float, w_in: float,
                       h_in: float, accent: RGBColor, border: RGBColor,
-                      support: RGBColor) -> None:
+                      support: RGBColor, fill: RGBColor = _TEXT_WHITE) -> None:
     L, T, W, H = Inches(x_in), Inches(y_in), Inches(w_in), Inches(h_in)
 
     if card == "sharp":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, Pt(3.5), H, accent)
     elif card == "tab":
         shp = _add_shape(slide, MSO_SHAPE.ROUND_2_SAME_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T + H - Pt(3), W, Pt(3), accent)
     elif card == "hex":
         _add_shape(slide, MSO_SHAPE.SNIP_2_DIAG_RECTANGLE, L, T, W, H,
-                   _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                   fill, line_rgb=border, line_width=Pt(1.25))
     elif card == "pill":
         shp = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         try:
             shp.adjustments[0] = 0.5
         except Exception:
             pass
     elif card == "legend":
-        shp = _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        shp = _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                          line_rgb=accent, line_width=Pt(1.0))
         try:
             shp.line.dash_style = MSO_LINE_DASH_STYLE.DASH
         except Exception:
             pass
     elif card == "plaque":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.0))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, Pt(4), accent)
     elif card == "window":
         _add_shape(slide, MSO_SHAPE.ROUND_2_SAME_RECTANGLE, L, T, W, H,
-                   _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                   fill, line_rgb=border, line_width=Pt(1.25))
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T + Inches(0.26), W, Pt(1), border)
     elif card == "quote":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill)
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, Pt(5), H, support)
     elif card == "framed":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.5))
         inset = Inches(0.055)
         _add_shape(slide, MSO_SHAPE.RECTANGLE, L + inset, T + inset,
-                   W - inset * 2, H - inset * 2, _TEXT_WHITE,
+                   W - inset * 2, H - inset * 2, fill,
                    line_rgb=support, line_width=Pt(0.75))
     elif card == "bubble":
         shp = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H,
-                         _TEXT_WHITE, line_rgb=border, line_width=Pt(1.25))
+                         fill, line_rgb=border, line_width=Pt(1.25))
         try:
             shp.adjustments[0] = 0.22
         except Exception:
             pass
         _add_shape(slide, MSO_SHAPE.ISOSCELES_TRIANGLE, L + Inches(0.45),
-                   T + H - Inches(0.02), Inches(0.26), Inches(0.2), _TEXT_WHITE,
+                   T + H - Inches(0.02), Inches(0.26), Inches(0.2), fill,
                    line_rgb=border, line_width=Pt(1.0))
     elif card == "ornate":
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
         d = Inches(0.11)
         for cx, cy in ((L, T), (L + W - d, T), (L, T + H - d), (L + W - d, T + H - d)):
             _add_shape(slide, MSO_SHAPE.DIAMOND, cx, cy, d, d, support)
     else:
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H, _TEXT_WHITE,
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, L, T, W, H, fill,
                    line_rgb=border, line_width=Pt(1.25))
 
 
-def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: list[float], accent: RGBColor, accent_soft: RGBColor, ink: RGBColor, pastel: bool = False, card: str = "rounded", marker: str = "number", kind: str = "") -> None:
+def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: list[float], accent: RGBColor, accent_soft: RGBColor, ink: RGBColor, pastel: bool = False, card: str = "rounded", marker: str = "number", kind: str = "",
+                      card_fill: RGBColor = _TEXT_WHITE, badge_ink: RGBColor = _TEXT_WHITE) -> None:
     left_in = _CONTENT_X_IN
     total_w_in = _CONTENT_W_IN
     col_gap_in = 0.3
@@ -904,7 +905,7 @@ def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: lis
             else:
                 card_badge_color = accent
                 _draw_bullet_card(slide, card, x_in, y_in, this_w_in, row_h_in,
-                                  accent, border_color, accent_soft)
+                                  accent, border_color, accent_soft, card_fill)
 
             badge_top_in = y_in - protrude_in
             icon = _pick_content_icon(bp)
@@ -917,11 +918,11 @@ def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: lis
             badge_cy = Inches(badge_top_in + badge_d_in / 2)
             if icon is not None:
                 _add_icon_badge(slide, badge_cx, badge_cy, Inches(badge_d_in),
-                                icon, card_badge_color, _TEXT_WHITE,
+                                icon, card_badge_color, badge_ink,
                                 badge_shape=badge_shape)
             else:
                 _add_number_badge(slide, badge_cx, badge_cy, Inches(badge_d_in),
-                                  j + 1, card_badge_color, _TEXT_WHITE,
+                                  j + 1, card_badge_color, badge_ink,
                                   badge_shape=badge_shape,
                                   label=_marker_label(marker, j + 1))
 
@@ -1774,7 +1775,9 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
             _panel_style = _KIND_PANEL.get(slide_kind)
             if _panel_style:
                 _draw_kind_panel(slide, _panel_style, cursor, grid_h, _ACCENT, _ACCENT_SOFT)
-            _pptx_bullet_grid(slide, cursor, bullets, row_heights, _ACCENT, _ACCENT_SOFT, _INK, pastel=bool(theme.get("pastel")), card=_CARD, marker=_MARKER, kind=slide_kind)
+            _pptx_bullet_grid(slide, cursor, bullets, row_heights, _ACCENT, _ACCENT_SOFT, _INK, pastel=bool(theme.get("pastel")), card=_CARD, marker=_MARKER, kind=slide_kind,
+                              card_fill=_ACCENT_SOFT if _design and _design.dark else _TEXT_WHITE,
+                              badge_ink=_hex_rgb(_design.on_accent) if _design else _TEXT_WHITE)
             cursor += grid_h
         else:
             for j, bp in enumerate(bullets):

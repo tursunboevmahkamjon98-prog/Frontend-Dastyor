@@ -965,6 +965,9 @@ def normalize_math(text: str) -> str:
         if i % 2:
             out.append(brace_scripts(part))
             continue
+        # "C++" / "g++" are language names, not an ion charge: without this
+        # the chemistry pass read "C+" as C⁺ and printed "C⁺+".
+        part = part.replace("++", "\x00PLUSPLUS\x00")
         part = _BARE_LATEX_CMD.sub(lambda m: f"${m.group(0)}$", part)
         part = _BARE_POW.sub(
             lambda m: f"${m.group(1)}^{{{m.group(2) or m.group(3)}}}$", part)
@@ -973,7 +976,7 @@ def normalize_math(text: str) -> str:
         part = _SUB_RUN.sub(
             lambda m: f"${m.group(1)}_{{{_sub_to_latex(m.group(2))}}}$", part)
         part = chemical_to_latex(part)
-        out.append(part)
+        out.append(part.replace("\x00PLUSPLUS\x00", "++"))
     joined = "$".join(out)
     return joined.replace("$$", "")
 
