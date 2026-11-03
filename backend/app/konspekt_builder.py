@@ -535,6 +535,14 @@ _KONSPEKT_TO_LECTURE_TEMPLATE = {
 def build_konspekt_pdf(content: dict, language: str = 'Русский') -> io.BytesIO:
     w = _words(language)
     template_id = str(content.get('template') or '')
+    if template_id in ('', 'klassik'):
+        # The default konspekt now uses the per-subject design shared with
+        # the presentation decks; the other templates keep their own looks.
+        from app import konspekt_design, subject_templates
+        from app.deck_design import FAMILY_OF
+        family = FAMILY_OF.get(subject_templates.resolve(content.get('subject'),
+                                                         content.get('grade')).id, 'general')
+        return konspekt_design.build(content, w, language, family)
     tmpl = get_lecture_template(_KONSPEKT_TO_LECTURE_TEMPLATE.get(template_id, template_id))
     accent = get_subject_accent_hex(content.get('subject'))
     d = _Design(tmpl, accent, w)

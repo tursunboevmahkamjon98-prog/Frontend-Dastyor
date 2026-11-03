@@ -1,0 +1,510 @@
+"""Konspekt PDF in the per-subject design.
+
+Same design families as the presentation decks (deck_design), adapted for
+paper: a konspekt is printed, so pages stay white and each subject shows
+through its accent, type, heading style and a small motif on page one,
+not through full-page colour. Layout follows the approved mockup: a
+header with tinted meta cells, numbered section dots, goals and
+competencies side by side, concept cards, an optional timed lesson flow,
+paired callouts, group cards, check/homework columns and a 5/4/3 rubric.
+"""
+
+from __future__ import annotations
+
+import io
+import re
+
+from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, KeepTogether, PageTemplate,
+                                Spacer, Table, TableStyle)
+
+from app.export_builder import (CODE_FONT, FONT_NAME, FONT_NAME_BOLD, MATH_FONT, MATH_FONT_BOLD,
+                                Paragraph, _math_inline, _pdf_code_card, _pdf_concept_card_grid)
+from app.lecture_builder import (_Design, _figure, _split_definition, _split_main_content, _uid,
+                                 _visual)
+from app.lecture_templates import get_lecture_template
+
+INK = '#1A1D24'
+MUTED = '#5B6170'
+FAINT = '#8A909C'
+LINE = '#E4E6EB'
+WARN_BG, WARN_INK = '#FFF4E5', '#8A4B00'
+
+# Print palettes: the dark slide families (physics, literature, code)
+# get a light paper variant of the same identity.
+_FAMILIES = {
+    'math':       dict(accent='#2456C7', tint='#E8EEFB', head='sans', motif='parabola'),
+    'physics':    dict(accent='#C2551C', tint='#FCEBDF', head='mono', motif='atom'),
+    'chemistry':  dict(accent='#6A2FC9', tint='#EFE8FB', head='sans', motif='molecule'),
+    'biology':    dict(accent='#1F7A55', tint='#E3F1E7', head='sans', motif='cell'),
+    'geography':  dict(accent='#0F6670', tint='#E1EFEF', head='sans', motif='globe'),
+    'history':    dict(accent='#7A1F2B', tint='#F4E7E1', head='serif', motif='rule'),
+    'literature': dict(accent='#5B3474', tint='#EFE6F4', head='serif', motif='quote'),
+    'code':       dict(accent='#1E7A4C', tint='#E2F3E9', head='mono', motif='code'),
+    'primary':    dict(accent='#D9480F', tint='#FFE8D6', head='sans', motif='dots'),
+    'general':    dict(accent='#2456C7', tint='#E8EEFB', head='sans', motif=None),
+}
+
+_LABELS = {
+    'Русский': dict(tag='КОНСПЕКТ УРОКА', stages='Ход урока', group='Группа', important='ВАЖНО',
+                    example='ПРИМЕР ИЗ ЖИЗНИ', min='мин', grade='Класс'),
+    'Таджикский': dict(tag='КОНСПЕКТИ ДАРС', stages='Раванди дарс', group='Гурӯҳи', important='МУҲИМ',
+                       example='МИСОЛ АЗ ҲАЁТ', min='дақ', grade='Синф'),
+    'English': dict(tag='LESSON PLAN', stages='Lesson flow', group='Group', important='IMPORTANT',
+                    example='REAL-LIFE EXAMPLE', min='min', grade='Grade'),
+}
+_LABELS['Английский'] = _LABELS['English']
+
+
+class _Style:
+    def __init__(self, family: str):
+        f = _FAMILIES.get(family, _FAMILIES['general'])
+        self.family = family
+        self.accent = f['accent']
+        self.tint = f['tint']
+        self.motif = f['motif']
+        self.body = FONT_NAME
+        self.bold = FONT_NAME_BOLD
+        if f['head'] == 'serif':
+            self.head = MATH_FONT_BOLD
+            self.head_regular = MATH_FONT
+        elif f['head'] == 'mono':
+            self.head = CODE_FONT
+            self.head_regular = CODE_FONT
+        else:
+            self.head = FONT_NAME_BOLD
+            self.head_regular = FONT_NAME
+        self.size = 11.5 if family == 'primary' else 10.5
+        self.leading = self.size * 1.45
+
+    def p(self, size=None, font=None, color=INK, leading=None, align=TA_LEFT, after=0, before=0):
+        size = size or self.size
+        return ParagraphStyle(name=_uid('KD'), fontName=font or self.body, fontSize=size,
+                              leading=leading or size * 1.45, textColor=HexColor(color),
+                              alignment=align, spaceAfter=after, spaceBefore=before)
+
+
+class _Dot(Flowable):
+    """Accent circle carrying the section number."""
+
+    def __init__(self, n: int, s: _Style, d: float = 17):
+        super().__init__()
+        self.n, self.s, self.d = n, s, d
+        self.width = self.height = d
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(HexColor(self.s.accent))
+        if self.s.family == 'code':
+            c.roundRect(0, 0, self.d, self.d, 3, stroke=0, fill=1)
+        else:
+            c.circle(self.d / 2, self.d / 2, self.d / 2, stroke=0, fill=1)
+        c.setFillColor(HexColor('#FFFFFF'))
+        c.setFont(FONT_NAME_BOLD, 8.5)
+        c.drawCentredString(self.d / 2, self.d / 2 - 3, str(self.n))
+
+
+class _Mark(Flowable):
+    """Small square bullet or an empty checkbox for homework."""
+
+    def __init__(self, s: _Style, box: bool = False):
+        super().__init__()
+        self.s, self.box = s, box
+        self.width = 10
+        self.height = 10
+
+    def draw(self):
+        c = self.canv
+        if self.box:
+            c.setStrokeColor(HexColor(self.s.accent))
+            c.setLineWidth(1.1)
+            c.roundRect(0, 0, 9, 9, 2, stroke=1, fill=0)
+        else:
+            c.setFillColor(HexColor(self.s.accent))
+            c.roundRect(2, 3, 4.5, 4.5, 1, stroke=0, fill=1)
+
+
+def _box(content, bg=None, border=None, pad=8, radius=6):
+    t = Table([[content]], colWidths=None)
+    style = [('LEFTPADDING', (0, 0), (-1, -1), pad + 2), ('RIGHTPADDING', (0, 0), (-1, -1), pad + 2),
+             ('TOPPADDING', (0, 0), (-1, -1), pad), ('BOTTOMPADDING', (0, 0), (-1, -1), pad),
+             ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('ROUNDEDCORNERS', [radius] * 4)]
+    if bg:
+        style.append(('BACKGROUND', (0, 0), (-1, -1), HexColor(bg)))
+    if border:
+        style.append(('BOX', (0, 0), (-1, -1), 0.8, HexColor(border)))
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def _grid(cells: list, cols: int, width: float, gap: float = 7) -> Table:
+    rows = [cells[i:i + cols] for i in range(0, len(cells), cols)]
+    if rows and len(rows[-1]) < cols:
+        rows[-1] = rows[-1] + [''] * (cols - len(rows[-1]))
+    t = Table(rows, colWidths=[width / cols] * cols)
+    t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), gap / 2), ('RIGHTPADDING', (0, 0), (-1, -1), gap / 2),
+        ('TOPPADDING', (0, 0), (-1, -1), gap / 2), ('BOTTOMPADDING', (0, 0), (-1, -1), gap / 2),
+    ]))
+    return t
+
+
+def _section(n: int, label: str, s: _Style, width: float) -> Table:
+    t = Table([[_Dot(n, s), Paragraph(label, s.p(13, s.head, INK, 17))]],
+              colWidths=[24, width - 24])
+    # The gap below the heading lives inside it: keepWithNext only binds the
+    # next flowable, and a separate Spacer there let the heading strand
+    # alone at the foot of a page.
+    t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                           ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                           ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)]))
+    t.keepWithNext = 1
+    return t
+
+
+def _bullets(items: list, s: _Style, box: bool = False) -> Table:
+    rows = [[_Mark(s, box), Paragraph(_math_inline(str(it), size=s.size), s.p())] for it in items]
+    t = Table(rows, colWidths=[16, None])
+    t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                           ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                           ('TOPPADDING', (0, 0), (0, -1), 4), ('TOPPADDING', (1, 0), (1, -1), 0),
+                           ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+    return t
+
+
+def _cap(text: str) -> str:
+    text = str(text).strip()
+    return text[:1].upper() + text[1:]
+
+
+def _short(items) -> list[str]:
+    return [str(x).strip() for x in (items or []) if str(x).strip()]
+
+
+def _draw_motif(c, s: _Style, x: float, y: float):
+    """A small subject sign in the top-right corner of page one."""
+    a = HexColor(s.accent)
+    c.saveState()
+    c.setStrokeColor(a)
+    c.setFillColor(a)
+    c.setLineWidth(1.6)
+    if s.motif == 'parabola':
+        c.setLineWidth(0.8)
+        c.line(x - 34, y - 6, x + 34, y - 6)
+        c.line(x, y - 30, x, y + 24)
+        c.setLineWidth(1.8)
+        p = c.beginPath()
+        p.moveTo(x - 26, y + 20)
+        for k in range(-26, 27, 2):
+            p.lineTo(x + k, y + 20 - (k * k) / 26.0)
+        c.drawPath(p, stroke=1, fill=0)
+    elif s.motif == 'atom':
+        for rot in (0, 60, 120):
+            c.saveState()
+            c.translate(x, y)
+            c.rotate(rot)
+            c.ellipse(-30, -10, 30, 10, stroke=1, fill=0)
+            c.restoreState()
+        c.circle(x, y, 4.5, stroke=0, fill=1)
+    elif s.motif == 'molecule':
+        c.setLineWidth(3)
+        c.line(x, y + 4, x - 20, y - 14)
+        c.line(x, y + 4, x + 20, y - 14)
+        c.circle(x, y + 6, 12, stroke=0, fill=1)
+        c.setFillColor(HexColor('#FFFFFF'))
+        c.setLineWidth(1.6)
+        c.circle(x - 21, y - 16, 8, stroke=1, fill=1)
+        c.circle(x + 21, y - 16, 8, stroke=1, fill=1)
+    elif s.motif == 'cell':
+        c.setFillColor(HexColor(s.tint))
+        c.ellipse(x - 32, y - 24, x + 32, y + 24, stroke=1, fill=1)
+        c.setFillColor(a)
+        c.circle(x + 6, y + 4, 8, stroke=0, fill=1)
+    elif s.motif == 'globe':
+        c.circle(x, y, 24, stroke=1, fill=0)
+        c.setLineWidth(0.9)
+        c.ellipse(x - 11, y - 24, x + 11, y + 24, stroke=1, fill=0)
+        c.line(x - 24, y, x + 24, y)
+        c.line(x - 21, y + 11, x + 21, y + 11)
+        c.line(x - 21, y - 11, x + 21, y - 11)
+    elif s.motif == 'rule':
+        c.setLineWidth(1.4)
+        c.line(x - 60, y + 22, x + 34, y + 22)
+        c.setLineWidth(0.6)
+        c.line(x - 60, y + 18, x + 34, y + 18)
+        c.setFont(MATH_FONT_BOLD, 26)
+        c.drawCentredString(x - 13, y - 12, '§')
+    elif s.motif == 'quote':
+        c.setFont(MATH_FONT_BOLD, 54)
+        c.drawCentredString(x, y - 26, '«')
+    elif s.motif == 'code':
+        c.setFont(CODE_FONT, 22)
+        c.drawCentredString(x, y - 8, '</>')
+    elif s.motif == 'dots':
+        for dx, dy, col in ((-18, 6, '#FF8A65'), (2, -8, '#4FA8E0'), (20, 8, '#7CCB7A')):
+            c.setFillColor(HexColor(col))
+            c.circle(x + dx, y + dy, 9, stroke=0, fill=1)
+    c.restoreState()
+
+
+def _rubric(text: str, s: _Style, width: float):
+    parts = re.split(r'[«"]?([2-5])[»"]?\s*[—–-]\s*', text)
+    marks = [(parts[i], parts[i + 1].strip().rstrip('.')) for i in range(1, len(parts) - 1, 2)]
+    if len(marks) < 2:
+        return None
+    cells = []
+    for mark, desc in marks[:4]:
+        body = [Paragraph(mark, s.p(20, s.head, s.accent, 22)),
+                Paragraph(_cap(desc), s.p(s.size - 0.5))]
+        cells.append(_box(body, bg='#F5F6F8'))
+    return [_grid(cells, len(cells), width)]
+
+
+def build(content: dict, words: dict, language: str, family: str) -> io.BytesIO:
+    s = _Style(family)
+    lab = _LABELS.get(language, _LABELS['Русский'])
+    buf = io.BytesIO()
+    mx = 1.75 * cm
+    width = A4[0] - 2 * mx
+    title = str(content.get('title') or '')
+    subject = str(content.get('subject') or '')
+    grade = str(content.get('grade') or '')
+    footer_text = ' · '.join(p for p in (title, ', '.join(q for q in (subject, grade) if q)) if p)
+
+    def furniture(c, doc):
+        c.saveState()
+        c.setStrokeColor(HexColor('#EEF0F3'))
+        c.setLineWidth(0.6)
+        c.line(mx, 1.45 * cm, A4[0] - mx, 1.45 * cm)
+        c.setFont(FONT_NAME, 8)
+        c.setFillColor(HexColor(FAINT))
+        c.drawString(mx, 1.0 * cm, footer_text[:95])
+        c.setFont(FONT_NAME_BOLD, 9)
+        c.setFillColor(HexColor(s.accent))
+        c.drawRightString(A4[0] - mx, 1.0 * cm, str(doc.page))
+        if doc.page == 1 and s.motif:
+            _draw_motif(c, s, A4[0] - mx - 34, A4[1] - 1.6 * cm - 30)
+        c.restoreState()
+
+    doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=mx, rightMargin=mx,
+                          topMargin=1.5 * cm, bottomMargin=1.9 * cm,
+                          title=title or 'Konspekt', author='Dastyor')
+    doc.addPageTemplates([PageTemplate(id='p', frames=[Frame(
+        mx, 1.9 * cm, width, A4[1] - 3.4 * cm, id='f', leftPadding=0, rightPadding=0,
+        topPadding=0, bottomPadding=0)], onPage=furniture)])
+
+    helper = _Design(get_lecture_template('planspekt'), s.accent, words)
+    story: list = []
+
+    # header
+    story.append(Paragraph(lab['tag'], s.p(8.5, s.head, s.accent, 11, after=6)))
+    story.append(Paragraph(title, s.p(25 if family != 'primary' else 28, s.head, INK, 30,
+                                      after=4)))
+    if content.get('subtitle'):
+        story.append(Paragraph(str(content['subtitle']), s.p(12, s.head_regular if family in (
+            'history', 'literature') else s.body, MUTED, 16, after=2)))
+    if family == 'literature':
+        story.append(Spacer(1, 4))
+        story.append(_box(Spacer(40, 0.1), bg='#B8893C', pad=0, radius=0))
+    duration = str(content.get('duration') or '').strip() or words.get('duration_value', '')
+    meta = [(words['subject'], subject), (lab['grade'], grade), (words['duration'], duration),
+            (words['date'], '____________')]
+    cells = [_box([Paragraph(k.upper(), s.p(7, s.bold, MUTED, 9)),
+                   Paragraph(v or '—', s.p(10, s.bold, INK, 13))], bg=s.tint, pad=6)
+             for k, v in meta]
+    story += [Spacer(1, 10), _grid(cells, 4, width, gap=6), Spacer(1, 14)]
+
+    n = [0]
+
+    def sec(label):
+        n[0] += 1
+        return [_section(n[0], label, s, width)]
+
+    def para(text):
+        return Paragraph(_math_inline(str(text), size=s.size), s.p(after=5))
+
+    objectives = _short(content.get('objectives'))
+    competencies = _short(content.get('competencies'))
+    if objectives and competencies:
+        half = width / 2 - 8
+        n[0] += 1
+        left = [_section(n[0], words['objectives'], s, half), _bullets(objectives, s)]
+        n[0] += 1
+        right = [_section(n[0], words['competencies'], s, half), _bullets(competencies, s)]
+        t = Table([[left, right]], colWidths=[width / 2, width / 2])
+        t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                               ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                               ('RIGHTPADDING', (0, 0), (-1, -1), 8)]))
+        story += [t, Spacer(1, 12)]
+    else:
+        for label, items in ((words['objectives'], objectives), (words['competencies'], competencies)):
+            if items:
+                story += sec(label) + [_bullets(items, s), Spacer(1, 12)]
+
+    def cards(items):
+        out = []
+        for it in items:
+            term, body = _split_definition(it)
+            parts = []
+            if term:
+                parts.append(Paragraph(term, s.p(s.size, s.head, s.accent, s.size * 1.35)))
+            parts.append(Paragraph(_math_inline(_cap(body), size=s.size - 0.5), s.p(s.size - 0.5)))
+            out.append(_box(parts, border=LINE))
+        return _grid(out, 2, width)
+
+    concepts = _short(content.get('key_concepts'))
+    if concepts:
+        story += sec(words['concepts']) + [cards(concepts), Spacer(1, 10)]
+    if content.get('concept_cards'):
+        story += _pdf_concept_card_grid(content['concept_cards'], s.accent)
+    terms = _short(content.get('key_terms'))
+    if terms:
+        story += sec(words['terms']) + [cards(terms), Spacer(1, 10)]
+
+    stages = [st for st in (content.get('lesson_stages') or []) if isinstance(st, dict) and st.get('stage')]
+    if stages:
+        story += sec(lab['stages'])
+        rows = []
+        for st in stages:
+            minutes = str(st.get('minutes') or st.get('time') or '').strip()
+            if minutes and minutes.isdigit():
+                minutes = f"{minutes} {lab['min']}"
+            pill = _box(Paragraph(minutes or '·', s.p(8.5, s.bold, s.accent, 11, align=TA_CENTER)),
+                        bg=s.tint, pad=2, radius=4)
+            rows.append([pill, Paragraph(str(st.get('stage')), s.p(s.size, s.bold)),
+                         Paragraph(_math_inline(str(st.get('activity') or ''), size=s.size), s.p(color=MUTED))])
+        t = Table(rows, colWidths=[56, 120, width - 176])
+        t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                               ('LINEBELOW', (0, 0), (-1, -2), 0.5, HexColor('#EEF0F3')),
+                               ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                               ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5)]))
+        story += [t, Spacer(1, 12)]
+    elif str(content.get('lesson_program') or '').strip():
+        story += sec(words['lesson_program']) + [para(content['lesson_program']), Spacer(1, 8)]
+
+    tools = _short(content.get('tools'))
+    if tools:
+        story += sec(words['tools']) + [_bullets(tools, s), Spacer(1, 12)]
+
+    # main content with its visuals and callouts
+    parts = _split_main_content(content.get('main_content'))
+    images = list(content.get('lesson_images') or [])
+    visuals = list(content.get('visual_blocks') or [])
+    if parts:
+        story += sec(words['body'])
+        for i, (head, paragraphs) in enumerate(parts):
+            if head:
+                story.append(Paragraph(head, s.p(s.size + 1, s.head, INK, before=4, after=3)))
+            story += [para(t) for t in paragraphs]
+            if images and i in (0, len(parts) // 2):
+                story += _figure(images.pop(0), helper)
+        for img in images:
+            story += _figure(img, helper)
+        for block in visuals:
+            story += _visual(block, helper)
+        for f in content.get('formulas') or []:
+            if isinstance(f, dict) and (f.get('formula') or f.get('latex')):
+                story.append(_box([Paragraph(_math_inline('$' + str(f.get('latex') or f.get('formula')) + '$',
+                                                          size=13), s.p(13, align=TA_CENTER)),
+                                   Paragraph(str(f.get('explanation') or ''), s.p(s.size - 1, color=MUTED,
+                                                                                 align=TA_CENTER))],
+                                  bg=s.tint))
+                story.append(Spacer(1, 6))
+    callouts = []
+    for t in _short(content.get('important_notes'))[:2]:
+        callouts.append(_box([Paragraph(lab['important'], s.p(7.5, s.bold, WARN_INK, 10, after=2)),
+                              Paragraph(_math_inline(t, size=s.size - 0.5), s.p(s.size - 0.5))], bg=WARN_BG))
+    from app.docx_builder import _strip_item_label
+    for t in _short(content.get('real_life_examples'))[:4]:
+        callouts.append(_box([Paragraph(lab['example'], s.p(7.5, s.bold, s.accent, 10, after=2)),
+                              Paragraph(_math_inline(_strip_item_label(t), size=s.size - 0.5),
+                                        s.p(s.size - 0.5))], bg=s.tint))
+    if callouts:
+        story += [Spacer(1, 4), _grid(callouts, 2, width), Spacer(1, 10)]
+
+    for cb in content.get('code_blocks') or []:
+        if isinstance(cb, dict) and cb.get('code'):
+            story += _pdf_code_card(cb.get('code', ''), cb.get('language', ''),
+                                    cb.get('explanation', ''), s.accent)
+
+    worked = [it for it in (content.get('worked_examples') or []) if isinstance(it, dict) and it.get('problem')]
+    if worked:
+        story += sec(words['worked_examples'])
+        for it in worked:
+            story.append(_box([Paragraph(_math_inline(str(it['problem']), size=s.size), s.p(after=4)),
+                               Paragraph(words['solution'].upper(), s.p(7.5, s.bold, s.accent, 10)),
+                               Paragraph(_math_inline(str(it.get('solution') or ''), size=s.size),
+                                         s.p(color=MUTED))], border=LINE))
+            story.append(Spacer(1, 6))
+    drills = [it for it in (content.get('practice_problems') or []) if isinstance(it, dict) and it.get('problem')]
+    if drills:
+        story += sec(words['practice_problems']) + [_bullets([d['problem'] for d in drills], s), Spacer(1, 10)]
+
+    # classroom work
+    pair = str(content.get('pair_work') or '').strip()
+    groups = [_strip_item_label(t) for t in _short(content.get('group_work'))]
+    consolidation = str(content.get('consolidation') or '').strip()
+    if pair or groups or consolidation:
+        story += sec(words['activities'])
+        if pair:
+            story += [Paragraph(words['pair_work'], s.p(s.size, s.bold, after=2)), para(pair)]
+        if groups:
+            gcells = [_box([Paragraph(f"{lab['group'].upper()} {k + 1}", s.p(7.5, s.bold, MUTED, 10, after=2)),
+                            Paragraph(_math_inline(g, size=s.size - 0.5), s.p(s.size - 0.5))], border=LINE)
+                      for k, g in enumerate(groups)]
+            story += [Spacer(1, 2), _grid(gcells, 3 if len(gcells) >= 3 else len(gcells), width), Spacer(1, 4)]
+        if consolidation:
+            story += [Paragraph(words['consolidation'], s.p(s.size, s.bold, after=2, before=4)),
+                      para(consolidation)]
+        story.append(Spacer(1, 8))
+
+    checks = [q for q in (content.get('quick_check') or []) if isinstance(q, dict) and q.get('question')]
+    homework = [_strip_item_label(t) for t in _short(content.get('homework'))]
+    left, right = [], []
+    if checks:
+        rows = []
+        for k, q in enumerate(checks):
+            rows.append(Paragraph(f"{k + 1}. " + _math_inline(str(q['question']), size=s.size), s.p(after=0)))
+            if q.get('answer'):
+                rows.append(Paragraph(f"{words['answer']}: " + _math_inline(str(q['answer']), size=s.size - 1.5),
+                                      s.p(s.size - 1.5, color=MUTED, after=4)))
+        left = ['checks', rows]
+    if homework:
+        right = ['homework', _bullets(homework, s, box=True)]
+    if left and right:
+        n[0] += 1
+        lcol = [_section(n[0], words['selfcheck'], s, width / 2 - 8)] + left[1]
+        n[0] += 1
+        rcol = [_section(n[0], words['homework'], s, width / 2 - 8), right[1]]
+        t = Table([[lcol, rcol]], colWidths=[width / 2, width / 2])
+        t.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                               ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 8)]))
+        story += [t, Spacer(1, 12)]
+    else:
+        if left:
+            story += sec(words['selfcheck']) + left[1] + [Spacer(1, 10)]
+        if right:
+            story += sec(words['homework']) + [right[1], Spacer(1, 10)]
+
+    assessment = str(content.get('assessment') or '').strip()
+    if assessment:
+        rubric = _rubric(assessment, s, width)
+        story += sec(words['assessment']) + (rubric or [para(assessment)]) + [Spacer(1, 10)]
+
+    answers = [str(it.get('answer')) for it in drills if str(it.get('answer') or '').strip()]
+    if answers:
+        story += sec(words['answers']) + [_bullets(answers, s), Spacer(1, 10)]
+
+    summary = str(content.get('summary') or '').strip()
+    if summary:
+        story += sec(words['summary']) + [_box(Paragraph(_math_inline(summary, size=s.size), s.p()),
+                                               bg=s.tint, pad=10)]
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
