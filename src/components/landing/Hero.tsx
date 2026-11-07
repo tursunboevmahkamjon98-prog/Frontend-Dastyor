@@ -68,7 +68,7 @@ export default function Hero() {
               below that this smaller teacher is what a phone or narrow
               window visitor sees. */}
           <div className="relative my-2 flex h-48 items-center justify-center sm:h-56 lg:hidden">
-            <Image src="/hero/teacher.png" alt="" width={740} height={740} priority className="h-full w-auto object-contain" />
+            <Image src="/hero/teacher.png" alt="" width={443} height={484} priority className="h-full w-auto object-contain" />
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

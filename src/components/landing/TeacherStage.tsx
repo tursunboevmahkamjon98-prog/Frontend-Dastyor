@@ -21,8 +21,8 @@ export default function TeacherStage() {
         <Image
           src="/hero/teacher.png"
           alt=""
-          width={740}
-          height={740}
+          width={443}
+          height={484}
           priority
           className="h-[26rem] w-auto object-contain drop-shadow-[0_20px_26px_rgba(124,58,237,0.2)]"
         />
