@@ -20,7 +20,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
-from app.docx_builder import (_add_code_card, _add_formula_card, _add_lesson_image_block,
+from app.docx_builder import (_add_code_card, _add_formula_card,
                               _add_visual_block, _add_worked_examples, _clear_cell,
                               _set_cell_shading, _strip_item_label, _typeset_math_runs)
 from app.konspekt_design import _FAMILIES, _LABELS
@@ -347,18 +347,14 @@ def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
         _bullets(doc, tools, s)
 
     parts = _split_main_content(content.get('main_content'))
-    images = list(content.get('lesson_images') or [])
+    # No pictures (see konspekt_design).
     if parts:
         head(L.get('main_content', 'Основное содержание'))
-        for i, (sub, paragraphs) in enumerate(parts):
+        for sub, paragraphs in parts:
             if sub:
                 _run(_para(doc, after=3, before=4), sub, s, s.size + 1, True, INK, s.head)
             for t in paragraphs:
                 text(t)
-            if images and i in (0, len(parts) // 2):
-                _add_lesson_image_block(doc, images.pop(0), L.get('illustration', ''), accent_rgb)
-    for img in images:
-        _add_lesson_image_block(doc, img, L.get('illustration', ''), accent_rgb)
     for block in content.get('visual_blocks') or []:
         _add_visual_block(doc, block, accent_rgb, L)
     for f in content.get('formulas') or []:
