@@ -2799,13 +2799,12 @@ _PDF_KONSPEKT_LABELS['Английский'] = _PDF_KONSPEKT_LABELS['English']
 
 def build_konspekt_pdf(content: dict, language: str = 'Русский', doc_type_label: str | None = None, skip_cover: bool = False) -> io.BytesIO:
     if doc_type_label is None and not skip_cover:
-        _tmpl_check = get_template(content.get('template') or 'zamonaviy')
-        if not _tmpl_check.plan_layout:
-            try:
-                from app.konspekt_builder import build_konspekt_pdf as _build_modern
-                return _build_modern(content, language)
-            except Exception as e:
-                logger.exception(f"modern konspekt renderer failed, falling back: {e}")
+        # Every konspekt prints in the formal design, whatever template was picked.
+        try:
+            from app.konspekt_builder import build_konspekt_pdf as _build_formal
+            return _build_formal(content, language)
+        except Exception as e:
+            logger.exception(f"formal konspekt renderer failed, falling back: {e}")
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.9 * cm, bottomMargin=1.3 * cm,
@@ -2901,7 +2900,8 @@ _LECTURE_TAG = {
 
 
 def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.BytesIO:
-    from app.lecture_builder import build_lecture_pdf as _build
+    # Every lecture prints in the formal design, whatever template was picked.
+    from app.lecture_design import build as _build
     try:
         return _build(content, language)
     except Exception as e:
@@ -4037,179 +4037,11 @@ def _test_ui(language: str) -> dict:
     return _TEST_UI.get(str(language or 'Русский'), _TEST_UI['Русский'])
 
 
-def _pdf_student_header(ui: dict, accent: str):
-    cell = ParagraphStyle(name='TestFieldLbl', fontName=FONT_NAME, fontSize=9,
-                          leading=13, textColor=HexColor(_LECTURE_MUTED))
-    def field(label, width):
-        return Paragraph(f'{label}&nbsp;<font color="{_LECTURE_RULE}">'
-                         f'{"_" * width}</font>', cell)
-    row = [[field(ui['name'], 26), field(ui['klass'], 7),
-            field(ui['date'], 9), field(ui['mark'], 7)]]
-    t = Table(row, colWidths=[228, 74, 86, 72])
-    t.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LINEBELOW', (0, 0), (-1, -1), 0.7, HexColor(_LECTURE_RULE)),
-    ]))
-    return [t, Spacer(1, 8)]
-
-
-def _pdf_answer_lines(count: int = 3, width: str = '100%'):
-    out = []
-    for _ in range(count):
-        out.append(Spacer(1, 15))
-        out.append(HRFlowable(width=width, thickness=0.5,
-                              color=HexColor(_LECTURE_RULE), hAlign='RIGHT'))
-    out.append(Spacer(1, 6))
-    return out
-
-
 def build_test_pdf(content: dict, include_key: bool = True,
                    student_only: bool = False) -> io.BytesIO:
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
-                            leftMargin=2 * cm, rightMargin=2 * cm)
-    story = []
-
-    title = content.get("title", "Тест")
-    desc = content.get("description", "")
-    subject = content.get("subject", "")
-    grade = content.get("grade", "")
-    language = str(content.get("language") or "Русский")
-    ui = _test_ui(language)
-    questions = content.get("questions", [])
-    accent = get_subject_accent_hex(subject)
-
-    story.extend(_pdf_lecture_masthead(
-        title, desc, subject, grade, language,
-        _PDF_KONSPEKT_LABELS.get(language,
-                                 _PDF_KONSPEKT_LABELS['Русский']).get('grade_suffix', 'класс'),
-        accent=accent))
-    story.extend(_pdf_student_header(ui, accent))
-    story.append(Paragraph(
-        ui['hint'],
-        ParagraphStyle(name="TestHint", fontName=FONT_NAME, fontSize=8.5, leading=12,
-                       alignment=TA_JUSTIFY, textColor=HexColor(_LECTURE_MUTED),
-                       spaceAfter=2)))
-
-    _LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
-
-    def letters_for(q):
-        q_type = q.get('type', 'multiple_choice')
-        options = q.get('options') or []
-        if q_type == 'open_ended':
-            return ui['open']
-        if q_type == 'multiple_select':
-            idx = sorted(int(i) for i in (q.get('correct_indices') or [])
-                         if isinstance(i, (int, float)) and 0 <= int(i) < len(options))
-            return ', '.join(_LETTERS[i] for i in idx) if idx else '—'
-        i = q.get('correct_index')
-        if not isinstance(i, int) or not (0 <= i < len(options)):
-            return '—'
-        return (f'{_LETTERS[i]} · {options[i]}' if q_type == 'true_false'
-                else _LETTERS[i])
-
-    for i, q in enumerate(questions):
-        q_type = q.get('type', 'multiple_choice')
-        question_style = ParagraphStyle(
-            name=f'Q_{i}', fontName=MATH_FONT_BOLD, fontSize=12.5, leading=17,
-            textColor=HexColor(_LECTURE_INK), leftIndent=22, firstLineIndent=-22,
-            spaceAfter=7)
-        opt_style = ParagraphStyle(
-            name=f'Opt_{i}', fontName=MATH_FONT, fontSize=11, leading=15.5,
-            textColor=HexColor(_LECTURE_INK), leftIndent=40, spaceAfter=3)
-
-        story.append(Spacer(1, 12))
-        story.append(HRFlowable(width="100%", thickness=0.7, color=HexColor(_LECTURE_RULE)))
-        story.append(Spacer(1, 7))
-
-        hint = (f' <font color="{_LECTURE_MUTED}" size="9">({ui["select_hint"]})</font>'
-                if q_type == 'multiple_select' else '')
-        story.append(Paragraph(
-            f'<font color="{accent}"><b>{i + 1}.</b></font>&nbsp;&nbsp;'
-            f'{_math_inline(q.get("question", ""), 12.5)}{hint}', question_style))
-
-        img = q.get("image") if isinstance(q.get("image"), dict) else None
-        if img and img.get("path"):
-            body = _pdf_illustration_image(img.get("path", ""), "", img.get("credit", ""),
-                                           max_w=220, max_h=160)
-            if body:
-                story.append(KeepTogether([Spacer(1, 4)] + body))
-
-        if q_type == 'open_ended':
-            story.extend(_pdf_answer_lines(3))
-        else:
-            for j, opt in enumerate(q.get("options", [])):
-                letter = _LETTERS[j] if j < len(_LETTERS) else str(j)
-                box = '<font color="%s">[&nbsp;&nbsp;]</font>&nbsp;' % _LECTURE_RULE \
-                    if q_type == 'multiple_select' else ''
-                story.append(Paragraph(f'{box}{letter})&nbsp;{_math_inline(opt, 11)}', opt_style))
-
-    story.append(Spacer(1, 14))
-    story.append(HRFlowable(width="100%", thickness=0.7, color=HexColor(_LECTURE_RULE)))
-    story.append(Paragraph(
-        f"{ui['total']}: {len(questions)}&nbsp;&nbsp;·&nbsp;&nbsp;"
-        f"{ui['max_score']}: {len(questions)}",
-        ParagraphStyle(name="TestFoot", fontName=FONT_NAME, fontSize=8.5, leading=12,
-                       alignment=TA_CENTER, textColor=HexColor(_LECTURE_MUTED),
-                       spaceBefore=5)))
-
-    if include_key and not student_only and questions:
-        from reportlab.platypus import PageBreak
-        story.append(PageBreak())
-        story.append(Spacer(1, 4))
-        story.append(Paragraph(
-            ui['key_title'],
-            ParagraphStyle(name="KeyTitle", fontName=MATH_FONT_BOLD, fontSize=15, leading=19,
-                           alignment=TA_CENTER, textColor=HexColor(_LECTURE_INK))))
-        story.append(Paragraph(
-            ui['key_hint'],
-            ParagraphStyle(name="KeyHint", fontName=FONT_NAME, fontSize=8.5, leading=12,
-                           alignment=TA_CENTER, textColor=HexColor(_LECTURE_MUTED),
-                           spaceAfter=12)))
-
-        head = ParagraphStyle(name="KeyHead", fontName=FONT_NAME_BOLD, fontSize=9, leading=12,
-                              textColor=HexColor("#FFFFFF"))
-        num = ParagraphStyle(name="KeyNum", fontName=FONT_NAME_BOLD, fontSize=10, leading=14,
-                             alignment=TA_CENTER, textColor=HexColor(_LECTURE_INK))
-        ans = ParagraphStyle(name="KeyAns", fontName=FONT_NAME_BOLD, fontSize=10, leading=14,
-                             textColor=HexColor(accent))
-        why = ParagraphStyle(name="KeyWhy", fontName=FONT_NAME, fontSize=9, leading=12.5,
-                             textColor=HexColor(_LECTURE_MUTED))
-
-        rows = [[Paragraph(ui['col_no'], head), Paragraph(ui['col_answer'], head),
-                 Paragraph(ui['col_why'], head)]]
-        for i, q in enumerate(questions):
-            note = _math_inline(str(q.get('explanation') or '').strip(), 9)
-            if q.get('type') == 'open_ended' and q.get('model_answer'):
-                model = _math_inline(str(q['model_answer']).strip(), 9)
-                note = (f'<b>{ui["model"]}:</b> {model}<br/>{note}' if note
-                        else f'<b>{ui["model"]}:</b> {model}')
-            rows.append([Paragraph(str(i + 1), num),
-                         Paragraph(letters_for(q), ans),
-                         Paragraph(note or '&nbsp;', why)])
-
-        table = Table(rows, colWidths=[30, 95, 345], repeatRows=1)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), HexColor(accent)),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1),
-             [HexColor("#FFFFFF"), HexColor(_pdf_light_tint_hex(accent, amount=0.955))]),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('GRID', (0, 0), (-1, -1), 0.5, HexColor(_LECTURE_RULE)),
-            ('LEFTPADDING', (0, 0), (-1, -1), 7),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 7),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ]))
-        story.append(table)
-
-    doc.build(story)
-    buf.seek(0)
-    return buf
-
+    """Tests print in the formal design shared with the konspekt."""
+    from app.assessment_design import build_test
+    return build_test(content, include_key=include_key, student_only=student_only)
 
 
 _PRACTICAL_UI = {
@@ -4226,91 +4058,9 @@ _PRACTICAL_UI = {
 
 
 def build_practical_pdf(content: dict) -> io.BytesIO:
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
-                            leftMargin=2 * cm, rightMargin=2 * cm)
-    story = []
-
-    title = content.get("title", "Амалӣ супоришҳо")
-    desc = content.get("description", "")
-    subject = content.get("subject", "")
-    grade = content.get("grade", "")
-    language = str(content.get("language") or "Русский")
-    ui = _test_ui(language)
-    pui = _PRACTICAL_UI.get(language, _PRACTICAL_UI['Русский'])
-    accent = get_subject_accent_hex(subject)
-
-    story.extend(_pdf_lecture_masthead(
-        title, desc, subject, grade, language,
-        _PDF_KONSPEKT_LABELS.get(language,
-                                 _PDF_KONSPEKT_LABELS['Русский']).get('grade_suffix', 'класс'),
-        accent=accent))
-    story.extend(_pdf_student_header(ui, accent))
-
-    section_style = ParagraphStyle(name="PracticalSection", fontName=FONT_NAME_BOLD, fontSize=13.5,
-                                   leading=17, textColor=HexColor(accent), spaceBefore=16, spaceAfter=8)
-    task_title_style = ParagraphStyle(name="PracticalTaskTitle", fontName=MATH_FONT_BOLD, fontSize=12,
-                                      leading=16, textColor=HexColor(_LECTURE_INK), spaceAfter=3)
-    body_style = ParagraphStyle(name="PracticalBody", fontName=FONT_NAME, fontSize=10.5, leading=15,
-                                alignment=TA_JUSTIFY, textColor=HexColor(_LECTURE_INK), spaceAfter=4)
-    label_style = ParagraphStyle(name="PracticalLabel", fontName=FONT_NAME_BOLD, fontSize=9,
-                                 leading=13, textColor=HexColor(_LECTURE_MUTED))
-    diff_style = ParagraphStyle(name="PracticalDiff", fontName=FONT_NAME_BOLD, fontSize=9,
-                                leading=13, textColor=HexColor("#FFFFFF"))
-
-    def diff_badge(level: str):
-        label = pui['difficulty'].get(str(level or 'medium').lower(), level or '')
-        badge_color = {'easy': '#16A34A', 'medium': '#D97706', 'hard': '#DC2626'}.get(
-            str(level or 'medium').lower(), '#6B7280')
-        t = Table([[Paragraph(label.upper(), diff_style)]], colWidths=[60])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), HexColor(badge_color)),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        return t
-
-    individual = content.get("individual_tasks") or []
-    if individual:
-        story.append(Paragraph(pui['individual'], section_style))
-        for i, task in enumerate(individual):
-            if not isinstance(task, dict):
-                continue
-            head = Table([[Paragraph(f"{i + 1}. {task.get('title', '')}", task_title_style),
-                          diff_badge(task.get('difficulty'))]], colWidths=[400, 65])
-            head.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                                      ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                                      ('RIGHTPADDING', (0, 0), (-1, -1), 0)]))
-            body = [head, Spacer(1, 3), Paragraph(task.get("instructions", ""), body_style)]
-            if task.get("expected_outcome"):
-                body.append(Paragraph(f"{pui['outcome']}: {task['expected_outcome']}", label_style))
-            story.append(KeepTogether(body))
-            story.append(Spacer(1, 10))
-
-    group = content.get("group_tasks") or []
-    if group:
-        story.append(Paragraph(pui['group'], section_style))
-        for i, task in enumerate(group):
-            if not isinstance(task, dict):
-                continue
-            body = [Paragraph(f"{i + 1}. {task.get('title', '')}", task_title_style)]
-            if task.get("group_size"):
-                body.append(Paragraph(f"{pui['group_size']}: {task['group_size']}", label_style))
-            body.append(Spacer(1, 3))
-            body.append(Paragraph(task.get("instructions", ""), body_style))
-            roles = task.get("roles") or []
-            if roles:
-                body.append(Paragraph(pui['roles'], label_style))
-                for role in roles:
-                    body.append(Paragraph(f"• {role}", body_style))
-            if task.get("expected_outcome"):
-                body.append(Paragraph(f"{pui['outcome']}: {task['expected_outcome']}", label_style))
-            story.append(KeepTogether(body))
-            story.append(Spacer(1, 10))
-
-    doc.build(story)
-    buf.seek(0)
-    return buf
+    """Practical tasks print in the formal design shared with the konspekt."""
+    from app.assessment_design import build_practical
+    return build_practical(content)
 
 
 def _pdf_notebook_page(canvas_obj, doc_obj):

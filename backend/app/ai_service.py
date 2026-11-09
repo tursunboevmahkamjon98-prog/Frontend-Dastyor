@@ -435,15 +435,12 @@ def _konspekt_prompt(
     if subject in _CODE_SUBJECTS:
         optional_fields.append(
             '  "code_blocks": [{"language": "python", "code": "...", "explanation": "..."}, '
-            '{"language": "cpp", "code": "the SAME algorithm as above, in this different language", "explanation": "..."}, '
-            '{"language": "java", "code": "the SAME algorithm again, in this different language", "explanation": "..."}] '
-            '— see the code_blocks rule below: for a language-agnostic topic (an algorithm/general concept) this '
-            'MUST be 3 entries in 3 different languages like the example shown here, not 1,'
+            '{"language": "cpp", "code": "the SAME algorithm, only for a language-agnostic topic", "explanation": "..."}],'
         )
     if include_homework:
-        optional_fields.append('  "homework": ["Task 1: detailed assignment", "Task 2: detailed exercise", "Task 3: detailed project"],')
+        optional_fields.append('  "homework": ["Task 1 written out in full", "Task 2"],')
     if include_assessment:
-        optional_fields.append('  "assessment": "3-4 sentence assessment criteria."')
+        optional_fields.append('  "assessment": "Marking criteria as 5 — ...; 4 — ...; 3 — ..."')
     optional_json = "\n" + "\n".join(optional_fields) if optional_fields else ""
     if optional_json and not include_assessment:
         optional_json = optional_json.rstrip(",")
@@ -457,359 +454,124 @@ def _konspekt_prompt(
 
     extra_rules = []
     extra_rules.append(
-        "- DEPTH — the #1 way a konspekt fails: content so generic it could be pasted into a lesson on almost any "
-        "other topic unchanged. Before finalizing each sentence, check whether it names something specific to "
-        f"\"{topic}\" — a real number, date, name, formula, mechanism, cause, or concrete example — versus a vague "
-        "generality like \"this plays an important role\", \"there are many factors\", \"it has several uses\" left "
-        "unspecified. Cut or rewrite anything that fails that check. \"main_content\" specifically must explain HOW "
-        "and WHY, not just restate WHAT in different words paragraph to paragraph — trace a mechanism, a cause-"
-        "and-effect chain, or a worked-through reasoning process, the way a teacher would actually walk students "
-        "through the idea rather than list facts about it. Every \"key_concepts\"/\"key_terms\" entry must contain "
-        "at least one concrete, checkable detail (not just a one-line dictionary definition), and every "
-        "\"real_life_examples\" entry must name a specific, real scenario (a real place/product/event/number) "
-        "rather than a generic \"for example, in daily life...\" placeholder. When two draft sentences say "
-        "essentially the same generic thing, keep the more specific one and cut the other rather than keeping both."
+        f"- Be SPECIFIC to \"{topic}\": every sentence names a real number, name, formula, mechanism or example. "
+        "Cut generic filler (\"this plays an important role\"). \"main_content\" explains HOW and WHY in flowing "
+        "prose (no numbered lists inside it). Be concise: no sentence that repeats another."
     )
     extra_rules.append(
-        "- AN EXAMPLE IN EVERY LIST ITEM — this is a hard requirement, not a nice-to-have: EACH AND EVERY entry of "
-        "\"key_concepts\" and \"key_terms\" must end with its own short, concrete example of that specific concept/"
-        f"term, introduced by the lesson language's word for \"For example\". The example must be simple enough for a grade {grade} "
-        "student to follow immediately — a tiny concrete case (a small number, a short sentence, one named thing), "
-        "NOT another abstract restatement of the definition and NOT a long scenario. An entry that only defines "
-        "without showing one is incomplete: go back and add the example. Give a DIFFERENT example in each entry — "
-        "never reuse the same illustration twice in the list."
+        "- Each \"key_concepts\" entry: \"Term: definition\" and ends with one tiny concrete example (introduced by the "
+        f"lesson language's word for \"For example\") a grade {grade} pupil follows at once; a different example each time."
     )
     if subject in _CODE_SUBJECTS:
         extra_rules.append(
-            "- \"code_blocks\" LANGUAGE COUNT — read this carefully, it is a hard requirement, not a suggestion:\n"
-            "  STEP 1: is this topic tied to ONE specific language's own syntax (e.g. \"Python lists\", \"pointers in "
-            "C++\", \"Java interfaces\")? If yes: write ONLY that 1 language, 1 code_blocks entry. Stop here.\n"
-            "  STEP 2: otherwise, is this topic an ALGORITHM or a general programming concept that isn't tied to one "
-            "language (sorting, searching, recursion, loops, data structures, complexity, etc.)? If yes: you MUST "
-            "return EXACTLY 3 code_blocks entries — the literal SAME algorithm, implemented natively/idiomatically in "
-            "3 DIFFERENT languages (choose 3 different ones each time from: python, cpp, java, javascript, csharp — "
-            "do not always pick the same 3). Returning only 1 language here is WRONG even if that 1 example is "
-            "correct — a single-language answer fails this requirement. Do not skip this or default back to Python "
-            "alone out of habit.\n"
-            "  STEP 3: topic has no code to show at all (hardware, networking, abstract theory)? Return an empty list.\n"
-            "  Every snippet must be real, syntactically valid code a compiler for that language would accept — "
-            "never a fabricated API/library."
+            "- \"code_blocks\": topic tied to one language's syntax → 1 entry in that language. Language-agnostic "
+            "algorithm/concept → 2 entries, the SAME algorithm in 2 different languages (python, cpp, java, "
+            "javascript, csharp). No code to show → []. Only real, valid code."
         )
     if subject in _FORMULA_SUBJECTS:
         extra_rules.append(
-            "- \"formulas\": give 3-5 formulas central to this specific topic (not generic filler). "
-            "Write the \"formula\" field compactly with plain-text/unicode math notation (^, √, Δ, π, °, "
-            "fractions as a/b) and no markdown — that field is the fallback for viewers that cannot typeset "
-            "mathematics. The LaTeX goes in the separate \"latex\" field (see the notation rule below); do not "
-            "put LaTeX in \"formula\". If the topic truly has no formulas, return an empty list."
+            "- \"formulas\": 2-4 formulas central to this topic ([] if none). \"formula\" is plain unicode "
+            "(^, √, π, a/b, no markdown); \"latex\" is the same formula in LaTeX."
         )
     if subject in _FORMULA_SUBJECTS or subject in _WORKED_EXAMPLE_SUBJECTS:
         extra_rules.append(
-            "- MATHEMATICAL NOTATION. The export typesets mathematics properly — stacked fractions, real "
-            "radicals, raised exponents — but only from LaTeX. Give it LaTeX and it prints like a textbook; "
-            "give it plain text and it prints like a keyboard.\n"
-            "  * Every \"formulas\" entry needs a \"latex\" field holding that same formula in LaTeX. Keep the "
-            "\"formula\" field too, in the readable plain form, for viewers that show no mathematics.\n"
-            "  * Wrap EVERY mathematical expression in dollar signs, ANYWHERE in the konspekt — worked "
-            "examples, key concepts, key terms, main_content, the lesson steps, real-life examples, "
-            "important notes, table cells. \"Ҳисоб кунед: $x^2 + 5x + 6 = 0$\", \"дар ин ҷо $x$ "
-            "номаълум аст\", \"$6^2 = 36$\". Even a single letter standing for a variable, and even a "
-            "bare power. Ordinary words stay outside the dollars.\n"
-            "  * This includes a negative number by itself: write \"$-100$ сомонӣ\", never "
-            "\"\\text{-100} сомонӣ\" — a \\command{...} written OUTSIDE dollar signs is not LaTeX to the "
-            "export, it is literal backslash-and-braces text that prints on the page exactly as typed. "
-            "\\text{}, \\frac{}{}, ^{}, _{} and every other LaTeX command belong ONLY inside a $...$ pair, "
-            "with no exception.\n"
-            "  * EVERY fraction is \\frac{}{} — never a slash. Write \"x = \\frac{20}{4} = 5\", not "
-            "\"x = 20/4 = 5\"; \"\\frac{-10}{5}\", not \"-10/5\"; \"\\frac{b}{a}\", not \"b/a\". This applies "
-            "to the solution steps in worked_examples as much as to the formulas. A slash stays a slash only "
-            "in units of measurement (м/с, км/ч).\n"
-            "  * Use real LaTeX: ^{} for powers, _{} for indices, "
-            "\\sqrt{}, \\sqrt[3]{}, \\pm, \\cdot, \\times, \\le, \\ge, \\ne, \\approx, \\pi, "
-            "\\alpha, \\Delta, \\sum_{i=1}^{n}, \\int_{a}^{b}, and \\left( \\right) for brackets that "
-            "must grow around a fraction.\n"
-            "  * The ^{} braces hold ONLY the exponent itself, never a variable multiplied after it. A "
-            "confirmed real mistake: the cube-of-a-sum expansion's middle term, meant to be \"three times "
-            "a-squared times b\", was written \"3a^{2b}\" — that says \"3 times a to the power of (2b)\", a "
-            "completely different (and wrong) quantity. The correct form is \"3a^{2}b\" (or "
-            "\"3a^{2}\\cdot b\"): close the ^{} braces right after the exponent digit, THEN write the next "
-            "factor outside them. This applies everywhere a power is immediately followed by another "
-            "variable — check every ^{...} you write for a stray trailing letter that doesn't belong to the "
-            "exponent before finalizing.\n"
-            "  * The mathematics itself must not change — LaTeX is how it is written, not what it says."
+            "- MATH NOTATION: wrap EVERY mathematical expression anywhere in the text in $...$ (\"$x^2 + 5x + 6 = 0$\", "
+            "\"$-100$\", a lone variable \"$x$\"); words stay outside. LaTeX commands (\\frac, \\text, ^{}, _{}) only "
+            "inside $...$. Fractions are always \\frac{a}{b}, never a slash (slash only in units like м/с). ^{} holds "
+            "only the exponent: \"3a^{2}b\", never \"3a^{2b}\"."
         )
     if subject in _WORKED_EXAMPLE_SUBJECTS:
         extra_rules.append(
-            "- \"worked_examples\" — teachers specifically asked for this, treat it as one of the most important "
-            "fields in a math konspekt: give MANY fully worked example problems ('misol') — 16-20 of them, and "
-            "treat 16 as a hard floor, not a target to undershoot; a list of 3-4 does not satisfy this rule. "
-            "Real teacher-written konspekts for this subject are mostly examples — pages of them — with the "
-            "explanation being the short part; match that balance. "
-            "Each one directly applies THIS topic's technique/formula to real numbers — an actual solvable "
-            "problem (an equation to solve, an expression to simplify, a shape to compute), never a real-life "
-            "story (that's what \"real_life_examples\" is for instead). Each \"solution\" must show the complete "
-            "step-by-step working, not just the final answer.\n"
-            "  SIMPLICITY IS THE POINT — teachers were explicit about this: these examples exist so a child in "
-            f"grade {grade} actually UNDERSTANDS the method, not to show off hard problems. Start from the "
-            "easiest possible case of this topic and rise only gently; even the last example should still be "
-            "solvable by a student who just met this material. Prefer small whole numbers that divide evenly "
-            "(2, 3, 5, 10, 12...) over awkward decimals/fractions, keep each problem to ONE step of new "
-            "difficulty at a time, and write each solution step in plain words a child can follow (say what you "
-            "are doing and why, not just the algebra line). If an example needs a long chain of tricky "
-            "arithmetic to finish, it is the wrong example — replace it with a simpler one.\n"
-            "  VARY THE FORM across the list. Sixteen exercises of the identical shape (all \"compute this\") "
-            "drill one keystroke and teach one skill — a real teacher's konspekt mixes them. Rotate between: "
-            "direct computation, solve for the unknown, simplify/transform an expression, compare two values, "
-            "fill in a table of values, read or plot a point on the graph, and a short task stated in words that "
-            "the pupil must turn into the calculation. Also cover EVERY sub-skill the topic names — if the topic "
-            "mentions a graph, a chart, or a property, some of the examples must actually be about that and not "
-            "only about the arithmetic.\n"
-            "  Every example must be mathematically correct — double-check the arithmetic before finalizing, an "
-            "example with a wrong answer is worse than no example. NEVER alter a number mid-solution to force a "
-            "clean-looking answer — a confirmed real mistake: an equation \"11x - 7 = 36\" was correctly reduced "
-            "to \"11x = 43\", then the solution silently changed it to \"11x = 44\" with the excuse \"swapping the "
-            "numbers for divisibility\" so x would come out to a whole number 4 — but 4 does NOT satisfy the "
-            "original equation (11·4 - 7 = 37, not 36). If the numbers you chose for a problem don't divide "
-            "evenly, either pick different numbers before writing the solution, or show the true fractional/"
-            "decimal answer honestly — inventing a fake intermediate step to manufacture a clean result is a "
-            "worse error than an ugly fraction, because it teaches the pupil a nonexistent shortcut."
+            "- \"worked_examples\": 6-8 solvable problems (not stories) applying this topic's technique, easiest "
+            f"first, rising gently; small friendly numbers; grade {grade} level. Vary the form (compute, solve for the "
+            "unknown, simplify, compare, fill a table, a short word problem). Each \"solution\" shows the steps in "
+            "plain words and ends with the answer. Double-check arithmetic; never change a number mid-solution to "
+            "force a clean answer — pick other numbers instead."
         )
     if subject in _EXERCISE_SUBJECTS:
         extra_rules.append(
-            "- \"worked_examples\" — treat this as one of the most important fields in the konspekt: give MANY "
-            "fully worked exercises ('misol') — 12-16 of them, and treat 12 as a hard floor, not a target to "
-            "undershoot. Each is "
+            "- \"worked_examples\": 5-6 exercises, each "
             + _EXERCISE_KIND.get(subject, "a concrete task on this exact topic")
-            + ". The exercise MUST contain the actual material to work on written out inside it — the sentence, "
-            "the words, the code, the numbers. \"Analyse a sentence\" is not an exercise; \"Analyse: 'Мактаби мо "
-            "калон ва зебост' — find the noun and the adjective\" is. Each \"solution\" gives the full worked "
-            "answer with the reasoning, not just a verdict.\n"
-            f"  Keep them at grade {grade} level and order them from the easiest case to the hardest, one new "
-            "step of difficulty at a time — the last one should still be within reach of a pupil who has just "
-            "met this material. Vary the FORM across the list (do not give twelve of the same shape of task), "
-            "and make sure every answer is actually correct."
+            + ", with the actual sentence/words/code written inside it; full worked answer with reasoning. Easiest "
+            f"first, grade {grade} level, varied form, every answer correct."
         )
     if subject in _WORKED_EXAMPLE_SUBJECTS or subject in _EXERCISE_SUBJECTS:
         extra_rules.append(
-            "- \"practice_problems\" — 6-10 problems for the PUPIL to solve themselves in class, not you. Same "
-            "topic/technique/difficulty range as worked_examples, but every problem must use genuinely different "
-            "numbers/wording/scenario from every worked_examples entry — copying one with the numbers swapped is "
-            "not acceptable, a pupil who just watched that exact problem solved isn't practising anything new. "
-            "\"answer\" is ONLY the bare final result (a number, an expression, a short phrase) — never a solution, "
-            "never a hint, never the word \"see above\". If you cannot write genuinely correct answers for every "
-            "single one, write fewer problems rather than guess."
+            "- \"practice_problems\": 4-5 problems for pupils, different numbers/wording from every worked example; "
+            "\"answer\" is only the bare final result. Fewer rather than a wrong answer."
         )
     if subject in _CONCEPT_CARD_SUBJECTS:
         extra_rules.append(
-            "- \"concept_cards\": the main visual centerpiece of this konspekt — cover the topic thoroughly with 6-10 cards "
-            "(not just a token few), e.g. every distinct logical operation/law, every distinct rule/term/classification that "
-            "applies. Each \"table\" is a small grid (first row = column headers, 2-4 columns, 2-4 data rows) — omit \"table\" "
-            "and use nothing instead if a given card isn't naturally a table (a short rule/law can just use \"note\" alone). "
-            "Never invent incorrect logic/values in a truth table — they must be actually correct. Only return fewer cards "
-            "(or an empty list) if this topic genuinely has that little tabular content to cover."
+            "- \"concept_cards\": 3-5 cards for the distinct rules/operations of the topic. \"table\" is a small "
+            "correct grid (first row headers, 2-4 cols, 2-4 rows) or omitted when not tabular."
         )
     if subject == "География":
         extra_rules.append(
-            "- \"map_locations\": name 1-3 REAL places (their actual, correct names — never invent a place) that a map "
-            "reader would want to see for this topic. If the topic has no specific geographic location, return an empty list."
+            "- \"map_locations\": 1-3 real places for this topic, or [] if none."
         )
     subject_visual_pool = _SUBJECT_VISUAL_PREFERENCE.get(subject)
     if subject_visual_pool:
         forced_type = random.choice(subject_visual_pool)
         remaining_pool = [t for t in _VISUAL_BLOCK_TYPES if t != forced_type]
-        required_types = [forced_type] + random.sample(remaining_pool, 2)
+        required_types = [forced_type] + random.sample(remaining_pool, 1)
     else:
-        required_types = random.sample(_VISUAL_BLOCK_TYPES, 3)
+        required_types = random.sample(_VISUAL_BLOCK_TYPES, 2)
     extra_rules.append(
-        "- \"visual_blocks\": include EXACTLY 5 entries. Not 2, not 3 — five, every time. Treat this as a fixed "
-        "count you must reach, not a maximum to stay under: the export lays these out across the whole document, "
-        "so a konspekt that returns two leaves whole pages with nothing but paragraphs on them. Only go below 5 "
-        "if this topic truly cannot support a fifth distinct, genuinely useful visualization, and even then never "
-        "fewer than 4. Each must earn its place — do not repeat the same data in two blocks or invent a filler "
-        "grid; find five DIFFERENT angles on the topic instead (a classification, a comparison, a sequence of "
-        "steps, a set of worked values, a before/after).\n"
-        "  All five must be DIFFERENT \"type\" values — never two tables or two processes in one "
-        "konspekt. With five entries and five available types that means using each type once.\n"
-        "  Each must carry real substance, not a token shell: a table/comparison needs at least 3 data "
-        "rows, a process/flowchart at least 3 steps, a timeline at least 3 events. A two-row table teaches "
-        "nothing and takes the slot a real one could have used. "
-        f"Prefer these types where they fit: {', '.join(f'\"{t}\"' for t in required_types)}; swap in another "
-        "type instead if one truly doesn't suit the topic. Prefer \"timeline\", \"flowchart\"/\"process\" and "
-        "over \"table\"/\"comparison\" when either would fit, but use table/comparison freely "
-        "where they are the better fit. Vary both \"type\" and \"position_after\" across entries — never anchor "
-        "two blocks to the same section. Every entry MUST also carry a \"description\": 1-2 sentences printed UNDER the visual, saying what it shows and what the reader should notice in it — a table with no reading underneath leaves the pupil to guess why it is there. If a fact or sequence appears in a block, do not also re-explain it in "
-        "full in the prose sections — cover it once, wherever it teaches best. Type choice: \"table\" for "
-        "tabular facts, \"timeline\" for dated events, \"flowchart\"/\"process\" for ordered steps or "
-        "cause→effect, \"comparison\" for contrasting 2+ things across shared criteria. Each \"data\" shape:\n"
-        "  table: {\"headers\": [\"col1\", \"col2\"], \"rows\": [[\"...\", \"...\"]]}\n"
-        "  timeline: {\"events\": [{\"label\": \"...\", \"date\": \"...\", \"description\": \"...\"}]}\n"
-        "  flowchart/process: {\"steps\": [{\"title\": \"...\", \"description\": \"...\"}]}\n"
-        "  comparison: {\"criteria\": [\"...\"], \"items\": [{\"name\": \"...\", \"values\": [\"one per criterion, same order\"]}]}\n"
-        "\"position_after\" must be one of: \"key_concepts\", \"main_content\", \"real_life_examples\", "
-        "\"tools\", \"pair_work\", \"consolidation\", \"visual_aid\", \"lesson_program\" — pick whichever fits "
-        "the block best rather than defaulting to \"main_content\". Never use \"competencies\"/\"objectives\" "
-        "(nothing taught yet) or \"summary\"/\"homework\"/\"assessment\" (reads as an afterthought)."
+        "- \"visual_blocks\": exactly 2 entries of DIFFERENT \"type\", each with real substance (≥3 rows/steps/"
+        f"events) and a 1-sentence \"description\". Prefer {', '.join(f'\"{t}\"' for t in required_types)}. "
+        "Data shapes — table: {\"headers\": [...], \"rows\": [[...]]}; timeline: {\"events\": [{\"label\", \"date\", "
+        "\"description\"}]}; flowchart/process: {\"steps\": [{\"title\", \"description\"}]}; comparison: "
+        "{\"criteria\": [...], \"items\": [{\"name\", \"values\": [one per criterion]}]}. \"position_after\" is one of "
+        "\"key_concepts\", \"main_content\", \"tools\", \"consolidation\", different for the two. Don't re-explain the "
+        "same facts in prose."
     )
     if subject in _FIGURE_SHAPES:
         catalog = "; ".join(f"{name} {hint}" for name, hint in _FIGURE_SHAPES[subject])
         extra_rules.append(
-            "- \"figures\": 1-2 entries. This is an ACTUAL DRAWING of the thing the lesson is about, drawn by "
-            "the export the way a teacher draws it on the blackboard — a cube with dashed hidden edges for a "
-            "volume lesson, a parabola on real axes for a quadratic lesson, a Bohr shell model for an atom "
-            "lesson. If this topic names or works with a concrete shape, body, graph, circuit or molecule, you "
-            "MUST include it; that drawing is the single most useful thing on the page for this subject. "
-            "\"shape\" MUST be copied exactly from this list and nothing else — an id that is not on the list "
-            "draws nothing at all:\n"
-            f"  {catalog}\n"
-            "The bracketed list after each id is what \"values\" means for that shape, in that order: short "
-            "label strings printed on the drawing (\"5 см\", \"a\", \"h\"), NOT sentences. For plot_* shapes "
-            "\"values\" are NUMBERS (the coefficients), e.g. plot_parabola with [\"1\",\"0\",\"-4\"] draws "
-            "y = x² - 4. Vertex letters (A, B, C, A₁...) are added automatically — never put them in \"values\". "
-            "Pick values that match the worked examples in this konspekt so the drawing illustrates a problem "
-            "the pupil is actually solving. Return [] only if the topic truly centres on no drawable object.\n"
-            "  \"coordinate_plane\" draws ONLY bare, unlabeled x/y axes — nothing plotted on them, no point, no "
-            "line, no curve, no marked root. A confirmed real mistake: a topic about an equation's root picked "
-            "\"coordinate_plane\" and captioned it \"shows the equation's root on the number line\" — the export "
-            "then printed that caption over empty axes with nothing marked, since the shape never draws a point. "
-            "Only caption \"coordinate_plane\" as a plain, generic coordinate system (e.g. \"the coordinate "
-            "plane used to plot functions\") — if you actually need a specific point, line or curve shown, use "
-            "one of the \"plot_*\" shapes instead (they take real numeric coefficients and draw the actual "
-            "graph), or leave the figure out entirely."
+            "- \"figures\": 0-1 entry — a drawing of the shape/graph/body/molecule the lesson works with. \"shape\" "
+            f"copied exactly from: {catalog}. \"values\" are short labels in that order (for plot_* shapes: numeric "
+            "coefficients); vertex letters are added automatically. \"coordinate_plane\" is bare axes only — use a "
+            "plot_* shape to show a curve. [] if nothing drawable."
         )
     extra_rules.append(
-        "- \"important_notes\": 0-2 short, genuinely important warnings/caveats/highlights (a common misconception, a "
-        "safety note, an exception to the rule just taught). Return an empty list if this topic has nothing that "
-        "warrants one — don't invent a filler note. The export already prints a bold \"Диққат.\" label in front of "
-        "every item automatically — write ONLY the note's own content, with NO leading label of your own "
-        "(\"Диққат:\", \"Ёд доред:\", \"Внимание:\" or similar), or it prints twice, e.g. \"Диққат. Диққат: ...\"."
+        "- \"important_notes\": 0-2 real warnings/misconceptions, no leading label like \"Диққат:\" (the export adds it)."
     )
     if include_homework:
         extra_rules.append(
-            "- \"homework\": never invent a specific textbook page number, exercise number, or edition detail "
-            "(e.g. \"саҳифаи 72\") — you have no way of knowing which textbook this teacher actually uses, so a "
-            "made-up page number just misleads them. Describe the task itself in full instead (the actual "
-            "problem, or precisely what to produce), never \"see page N\"."
-        )
-    if subject in _WORKED_EXAMPLE_SUBJECTS:
-        extra_rules.append(
-            "- \"real_life_examples\": if a scenario names its unknown with a letter (e.g. \"z\"), the equation "
-            "you write for it must use that SAME letter — a confirmed real mistake named the unknown \"z\" in "
-            "the story, then wrote the equation with \"x\" instead. Also make sure the unknown is actually "
-            "unknown: a confirmed real mistake built a scenario where the \"unknown\" quantity was already "
-            "stated as a known number earlier in the very same sentence, leaving nothing to actually solve for."
+            "- \"homework\": 2-3 tasks written out in full; never invent textbook page or exercise numbers."
         )
     extra_rules.append(
-        "- \"lesson_images\": EXACTLY 2 entries, each an object with THREE fields — \"query\", \"position_after\" "
-        "and \"explanation\".\n"
-        "  * \"query\": a precise ENGLISH search phrase for Wikimedia Commons naming a teaching illustration (a "
-        "labelled diagram, a scheme, a graph, a geometric construction, a scientific figure) that actually "
-        "explains part of THIS specific topic — never a decorative or merely related picture, and never the same "
-        "idea twice. Good: [\"Pythagorean theorem proof diagram\", \"right triangle labeled sides\"] for the "
-        "Pythagorean theorem; [\"water cycle diagram\", \"cloud formation diagram\"] for precipitation; "
-        "[\"parabola graph vertex\", \"quadratic function coefficients diagram\"] for quadratic functions. Bad: a "
-        "generic photo of a classroom, a flag for an unrelated topic. NEVER reach for an illustration from a "
-        "DIFFERENT field as a METAPHOR or COMPARISON for this topic, even one you plan to explain in the caption — "
-        "the pupil just sees a snail, a waveform, a random molecule with no connection to the lesson on the page "
-        "in front of them. Confirmed mistakes to never repeat: a snail-anatomy diagram for a lesson on sentence "
-        "structure (\"compare its complexity to a complex sentence\"), a signal-processing waveform for a lesson "
-        "on simple/complex chemical substances (\"compare a simple/complex signal\"); a lesson on EQUATIONS "
-        "queried \"algebraic notation diagram\" and Commons returned a labelled algebraic EXPRESSION (terms/"
-        "coefficients of \"3x² − 2xy + c\", no \"=\" sign anywhere) captioned as showing \"the structure of an "
-        "equation\" — an expression is explicitly NOT an equation (this konspekt's own \"ифода\"/\"муодила\" "
-        "vocabulary says so), so the picture contradicted the lesson it was supposed to illustrate. If the topic "
-        "is specifically about equations, the query must target an image that visibly contains an \"=\" sign "
-        "(e.g. \"algebraic equation solving diagram\", \"linear equation labeled\") — never a bare-expression or "
-        "generic \"algebra notation\" image. Every \"query\" must name "
-        "the actual real-world thing THIS lesson is about (its formula, its object, its named process) — never "
-        "an analogy, comparison, or illustration of a DIFFERENT subject's concept, however cleverly it connects. "
-        "Add the word \"diagram\" or \"scheme\" when "
-        "the topic is abstract (a rule, a process, an equation) so the search finds an illustration of it rather "
-        "than a photo. Keep the phrase SHORT — 2 to 4 words carrying the subject; a long phrase matches nothing "
-        "on Commons.\n"
-        "  * \"position_after\": WHICH section of THIS konspekt the picture explains — one of \"key_concepts\", "
-        "\"main_content\", \"worked_examples\", \"real_life_examples\", \"consolidation\". The picture will be "
-        "printed directly under that section's text, so choose the section whose sentences the picture actually "
-        "illustrates. Think about what you wrote in each section and put the diagram where a pupil reading that "
-        "paragraph would need to look at it. The two entries must NOT both point at the same section — they "
-        "illustrate two different parts of the lesson.\n"
-        "  * \"explanation\": ONE short sentence, in the lesson's own language, telling the pupil what to see in "
-        "the picture and what it proves about the text above it — e.g. \"Дар расм бинед, ки чӣ тавр квадратҳои "
-        "катетҳо ба квадрати гипотенуза баробаранд\". Not a title, not a caption repeating the file name: an "
-        "instruction for reading the picture. This is what turns the illustration into part of the explanation "
-        "instead of decoration.\n"
-        "  Always return exactly 2 entries — never 0, 1, or more than 2."
+        f"- \"lesson_images\": exactly 2 entries — \"query\": a SHORT (2-4 words) English Wikimedia Commons phrase for a "
+        f"teaching diagram of \"{topic}\" ITSELF (add \"diagram\" for abstract topics; never a metaphor or a "
+        "neighbouring concept of the same subject); \"position_after\": one of \"key_concepts\", \"main_content\", "
+        "\"worked_examples\", \"consolidation\", different for the two; \"explanation\": one sentence in the lesson "
+        "language telling the pupil what to see in it."
     )
     if subject in _REAL_IMAGE_SUBJECTS:
         extra_rules.append(
-            "- \"real_image_query\"/\"real_image_style\": use ONLY when this exact topic centers on ONE specific, "
-            "concrete, recognizable real-world subject that a real photo/logo/diagram actually exists for — a named "
-            "software/OS/company/product/brand (e.g. \"Windows\", \"Python\", \"Microsoft\"), or a specific animal/plant "
-            "species, or a real historical figure/artifact/landmark, or (biology specifically) an animal/plant/human "
-            "organ system whose INTERNAL structure/anatomy is the actual subject of the lesson. Write real_image_query "
-            "as a precise ENGLISH search term for it (e.g. \"Windows 11 logo\", \"Bengal tiger\", \"Eiffel Tower\", "
-            "\"Frog internal anatomy\") — never a vague/generic phrase. Set real_image_style to \"logo\" when the "
-            "subject is a brand/software/product/flag/symbol (rendered as a clean mark, no background removal needed), "
-            "\"cutout\" when it's a living organism or physical object best shown whole as a background-removed photo, "
-            "or \"diagram\" when the lesson is specifically about that organism's INTERNAL structure/anatomy/organs "
-            "(e.g. topic is \"ichki tuzilishi\"/\"внутреннее строение\" of a frog/fish/human — write the query as "
-            "\"<organism> internal anatomy\" or \"<organism> anatomy diagram\" so the fetched image is the labeled "
-            "cutaway/anatomy illustration itself, not a plain photo of the whole animal). Leave BOTH as empty strings "
-            "for the many topics with no single concrete photographable/diagrammable subject (grammar rules, math "
-            "procedures, abstract concepts, generic activities) — do not force a tenuous or symbolic connection just to "
-            "fill this field."
+            "- \"real_image_query\"/\"real_image_style\": only when the topic centres on ONE concrete real subject "
+            "(a named software/brand → \"logo\", an organism/object → \"cutout\", an organism's internal anatomy → "
+            "\"diagram\" with query \"<organism> anatomy diagram\"); precise English query. Otherwise both empty strings."
         )
     angle, shape = _pick_variant(previous_digests or [])
     if variant_out is not None:
         variant_out["angle"] = angle[:80]
         variant_out["shape"] = shape[:80]
     extra_rules.append(
-        f"- LESSON SHAPE for this generation — this decides how the lesson is BUILT, not just how it opens, and "
-        f"it outranks habit: {shape} Every section has to follow from it: the order ideas are introduced in, what "
-        "the worked examples look like, what the pair/group tasks ask for, and what the homework practises. Two "
-        "konspekts on one topic built on two different shapes are two different lessons; two built on the same "
-        "shape are the same lesson twice."
+        f"- LESSON SHAPE: {shape} Build the lesson order, examples and tasks on it. Framing: {angle} (drop it in a "
+        "section where it doesn't fit). The \"subtitle\" reflects this framing."
     )
     variation_rule = _variation_rule(previous_digests or [], angle, shape)
     if variation_rule:
         extra_rules.append(variation_rule)
     extra_rules.append(
-        f"- Framing/angle for this generation: {angle} Let this shape which real-world examples you reach for "
-        "and how main_content/real_life_examples/lesson_program/subtitle are framed — but never at the expense of "
-        "accuracy: if this angle doesn't genuinely fit a given section, quietly fall back to the clearest ordinary "
-        "framing for that section instead of forcing it. \"subtitle\" specifically must NOT be a generic one-liner "
-        "that would fit this topic regardless of angle (confirmed live: without this, subtitle converges on the "
-        "same safest phrasing across regenerations even when the rest of the angle correctly varies) — it should "
-        "read as written under today's angle specifically."
+        f"- Vocabulary and depth fit grade {grade} — \"{level}\" means the hardest this grade can absorb, never university level."
     )
     extra_rules.append(
-        f"- Vocabulary and depth must fit grade {grade} SPECIFICALLY, not just the difficulty label above — a term "
-        "routine at university level (formal proofs, unexplained research-paper phrasing, domain jargon no school "
-        f"curriculum at this grade would have covered) has no place here regardless of difficulty; \"{level}\" for "
-        f"grade {grade} means the hardest version of what a student at THAT grade can actually absorb, never "
-        "graduate-level material."
+        "- \"quick_check\": 2-3 short questions answerable from this konspekt, each with a short answer."
     )
     extra_rules.append(
-        "- \"quick_check\": 2-4 short comprehension questions a teacher can ask right after teaching this content, "
-        "each with its own short answer — a fast way to confirm the class understood before moving on. Every "
-        "question must be answerable directly from what's already in this konspekt (main_content/key_concepts), "
-        "never something requiring outside knowledge. Return an empty list only if this topic genuinely has "
-        "nothing checkable this way (very rare)."
-    )
-    extra_rules.append(
-        "- \"main_content\" MUST be flowing prose — real sentences joined into paragraphs, never a numbered/"
-        "bulleted list of facts dressed up as paragraphs. If you catch yourself about to write \"1. ... 2. ... "
-        "3. ...\" inside main_content, rewrite it as connected sentences instead — a wall of short numbered "
-        "fragments reads as a raw AI output dump, not an explanation a teacher would actually read aloud in class."
-    )
-    extra_rules.append(
-        "- \"group_work\": exactly 3 tasks, one per group, split across the class — this is DIFFERENT from "
-        "pair_work above (a whole-class activity) and consolidation (a wrap-up). Each of the 3 tasks must target a "
-        "DIFFERENT key term/concept from this lesson (e.g. from key_concepts/key_terms) — never give all three "
-        "groups the same or near-identical task. A real classroom pattern to match: one group finds/explains real-"
-        "world examples of one concept, another solves a short concrete problem using a second concept, a third "
-        "solves a short problem using a third concept. Each task string should read as a complete instruction a "
-        "teacher could read aloud to that group as-is (don't include the \"Group N\" label itself — the app adds "
-        "that automatically from the array position)."
+        "- \"group_work\": 3 short tasks, one per group, each on a DIFFERENT key concept (no \"Group N\" label)."
     )
 
     extra_rules_text = ("\n" + "\n".join(extra_rules)) if extra_rules else ""
@@ -818,71 +580,43 @@ def _konspekt_prompt(
     if source_text:
         source_block = f"""
 
-SOURCE MATERIAL (primary source — this konspekt must be built from this text, not from general knowledge; follow it
-as CLOSELY AS POSSIBLE, this is not optional background reading):
+SOURCE MATERIAL (primary source — build every section from it, not from general knowledge):
 \"\"\"
 {source_text}
 \"\"\"
-Use this source as the primary basis for EVERY section, not just main_content — key_concepts, key_terms, formulas,
-worked_examples/practice_problems, real_life_examples, all of it: pull the actual definitions, the actual worked
-problems, the actual terminology and the actual examples this source itself uses, in the same order the source
-presents them where that's reasonable, rather than reaching for your own equivalents. Preserve its terms, facts,
-definitions, and examples as faithfully as possible while still restructuring them into the concise konspekt format
-below (don't just copy paragraphs verbatim — condense and organize them into the requested sections, but the
-SUBSTANCE must be the source's own, not a paraphrase from memory of "a similar textbook"). Do NOT invent facts that
-contradict or aren't supported by the source. Only if the source genuinely has NO material at all for a required
-section (not merely "less than you'd prefer") may you carefully supplement it from your own general knowledge — when
-you do, keep that supplemented content clearly factual and uncontroversial (no speculation), since it isn't
-source-verified, and keep it to the minimum needed to fill the gap.
-If this text turns out to be about a DIFFERENT topic than "{topic}" entirely — not just thin on detail, but a
-genuinely different subject (e.g. the requested topic is "{topic}" but this text is actually about something
-else) — IGNORE this source completely and build the konspekt purely from your own knowledge of "{topic}" instead.
-The topic given below always wins over a mismatched source; never silently write about whatever the source happens
-to cover instead of the requested topic."""
+Use its own definitions, terminology, examples and order, condensed into the sections below. Don't contradict it;
+supplement from general knowledge only where it has nothing for a section. If it is about a different topic than
+"{topic}", ignore it completely."""
 
-    return f"""Create a comprehensive lesson plan (konspekt) about "{topic}" for grade {grade}, subject "{subject}".
+    return f"""Create a concise, formal school lesson plan (konspekt) about "{topic}" for grade {grade}, subject "{subject}".
 
 Subject style: {subject_hint}
 Difficulty: {level_text}
 CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, nothing else.{source_block}
 
 RULES:
-- "competencies" and "objectives" must be SHORT — a single concise phrase or sentence each (max ~12 words), like real lesson-plan bullet points, NOT a paragraph. Everything else should still be DETAILED: 3-5 sentences per text field, 3-5 items per list, with real facts, examples, and explanations.
-- Every "lesson_images" query names a diagram of "{topic}" ITSELF. Not the
-  subject in general, not a neighboring concept a student might meet in the
-  same course — "{topic}" specifically. Measured live: a лексия titled "Реша
-  ва вазифаҳои он" (root systems) once asked for diagrams of "human
-  circulatory system" and "savanna food web" — real diagrams, just not of
-  anything in this lesson, because both are things a biology course also
-  covers. If you cannot think of a diagram that shows "{topic}" itself,
-  leave "lesson_images" empty rather than reaching for whatever else the
-  subject brings to mind.
-- NEVER mix languages
-- Return ONLY the fields listed below — do not add any others.{extra_rules_text}
+- "competencies" and "objectives": short phrases (max ~12 words). Other text fields: 2-3 sentences; lists: 3-4 items.
+- NEVER mix languages. Return ONLY the fields listed below.{extra_rules_text}
 
 RETURN THIS JSON:
 {{
   "title": "Title about {topic}",
-  "subtitle": "One-line catchy description written from THIS generation's angle/framing above, not a generic one",
+  "subtitle": "One line, from this generation's framing",
   "duration": "45 minutes",
-  "competencies": ["Short skill phrase 1 (max ~12 words)", "Short skill phrase 2", "Short skill phrase 3"],
-  "objectives": ["Short goal phrase 1 (max ~12 words)", "Short goal phrase 2", "Short goal phrase 3", "Short goal phrase 4"],
-  "key_concepts": ["Concept 1: explanation + a short simple example of it", "Concept 2: explanation + a short simple example", "Concept 3: explanation + a short simple example", "Concept 4: explanation + a short simple example", "Concept 5: explanation + a short simple example"],
-  "key_terms": ["Term 1: definition and example", "Term 2: definition and example", "Term 3: definition and example", "Term 4: definition and example"],
-  "real_life_examples": ["Example 1: detailed scenario", "Example 2: detailed scenario", "Example 3: practical use case"],
-  "lesson_program": "4-5 sentence description of lesson flow.",
-  "lesson_stages": [{{"minutes": 5, "stage": "Short stage name, 1-3 words", "activity": "What happens in this stage, one short sentence"}}, {{"minutes": 15, "stage": "...", "activity": "..."}}],
-  "tools": ["Tool 1: why needed", "Tool 2: how used", "Tool 3"],
-  "main_content": "3-4 detailed paragraphs each 4-5 sentences explaining {topic} with facts and examples.",
-  "visual_blocks": [{{"type": "table|timeline|flowchart|process|comparison", "title": "short label", "description": "1-2 sentences under the visual explaining what it shows and what to notice", "position_after": "a section key above, e.g. main_content", "data": {{"...": "shape depends on type, see rules above"}}}}],
-  "pair_work": "3-4 sentence pair activity with instructions and expected outcomes.",
-  "consolidation": "3-4 sentence consolidation activity with specific tasks.",
-  "group_work": ["Task for Group 1: find/explain real examples of one key term/concept from this lesson", "Task for Group 2: solve a short problem about a DIFFERENT key term/concept", "Task for Group 3: solve a short problem about a THIRD key term/concept"],
-  "visual_aid": "3-4 sentence description of a visual aid and how to use it.",
-  "important_notes": ["A short, genuinely important warning/caveat/highlight — empty list if none apply"],
-  "quick_check": [{{"question": "Short comprehension question answerable from this konspekt", "answer": "Short answer"}}],
-  "lesson_images": [{{"query": "Short English Commons search phrase for a diagram of {topic} ITSELF, not a broader or merely-related concept from the same subject", "position_after": "the section key this picture explains", "explanation": "One sentence telling the pupil what to see in it"}}, {{"query": "...still {topic} itself, a DIFFERENT aspect of it", "position_after": "a DIFFERENT section key", "explanation": "..."}}],{real_image_json}
-  "summary": "4-5 sentence summary covering all key points"{"," if optional_json else ""}{optional_json}
+  "competencies": ["Short skill phrase", "...", "..."],
+  "objectives": ["Short goal phrase", "...", "..."],
+  "key_concepts": ["Term: explanation. For example, ...", "...", "...", "..."],
+  "real_life_examples": ["Specific real scenario", "..."],
+  "lesson_stages": [{{"minutes": 5, "stage": "1-3 words", "activity": "one short sentence"}}, {{"minutes": 15, "stage": "...", "activity": "..."}}],
+  "tools": ["Tool: how used", "..."],
+  "main_content": "2-3 paragraphs of 3-4 sentences explaining {topic}.",
+  "visual_blocks": [{{"type": "table|timeline|flowchart|process|comparison", "title": "short label", "description": "1 sentence", "position_after": "section key", "data": {{}}}}],
+  "consolidation": "2-3 sentence consolidation activity.",
+  "group_work": ["Group 1 task", "Group 2 task", "Group 3 task"],
+  "important_notes": [],
+  "quick_check": [{{"question": "...", "answer": "..."}}],
+  "lesson_images": [{{"query": "...", "position_after": "...", "explanation": "..."}}, {{"query": "...", "position_after": "...", "explanation": "..."}}],{real_image_json}
+  "summary": "2-3 sentence summary"{"," if optional_json else ""}{optional_json}
 }}"""
 
 
@@ -1033,35 +767,6 @@ def _lecture_prompt(
         "- \"teacher_tips\": 1-2 short PRACTICAL notes for the teacher delivering this topic (where students "
         "usually get stuck, what to demonstrate, what to ask). Empty list if nothing useful — never filler."
     )
-    extra_rules.append(
-        "- \"lesson_images\": EXACTLY 2 entries, each {\"query\", \"position_after\", \"explanation\"}. \"query\" "
-        "is a SHORT (2-4 word) ENGLISH Commons search phrase for a teaching illustration that explains part of "
-        "THIS topic — a labelled diagram, a scheme, a graph, a scientific figure, never a decorative picture and "
-        "never the same idea twice; name the actual real-world thing this lecture is about (its formula, its "
-        "object, its named process). NEVER a metaphor, analogy, or comparison borrowed from a different field, "
-        "even one you plan to explain in the caption — the pupil just sees whatever unrelated thing was pictured, "
-        "not the connection (confirmed mistakes: a snail-anatomy diagram \"to compare its complexity to a complex "
-        "sentence\", a signal-processing waveform \"to compare a simple/complex signal\" to a simple/complex "
-        "substance). Add \"diagram\"/\"scheme\" "
-        "when the topic is abstract. \"position_after\" is "
-        "which section of this document the picture explains (\"key_concepts\", \"main_content\", "
-        "\"real_life_examples\"), and the two entries must point at DIFFERENT sections — the picture prints "
-        "directly under that section's text, so pick the one whose sentences it illustrates. \"explanation\" is "
-        "one short sentence in the document's own language telling the reader what to see in the picture and how "
-        "it relates to the text above it. Always return exactly 2 entries."
-    )
-    extra_rules.append(
-        "- \"real_image_query\"/\"real_image_style\": LEAVE BOTH AS EMPTY STRINGS in almost every case — this "
-        "document prioritizes text explanation over pictures, so a photo/logo/diagram here should be rare, not the "
-        "default. Only fill these in for the truly exceptional case where the topic IS one single, extremely "
-        "iconic, immediately-recognizable real-world subject (a specific named software/brand logo, a specific "
-        "animal/plant species, a real historical landmark) AND a picture would add real understanding a paragraph "
-        "genuinely couldn't. When in doubt, leave both empty — describe it in words in main_content instead. Write "
-        "real_image_query as a precise ENGLISH search term for it. Set real_image_style to \"logo\" when the "
-        "subject is a brand/software/product/flag/symbol, \"cutout\" when it's a living organism or physical object "
-        "best shown whole as a background-removed photo, or \"diagram\" when the topic is specifically about that "
-        "organism's INTERNAL structure/anatomy/organs."
-    )
     angle = random.choice(_KONSPEKT_ANGLES)
     extra_rules.append(
         f"- Framing/angle for this generation: {angle} Let this shape which real-world examples you reach for "
@@ -1100,7 +805,7 @@ def _lecture_prompt(
         "  * EMIT EVERY FIELD of the JSON shape below, in the order shown. A лекция that comes back without its "
         "plan, its conclusion or its sources is a draft, not a lecture — do not stop after \"main_content\".\n"
         "- \"main_content\" is THE core of this document — this is a lecture, not a lesson-management plan, and "
-        "with visual_blocks/real_image kept minimal (see rules above), the explaining is almost entirely THIS "
+        "with no pictures and visual_blocks kept minimal, the explaining is almost entirely THIS "
         "field's job. Write 7-9 detailed paragraphs (not fewer), each a real explanatory passage, building from "
         "foundational ideas toward more advanced ones in a logical sequence, the way a textbook chapter or a real "
         "lecture transcript would. Go deeper than you normally would: spell out the reasoning behind each idea, "
@@ -1147,15 +852,6 @@ CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, not
 RULES:
 - Every text field should be DETAILED: real facts, examples, and explanations — this document has no other sections
   competing for the reader's attention, so don't hold back depth.
-- Every "lesson_images" query names a diagram of "{topic}" ITSELF. Not the
-  subject in general, not a neighboring concept a student might meet in the
-  same course — "{topic}" specifically. Measured live: a лексия titled "Реша
-  ва вазифаҳои он" (root systems) once asked for diagrams of "human
-  circulatory system" and "savanna food web" — real diagrams, just not of
-  anything in this lecture, because both are things a biology course also
-  covers. If you cannot think of a diagram that shows "{topic}" itself,
-  leave "lesson_images" empty rather than reaching for whatever else the
-  subject brings to mind.
 - NEVER mix languages
 - Return ONLY the fields listed below — do not add any others (specifically: do NOT include competencies,
   objectives, lesson_program, tools, pair_work, consolidation, homework, warmup, or assessment — those are
@@ -1176,9 +872,6 @@ RETURN THIS JSON:
   "key_ideas": ["One sentence a student should remember from this lecture", "Another one"],
   "teacher_tips": ["A short practical note for the teacher delivering this topic"],
   "quick_check": [{{"question": "Short comprehension question answerable from this lecture", "answer": "Short answer"}}],
-  "real_image_query": "Precise English search term for a real photo/logo/diagram, or empty string — see rules above",
-  "real_image_style": "\"logo\", \"cutout\", or \"diagram\", or empty string if real_image_query is empty",
-  "lesson_images": [{{"query": "Short English Commons search phrase for a diagram of {topic} ITSELF, not a broader or merely-related concept from the same subject", "position_after": "the section key this picture explains", "explanation": "One sentence telling the pupil what to see in it"}}, {{"query": "...still {topic} itself, a DIFFERENT aspect of it", "position_after": "a DIFFERENT section key", "explanation": "..."}}],
   "summary": "4-5 sentence conclusion: what was established, point by point against the plan",
   "references": ["Author, Title, year — a real, checkable source a teacher could actually find", "Second source", "Third source"]{"," if optional_json else ""}{optional_json}
 }}"""
@@ -2267,32 +1960,15 @@ ADDITIONAL TAJIK LANGUAGE RULES:
 def _konspekt_system_prompt(language: str) -> str:
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = _language_rules(language)
-    return f"""You are a school teacher creating a structured lesson plan (konspekt). Return ONLY valid JSON.
+    return f"""You are a school teacher writing a formal, concise lesson plan (konspekt). Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
 
-CRITICAL RULES:
+RULES:
 1. Write ONLY about the topic given.
-2. This is a STRUCTURED CURRICULUM lesson plan with specific sections.
-3. EXCEPTION — "competencies" and "objectives" must be SHORT, single-phrase/single-sentence bullet points (max ~12 words each), like a real lesson-plan header, NOT paragraphs. Every OTHER section should be DETAILED and SUBSTANTIAL — 3-5 sentences with real facts, examples, and explanations. NOT short phrases!
-4. Think of it as a teacher's comprehensive guide — detailed notes that help teach the topic properly (except competencies/objectives, which stay short per rule 3).
-5. NEVER write one-sentence answers for the detailed sections. Each of those fields must have enough content to actually teach the material.
-6. NEVER mix languages - write ONLY in {lang_name}.
-7. NO filler commentary, meta-text, disclaimers, or apologies anywhere in the JSON values — every field is content the teacher will read to students directly, not a note about the content.
-
-The konspekt MUST include these curriculum sections IN ORDER:
-1. "competencies" - What skills students will develop (3-4 SHORT phrases, max ~12 words each — not detailed)
-2. "objectives" - Learning goals (3-4 SHORT phrases, max ~12 words each — not detailed)
-3. "key_concepts" - Core ideas (4-5 detailed items with explanations)
-4. "lesson_program" - Detailed lesson structure/plan (4-5 sentences)
-5. "tools" - Teaching tools/materials needed (list with descriptions)
-6. "main_content" - Main lesson content (3-4 detailed paragraphs, each 4-5 sentences with facts, examples, explanations)
-7. "pair_work" - Pair work activity with clear instructions (3-4 sentences)
-8. "consolidation" - Lesson consolidation/reinforcement (3-4 sentences)
-9. "summary" - Detailed lesson summary (4-5 sentences)
-10. "homework" - Homework assignment with specific tasks
-11. "assessment" - How to assess student learning (3-4 sentences)
-
-Every field must have SUBSTANTIAL content. Brief notes are NOT acceptable."""
+2. Concise and factual, like an official school konspekt: "competencies"/"objectives" are short phrases;
+   other text fields are 2-3 clear sentences with real facts and examples. No padding or repetition.
+3. NEVER mix languages - write ONLY in {lang_name}.
+4. No meta-text, disclaimers or apologies in any value."""
 
 
 def _lecture_system_prompt(language: str) -> str:
@@ -3220,9 +2896,12 @@ CRITICAL RULES:
 
     system_prompt = system_prompts.get(material_type, system_prompts["konspekt"])
 
-    content = await _call_ai(system_prompt, user_prompt, language, log_label=f"{material_type} topic={topic[:50]}")
+    content = await _call_ai(system_prompt, user_prompt, language, log_label=f"{material_type} topic={topic[:50]}",
+                             max_tokens=KONSPEKT_MAX_TOKENS if material_type == "konspekt" else 24000)
 
-    if material_type in ("konspekt", "lektsiya", "prezentatsiya"):
+    # The konspekt skips the verify pass: it re-sent the whole document and
+    # roughly doubled the tokens per konspekt.
+    if material_type in ("lektsiya", "prezentatsiya"):
         content = await _verify_and_fix(material_type, content, language, topic)
 
     if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy"):
@@ -3248,8 +2927,10 @@ CRITICAL RULES:
         _typeset_math_content(content, topic)
         _render_timeline_images(content, topic)
         _render_subject_figures(content, topic)
-        await _fetch_real_world_image(content, topic)
-        await _render_lesson_images(content, topic)
+        # Lectures carry no pictures (see lecture_design), so don't fetch any.
+        if material_type == "konspekt":
+            await _fetch_real_world_image(content, topic)
+            await _render_lesson_images(content, topic)
 
     if material_type == "prezentatsiya":
         _drop_bullets_duplicating_visual(content, topic)
@@ -3272,14 +2953,16 @@ CRITICAL RULES:
 _exhausted_keys: set[str] = set()
 
 
-async def _call_ai(system_prompt: str, user_prompt: str, language: str, log_label: str) -> dict:
+async def _call_ai(system_prompt: str, user_prompt: str, language: str, log_label: str,
+                   max_tokens: int = 24000) -> dict:
     global _api_call_count, _daily_reset_time
 
     async with ai_slot(log_label):
-        return await _call_ai_inner(system_prompt, user_prompt, language, log_label)
+        return await _call_ai_inner(system_prompt, user_prompt, language, log_label, max_tokens)
 
 
-async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, log_label: str) -> dict:
+async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, log_label: str,
+                         max_tokens: int = 24000) -> dict:
     global _api_call_count, _daily_reset_time
 
     today = datetime.now(timezone.utc).date()
@@ -3323,7 +3006,7 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
                                 {"role": "user", "content": user_prompt},
                             ],
                             "temperature": temp,
-                            "max_tokens": 24000,
+                            "max_tokens": max_tokens,
                         },
                     )
 
@@ -3382,15 +3065,15 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
     raise Exception(f"AI returned invalid JSON after all attempts. Last error: {last_error}")
 
 
-async def _call_ai_stream(system_prompt: str, user_prompt: str, log_label: str):
+async def _call_ai_stream(system_prompt: str, user_prompt: str, log_label: str, max_tokens: int = 24000):
     global _api_call_count, _daily_reset_time
 
     async with ai_slot(f"{log_label} (stream)"):
-        async for delta in _call_ai_stream_inner(system_prompt, user_prompt, log_label):
+        async for delta in _call_ai_stream_inner(system_prompt, user_prompt, log_label, max_tokens):
             yield delta
 
 
-async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label: str):
+async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label: str, max_tokens: int = 24000):
     global _api_call_count, _daily_reset_time
 
     today = datetime.now(timezone.utc).date()
@@ -3435,7 +3118,7 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
                                 {"role": "user", "content": user_prompt},
                             ],
                             "temperature": temp,
-                            "max_tokens": 24000,
+                            "max_tokens": max_tokens,
                             "stream": True,
                         },
                     ) as response:
@@ -3609,6 +3292,10 @@ The document to review:
     return content
 
 
+# Output cap for one konspekt (reasoning + JSON). The lean prompt's answer
+# is ~5-7k tokens; this leaves room for the model's reasoning.
+KONSPEKT_MAX_TOKENS = 14000
+
 _KONSPEKT_STREAM_FIELDS = [
     "title", "subtitle", "duration", "competencies", "objectives", "key_concepts",
     "key_terms", "real_life_examples", "lesson_program", "lesson_stages", "tools", "main_content",
@@ -3660,7 +3347,8 @@ async def generate_konspekt_stream(
         outline_done = False
         generate_sections_started = False
 
-        async for delta in _call_ai_stream(system_prompt, user_prompt, log_label=f"konspekt-stream topic={topic[:50]}"):
+        async for delta in _call_ai_stream(system_prompt, user_prompt, log_label=f"konspekt-stream topic={topic[:50]}",
+                                           max_tokens=KONSPEKT_MAX_TOKENS):
             if not outline_done:
                 outline_done = True
                 yield {"stage": "outline", "status": "done"}
@@ -3724,8 +3412,6 @@ async def generate_konspekt_stream(
         yield {"stage": "visual_elements", "status": "done", "block_count": len(content.get("visual_blocks") or [])}
 
         yield {"stage": "validate", "status": "start"}
-        content = await _verify_and_fix("konspekt", content, language, topic)
-        _typeset_math_content(content, topic)
         yield {"stage": "validate", "status": "done"}
 
         yield {"type": "complete", "content": content}
