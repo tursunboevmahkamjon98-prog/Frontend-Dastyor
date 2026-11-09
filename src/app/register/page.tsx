@@ -9,6 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 import { useT } from "@/lib/i18n";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PhoneInput from "@/components/PhoneInput";
+import { isStrongPassword, MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 
 
@@ -42,7 +43,7 @@ export default function RegisterPage() {
   async function onSubmitForm(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password.length < 6) {
+    if (!isStrongPassword(password)) {
       setError(t("register.passwordTooShort"));
       return;
     }
@@ -132,7 +133,7 @@ export default function RegisterPage() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={inputClass}

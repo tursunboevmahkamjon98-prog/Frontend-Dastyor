@@ -88,6 +88,14 @@ async def _check_rate_limit(db: AsyncSession, purpose: str, key: str, max_attemp
 
 
 
+def _require_strong_password(password: str, language: str | None = None) -> None:
+    """Same rule for every account: 10+ characters, upper, lower, digit."""
+    problem = password_strength_error(password, min_length=settings.MIN_PASSWORD_LENGTH)
+    if problem:
+        raise HTTPException(status_code=400, detail=get_message(problem, language) if language
+                            else get_message(problem))
+
+
 @router.post("/register/send-code")
 async def send_register_code(request: Request, data: SendRegisterCodeRequest,
                              db: AsyncSession = Depends(get_db)):
@@ -139,6 +147,7 @@ async def send_register_code(request: Request, data: SendRegisterCodeRequest,
 @router.post("/register", response_model=TokenResponse, status_code=201)
 async def register(request: Request, data: UserRegister, db: AsyncSession = Depends(get_db)):
     try:
+        _require_strong_password(data.password)
         if not await _check_rate_limit(db, "register_ip", _client_ip(request),
                                        settings.MAX_REGISTER_PER_IP, settings.RATE_WINDOW_IP):
             logger.warning(f"Registration rate limit exceeded for IP {_client_ip(request)}")
@@ -373,6 +382,7 @@ async def login_verify(request: Request, data: LoginVerifyRequest, db: AsyncSess
 @router.post("/register-email", response_model=TokenResponse, status_code=201)
 async def register_email(request: Request, data: EmailRegister, db: AsyncSession = Depends(get_db)):
     try:
+        _require_strong_password(data.password)
         existing = await db.execute(select(User).where(User.email == data.email))
         if existing.scalar_one_or_none():
             logger.warning(f"Registration attempt with existing email: {data.email}")
@@ -645,12 +655,7 @@ async def change_password(
     if not verify_password(data.current_password, user.hashed_password):
         logger.warning(f"Invalid password change attempt for user {user.id}")
         raise HTTPException(status_code=400, detail=get_message("invalid_current_password", user.language))
-    if user.role == "admin":
-        problem = password_strength_error(
-            data.new_password, min_length=settings.ADMIN_MIN_PASSWORD_LENGTH
-        )
-        if problem:
-            raise HTTPException(status_code=400, detail=get_message(problem, user.language))
+    _require_strong_password(data.new_password, user.language)
     user.hashed_password = hash_password(data.new_password)
     await db.flush()
     await revoke_all_refresh_tokens(db, user.id)
@@ -761,6 +766,8 @@ async def verify_code(data: VerifyCodeRequest, db: AsyncSession = Depends(get_db
 @router.post("/reset-password")
 async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     try:
+        # before the code is spent, so a refused password leaves the code usable
+        _require_strong_password(data.new_password)
         result = await db.execute(
             select(PhoneVerificationCode).where(
                 PhoneVerificationCode.phone == data.phone,
@@ -789,13 +796,6 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
         if not user:
             logger.error(f"User not found during password reset: {data.phone}")
             raise HTTPException(status_code=404, detail=get_message("user_not_found"))
-
-        if user.role == "admin":
-            problem = password_strength_error(
-                data.new_password, min_length=settings.ADMIN_MIN_PASSWORD_LENGTH
-            )
-            if problem:
-                raise HTTPException(status_code=400, detail=get_message(problem, user.language))
 
         user.hashed_password = hash_password(data.new_password)
         await db.flush()

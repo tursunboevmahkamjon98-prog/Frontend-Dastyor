@@ -10,6 +10,7 @@ import { LANGUAGES } from "@/lib/material-types";
 import { useT, useLocale } from "@/lib/i18n";
 import { localeFromAccountLanguage } from "@/lib/messages";
 import BillingLink from "@/components/BillingLink";
+import { isStrongPassword, MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 const FIELD =
   "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-text-primary shadow-[inset_0_2px_3px_rgba(0,0,0,0.04)] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
@@ -247,7 +248,7 @@ function PasswordModal({ onClose }: { onClose: () => void }) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (next.length < 6) {
+    if (!isStrongPassword(next)) {
       setError(t("register.passwordTooShort"));
       return;
     }
@@ -276,7 +277,7 @@ function PasswordModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-secondary">{t("forgot.newPassword")}</label>
-            <input type="password" required minLength={6} value={next} onChange={(e) => setNext(e.target.value)} className={FIELD} />
+            <input type="password" required minLength={MIN_PASSWORD_LENGTH} value={next} onChange={(e) => setNext(e.target.value)} className={FIELD} />
           </div>
           <button
             type="submit"

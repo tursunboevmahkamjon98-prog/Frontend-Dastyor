@@ -45,7 +45,7 @@ const ru = {
   "register.fullName": "Имя и фамилия",
   "register.fullNamePlaceholder": "Имя Фамилия",
   "register.email": "Email",
-  "register.passwordPlaceholder": "Не менее 6 символов",
+  "register.passwordPlaceholder": "От 10 символов: Aa и цифра",
   "register.submit": "Зарегистрироваться",
   "register.submitting": "Создание...",
   "register.haveAccount": "Уже есть аккаунт?",
@@ -54,7 +54,7 @@ const ru = {
   "register.terms": "условия использования",
   "register.and": "и",
   "register.privacy": "политику конфиденциальности",
-  "register.passwordTooShort": "Пароль должен содержать не менее 6 символов",
+  "register.passwordTooShort": "Пароль: минимум 10 символов, заглавная и строчная буква и цифра",
   "register.otpTitle": "Подтвердите номер",
 
   
@@ -661,7 +661,7 @@ const tg: Messages = {
   "register.fullName": "Ному насаб",
   "register.fullNamePlaceholder": "Ном Насаб",
   "register.email": "Email",
-  "register.passwordPlaceholder": "На камтар аз 6 аломат",
+  "register.passwordPlaceholder": "Аз 10 аломат: Aa ва рақам",
   "register.submit": "Бақайдгирӣ",
   "register.submitting": "Сохта истодааст...",
   "register.haveAccount": "Ҳисоб доред?",
@@ -670,7 +670,7 @@ const tg: Messages = {
   "register.terms": "шартҳои истифода",
   "register.and": "ва",
   "register.privacy": "сиёсати махфият",
-  "register.passwordTooShort": "Парол бояд на камтар аз 6 аломат бошад",
+  "register.passwordTooShort": "Парол: ҳадди ақал 10 аломат, ҳарфи калон ва хурд ва рақам",
   "register.otpTitle": "Рақамро тасдиқ кунед",
 
   "forgot.title": "Барқарорсозии парол",
@@ -1253,7 +1253,7 @@ const en: Messages = {
   "register.fullName": "Full name",
   "register.fullNamePlaceholder": "First Last",
   "register.email": "Email",
-  "register.passwordPlaceholder": "At least 6 characters",
+  "register.passwordPlaceholder": "10+ characters: Aa and a digit",
   "register.submit": "Sign up",
   "register.submitting": "Creating...",
   "register.haveAccount": "Already have an account?",
@@ -1262,7 +1262,7 @@ const en: Messages = {
   "register.terms": "terms of use",
   "register.and": "and the",
   "register.privacy": "privacy policy",
-  "register.passwordTooShort": "Password must be at least 6 characters",
+  "register.passwordTooShort": "Password: at least 10 characters, an upper- and a lower-case letter and a digit",
   "register.otpTitle": "Confirm your number",
 
   "forgot.title": "Reset your password",

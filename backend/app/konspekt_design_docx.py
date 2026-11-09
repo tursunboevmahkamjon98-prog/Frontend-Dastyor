@@ -3,9 +3,9 @@
 Word counterpart of konspekt_design (the PDF): same palettes, labels and
 section order, so a teacher who downloads both gets the same document.
 Word has no drawn shapes in flowing text, so cards and pills are table
-cells with shading and thin borders, and the numbered section dot is a
-shaded run. Fonts are ones Office ships (Segoe UI, Georgia, Consolas);
-subject_templates.safe_font swaps them for Tajik where glyphs are missing.
+
+
+
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ INK = '1A1D24'
 MUTED = '5B6170'
 FAINT = '8A909C'
 LINE = 'E4E6EB'
-WARN_BG, WARN_INK = 'FFF4E5', '8A4B00'
+WARN_BG, WARN_INK = 'F2F2F2', '1A1D24'
 WIDTH_CM = 17.5
 
 
@@ -46,9 +46,9 @@ class _Style:
         self.family = family
         self.accent = f['accent'].lstrip('#')
         self.tint = f['tint'].lstrip('#')
-        head = {'serif': 'Georgia', 'mono': 'Consolas'}.get(f['head'], 'Segoe UI')
-        self.head = safe_font(head, language)
-        self.body = safe_font('Segoe UI', language)
+        # Formal school document: Times New Roman throughout (Tajik-safe).
+        self.head = safe_font('Times New Roman', language)
+        self.body = safe_font('Times New Roman', language)
         self.size = 11.5 if family == 'primary' else 10.5
 
 
@@ -145,15 +145,20 @@ def _grid(doc, n: int, cols: int, gap_cm: float = 0.25):
 def _heading(doc, n: int, label: str, s: _Style):
     p = _para(doc, after=5, before=10)
     p.paragraph_format.keep_with_next = True
-    num = _run(p, f' {n} ', s, 9, True, 'FFFFFF')
-    rPr = num._element.get_or_add_rPr()
-    shd = OxmlElement('w:shd')
-    shd.set(qn('w:val'), 'clear')
-    shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), s.accent)
-    rPr.append(shd)
-    _run(p, '  ' + label, s, 13, s.family not in ('history', 'literature'), INK, s.head)
+    _run(p, f'{n}. ', s, 13, True, s.accent, s.head)
+    _run(p, label, s, 13, True, INK, s.head)
+    _rule_below(p)
     return p
+
+
+def _rule_below(p, color='C9D2DE', size='6'):
+    pPr = p._p.get_or_add_pPr()
+    bdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    for k, v in (('w:val', 'single'), ('w:sz', size), ('w:space', '2'), ('w:color', color)):
+        bottom.set(qn(k), v)
+    bdr.append(bottom)
+    pPr.append(bdr)
 
 
 def _bullets(container, items, s: _Style, box=False, in_cell=False):
@@ -161,7 +166,7 @@ def _bullets(container, items, s: _Style, box=False, in_cell=False):
         p = _cell_para(container, 3) if in_cell else _para(container, 3)
         p.paragraph_format.left_indent = Cm(0.5)
         p.paragraph_format.first_line_indent = Cm(-0.5)
-        _run(p, '☐  ' if box else '■  ', s, 8 if not box else s.size, False, s.accent)
+        _run(p, '☐  ' if box else '•  ', s, s.size, False, s.accent)
         _run(p, it, s)
 
 
@@ -215,10 +220,8 @@ def _footer(doc, text: str, s: _Style):
         r._element.append(e)
 
 
-def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
-    s = _Style(family, language)
-    lab = _LABELS.get(language, _LABELS['Русский'])
-    accent_rgb = _rgb(s.accent)
+def new_doc(content: dict, s: _Style) -> Document:
+    """A4 document with margins, base font and the title · subject footer."""
     doc = Document()
     sec = doc.sections[0]
     sec.page_width, sec.page_height = Cm(21.0), Cm(29.7)
@@ -228,34 +231,60 @@ def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
     normal.font.name = s.body
     normal.font.size = Pt(s.size)
     normal._element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), s.body)
-
     title = str(content.get('title') or '')
     subject = str(content.get('subject') or '')
     grade = str(content.get('grade') or '')
     _footer(doc, ' · '.join(p for p in (title, ', '.join(q for q in (subject, grade) if q)) if p), s)
+    return doc
 
-    p = _para(doc, after=4)
-    _run(p, lab['tag'], s, 8.5, True, s.accent, s.head)
-    p = _para(doc, after=3)
-    _run(p, title, s, 24 if family != 'primary' else 27, s.family not in ('history', 'literature'),
-         INK, s.head)
+
+def header(doc, tag: str, content: dict, meta: list[tuple[str, str]], s: _Style) -> None:
+    """Tag, title, subtitle, short accent rule and the shaded meta cells."""
+    _run(_para(doc, after=4), tag, s, 8.5, True, s.accent, s.head)
+    _run(_para(doc, after=3), str(content.get('title') or ''), s, 24, False, INK, s.head)
     if content.get('subtitle'):
-        _run(_para(doc, after=8), content['subtitle'], s, 12, False, MUTED,
-             s.head if family in ('history', 'literature') else s.body)
-
-    duration = str(content.get('duration') or '').strip()
-    en = language in ('English', 'Английский')
-    meta = [('Subject' if en else 'Фан' if language == 'Таджикский' else 'Предмет', subject),
-            (lab['grade'], grade),
-            (L.get('duration', 'Время урока'), duration or '—'),
-            ('Date' if en else 'Сана' if language == 'Таджикский' else 'Дата', '____________')]
-    cells, _ = _grid(doc, 4, 4, 0.2)
+        _run(_para(doc, after=8), content['subtitle'], s, 12, False, MUTED)
+    _rule_below(_para(doc, after=8), s.accent, '18')
+    cells, _ = _grid(doc, len(meta), len(meta), 0.2)
     for cell, (k, v) in zip(cells, meta):
         _clear_cell(cell)
         _margins(cell, 70, 120)
         _set_cell_shading(cell, s.tint)
         _run(_cell_para(cell, 0), k.upper(), s, 7, True, MUTED)
         _run(_cell_para(cell, 0), v or '—', s, 10, True, INK)
+
+
+def side_by_side(doc, blocks: list[tuple[str, callable]], start: int, s: _Style) -> int:
+    """Two numbered sections in one row; each block fills its cell. Returns the last number."""
+    t = doc.add_table(rows=1, cols=2)
+    t.autofit = False
+    _fix_widths(t, [WIDTH_CM / 2, WIDTH_CM / 2])
+    n = start
+    for cell, (label, fill) in zip((t.cell(0, 0), t.cell(0, 1)), blocks):
+        cell.width = Cm(WIDTH_CM / 2)
+        _clear_cell(cell)
+        n += 1
+        hp = _cell_para(cell, 5)
+        _run(hp, f'{n}. ', s, 13, True, s.accent, s.head)
+        _run(hp, label, s, 13, True, INK, s.head)
+        _rule_below(hp)
+        fill(cell)
+    _para(doc, after=2)
+    return n
+
+
+def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
+    s = _Style(family, language)
+    lab = _LABELS.get(language, _LABELS['Русский'])
+    accent_rgb = _rgb(s.accent)
+    doc = new_doc(content, s)
+    en = language in ('English', 'Английский')
+    header(doc, lab['tag'], content, [
+        ('Subject' if en else 'Фан' if language == 'Таджикский' else 'Предмет',
+         str(content.get('subject') or '')),
+        (lab['grade'], str(content.get('grade') or '')),
+        (L.get('duration', 'Время урока'), str(content.get('duration') or '').strip() or '—'),
+        ('Date' if en else 'Сана' if language == 'Таджикский' else 'Дата', '____________')], s)
 
     n = [0]
 
@@ -269,24 +298,10 @@ def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
     objectives = _short(content.get('objectives'))
     competencies = _short(content.get('competencies'))
     if objectives and competencies:
-        t = doc.add_table(rows=1, cols=2)
-        t.autofit = False
-        _fix_widths(t, [WIDTH_CM / 2, WIDTH_CM / 2])
-        for cell, label, items in ((t.cell(0, 0), L.get('objectives', 'Цели урока'), objectives),
-                                   (t.cell(0, 1), L.get('competencies', 'Компетенции'), competencies)):
-            cell.width = Cm(WIDTH_CM / 2)
-            _clear_cell(cell)
-            n[0] += 1
-            hp = _cell_para(cell, 5)
-            num = _run(hp, f' {n[0]} ', s, 9, True, 'FFFFFF')
-            shd = OxmlElement('w:shd')
-            shd.set(qn('w:val'), 'clear')
-            shd.set(qn('w:color'), 'auto')
-            shd.set(qn('w:fill'), s.accent)
-            num._element.get_or_add_rPr().append(shd)
-            _run(hp, '  ' + label, s, 13, s.family not in ('history', 'literature'), INK, s.head)
-            _bullets(cell, items, s, in_cell=True)
-        _para(doc, after=2)
+        n[0] = side_by_side(doc, [
+            (L.get('objectives', 'Цели урока'), lambda c: _bullets(c, objectives, s, in_cell=True)),
+            (L.get('competencies', 'Компетенции'), lambda c: _bullets(c, competencies, s, in_cell=True)),
+        ], n[0], s)
     else:
         for label, items in ((L.get('objectives', 'Цели урока'), objectives),
                              (L.get('competencies', 'Компетенции'), competencies)):
