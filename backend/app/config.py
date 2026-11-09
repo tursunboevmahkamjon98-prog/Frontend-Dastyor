@@ -85,7 +85,8 @@ class Settings(BaseSettings):
     MAX_ADMIN_LOGIN_ATTEMPTS: int = 5
     ADMIN_LOCKOUT_SECONDS: int = 900
 
-    ADMIN_MIN_PASSWORD_LENGTH: int = 10
+    # Every account, not only admins: the weak_password message promises 10.
+    MIN_PASSWORD_LENGTH: int = 10
 
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 40

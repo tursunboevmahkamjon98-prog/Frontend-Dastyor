@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/auth-context";
 import AuthLayout from "@/components/AuthLayout";
 import { useT } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
+import { isStrongPassword, MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 type Step = "phone" | "code" | "password";
 
@@ -88,7 +89,7 @@ export default function ForgotPasswordPage() {
   async function submitNewPassword(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (newPassword.length < 6) {
+    if (!isStrongPassword(newPassword)) {
       setError(t("register.passwordTooShort"));
       return;
     }
@@ -177,7 +178,7 @@ export default function ForgotPasswordPage() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={inputClass}
