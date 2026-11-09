@@ -116,15 +116,6 @@ _WORKED_EXAMPLE_SUBJECTS = {"Математика", "Алгебра", "Геом�
 
 _CONCEPT_CARD_SUBJECTS = {"Информатика"}
 
-_REAL_IMAGE_SUBJECTS = {
-    "Биология",
-    "География",
-    "История Таджикистана",
-    "Всемирная история",
-    "Таджикская литература",
-    "Информатика",
-}
-
 _CODE_SUBJECTS = {"Информатика"}
 
 _SUBJECT_VISUAL_PREFERENCE: dict[str, list[str]] = {
@@ -266,7 +257,6 @@ def summarize_previous_konspekt(previous) -> dict:
         "quick_check": _first_texts(content.get("quick_check"), 3),
         "group_work": _first_texts(content.get("group_work"), 3),
         "homework": _first_texts(content.get("homework"), 3),
-        "images": _first_texts(content.get("lesson_image_queries"), 2, chars=60),
         "sections": [k for k in ("key_concepts", "main_content", "worked_examples",
                                  "real_life_examples", "group_work", "consolidation")
                      if content.get(k)],
@@ -326,8 +316,6 @@ def _variation_rule(previous_digests: list[dict], angle: str, shape: str) -> str
             parts.append("group work: " + " | ".join(digest["group_work"]))
         if digest.get("homework"):
             parts.append("homework: " + " | ".join(digest["homework"]))
-        if digest.get("images"):
-            parts.append("illustrations asked for: " + " | ".join(digest["images"]))
         if parts:
             lines.append(f"  PREVIOUS VERSION {i}: " + "; ".join(parts))
     lines.append(
@@ -338,8 +326,6 @@ def _variation_rule(previous_digests: list[dict], angle: str, shape: str) -> str
         "  * Do NOT reuse the way the topic was explained above; teach it through the different LESSON SHAPE "
         "given in the rule above instead.\n"
         "  * Change the ORDER in which the material unfolds, and which idea the lesson opens with.\n"
-        "  * Use different illustrations: both \"lesson_image_queries\" entries must differ from every one "
-        "listed above and point at a different aspect of the topic.\n"
         "  * What must NOT change: the topic itself, the language, the grade, the difficulty level, and the "
         "mathematical/scientific correctness. A different lesson, not a different subject — and never a wrong "
         "one for the sake of being different."
@@ -445,13 +431,6 @@ def _konspekt_prompt(
     if optional_json and not include_assessment:
         optional_json = optional_json.rstrip(",")
 
-    real_image_json = (
-        '\n  "real_image_query": "Precise English search term for a real photo/logo/diagram, or empty string — see rules above",'
-        '\n  "real_image_style": "\\"logo\\", \\"cutout\\", or \\"diagram\\", or empty string if real_image_query is empty",'
-        if subject in _REAL_IMAGE_SUBJECTS
-        else ""
-    )
-
     extra_rules = []
     extra_rules.append(
         f"- Be SPECIFIC to \"{topic}\": every sentence names a real number, name, formula, mechanism or example. "
@@ -540,19 +519,6 @@ def _konspekt_prompt(
         extra_rules.append(
             "- \"homework\": 2-3 tasks written out in full; never invent textbook page or exercise numbers."
         )
-    extra_rules.append(
-        f"- \"lesson_images\": exactly 2 entries — \"query\": a SHORT (2-4 words) English Wikimedia Commons phrase for a "
-        f"teaching diagram of \"{topic}\" ITSELF (add \"diagram\" for abstract topics; never a metaphor or a "
-        "neighbouring concept of the same subject); \"position_after\": one of \"key_concepts\", \"main_content\", "
-        "\"worked_examples\", \"consolidation\", different for the two; \"explanation\": one sentence in the lesson "
-        "language telling the pupil what to see in it."
-    )
-    if subject in _REAL_IMAGE_SUBJECTS:
-        extra_rules.append(
-            "- \"real_image_query\"/\"real_image_style\": only when the topic centres on ONE concrete real subject "
-            "(a named software/brand → \"logo\", an organism/object → \"cutout\", an organism's internal anatomy → "
-            "\"diagram\" with query \"<organism> anatomy diagram\"); precise English query. Otherwise both empty strings."
-        )
     angle, shape = _pick_variant(previous_digests or [])
     if variant_out is not None:
         variant_out["angle"] = angle[:80]
@@ -615,7 +581,6 @@ RETURN THIS JSON:
   "group_work": ["Group 1 task", "Group 2 task", "Group 3 task"],
   "important_notes": [],
   "quick_check": [{{"question": "...", "answer": "..."}}],
-  "lesson_images": [{{"query": "...", "position_after": "...", "explanation": "..."}}, {{"query": "...", "position_after": "...", "explanation": "..."}}],{real_image_json}
   "summary": "2-3 sentence summary"{"," if optional_json else ""}{optional_json}
 }}"""
 
@@ -2927,10 +2892,8 @@ CRITICAL RULES:
         _typeset_math_content(content, topic)
         _render_timeline_images(content, topic)
         _render_subject_figures(content, topic)
-        # Lectures carry no pictures (see lecture_design), so don't fetch any.
-        if material_type == "konspekt":
-            await _fetch_real_world_image(content, topic)
-            await _render_lesson_images(content, topic)
+        # No pictures in a konspekt or a lecture (see konspekt_design /
+        # lecture_design), so nothing is fetched from Commons or Wikipedia.
 
     if material_type == "prezentatsiya":
         _drop_bullets_duplicating_visual(content, topic)
@@ -3407,8 +3370,6 @@ async def generate_konspekt_stream(
         _typeset_math_content(content, topic)
         _render_timeline_images(content, topic)
         _render_subject_figures(content, topic)
-        await _fetch_real_world_image(content, topic)
-        await _render_lesson_images(content, topic)
         yield {"stage": "visual_elements", "status": "done", "block_count": len(content.get("visual_blocks") or [])}
 
         yield {"stage": "validate", "status": "start"}

@@ -23,7 +23,7 @@ from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, KeepTogether, 
 
 from app.export_builder import (CODE_FONT, FONT_NAME, FONT_NAME_BOLD, MATH_FONT, MATH_FONT_BOLD,
                                 Paragraph, _math_inline, _pdf_code_card, _pdf_concept_card_grid)
-from app.lecture_builder import (_Design, _figure, _formula_block, _split_definition,
+from app.lecture_builder import (_Design, _formula_block, _split_definition,
                                  _split_main_content, _uid, _visual)
 from app.lecture_templates import get_lecture_template
 
@@ -341,18 +341,15 @@ def build(content: dict, words: dict, language: str, family: str) -> io.BytesIO:
 
     # main content with its visuals and callouts
     parts = _split_main_content(content.get('main_content'))
-    images = list(content.get('lesson_images') or [])
+    # No pictures (same as the lecture): Commons images were often off-topic
+    # and left large blank gaps. Tables and diagrams (visual_blocks) stay.
     visuals = list(content.get('visual_blocks') or [])
     if parts:
         story += sec(words['body'])
-        for i, (head, paragraphs) in enumerate(parts):
+        for head, paragraphs in parts:
             if head:
                 story.append(Paragraph(head, s.p(s.size + 1, s.head, INK, before=4, after=3)))
             story += [para(t) for t in paragraphs]
-            if images and i in (0, len(parts) // 2):
-                story += _figure(images.pop(0), helper)
-        for img in images:
-            story += _figure(img, helper)
         for block in visuals:
             story += _visual(block, helper)
         for f in content.get('formulas') or []:
