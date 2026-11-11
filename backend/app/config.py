@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     ADMIN_LOCKOUT_SECONDS: int = 900
 
     # Every account, not only admins: the weak_password message promises 10.
-    MIN_PASSWORD_LENGTH: int = 10
+    MIN_PASSWORD_LENGTH: int = 6
 
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 40

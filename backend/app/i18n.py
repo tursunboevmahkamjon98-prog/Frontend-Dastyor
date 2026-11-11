@@ -25,7 +25,7 @@ ERROR_MESSAGES = {
         "insufficient_balance": "Бесплатный лимит исчерпан. Каждый следующий материал стоит 0,5 лимита — на балансе недостаточно средств. Пополните баланс, чтобы продолжить.",
         "game_locked": "Игровой раздел пока недоступен для вашего аккаунта.",
         "admin_locked": "Слишком много неудачных попыток входа. Аккаунт временно заблокирован.",
-        "weak_password": "Пароль слишком простой. Нужно минимум 10 символов, заглавная и строчная буква, цифра.",
+        "weak_password": "Пароль слишком короткий. Нужно минимум 6 символов.",
         "ai_busy": "ИИ сейчас перегружен — слишком много запросов одновременно. Подождите пару минут и попробуйте снова.",
     },
     "en": {
@@ -53,7 +53,7 @@ ERROR_MESSAGES = {
         "insufficient_balance": "Your free allowance is used up. Every material after that costs 0.5 of a limit, and your balance is too low — top it up to continue.",
         "game_locked": "The games section is not available for your account yet.",
         "admin_locked": "Too many failed sign-in attempts. This account is temporarily locked.",
-        "weak_password": "That password is too weak. It needs at least 10 characters, an upper- and a lower-case letter, and a digit.",
+        "weak_password": "That password is too short. It needs at least 6 characters.",
         "ai_busy": "The AI is overloaded right now — too many requests at once. Wait a couple of minutes and try again.",
     },
     "tg": {
@@ -81,7 +81,7 @@ ERROR_MESSAGES = {
         "insufficient_balance": "Лимити ройгони шумо тамом шуд. Баъд аз он ҳар мавод 0,5 лимит арзиш дорад ва тавозун кофӣ нест — барои идома додан онро пур кунед.",
         "game_locked": "Бахши бозӣ ҳоло барои ҳисоби шумо дастрас нест.",
         "admin_locked": "Кӯшишҳои нодурусти зиёд. Ҳисоб муваққатан баста шуд.",
-        "weak_password": "Парол хеле содда аст. Ҳадди ақал 10 аломат, ҳарфи калон ва хурд ва рақам лозим аст.",
+        "weak_password": "Парол хеле кӯтоҳ аст. Ҳадди ақал 6 аломат лозим аст.",
         "ai_busy": "AI ҳоло аз ҳад зиёд банд аст — дар як вақт дархостҳои зиёд омадаанд. Якчанд дақиқа интизор шавед ва бори дигар кӯшиш кунед.",
     },
 }

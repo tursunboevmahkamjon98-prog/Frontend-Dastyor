@@ -139,13 +139,9 @@ async def clear_admin_login_failures(identifier: str) -> None:
 
 
 def password_strength_error(password: str, *, min_length: int) -> str | None:
+    # Length only (owner's decision, 2026-11-11): the upper/lower/digit
+    # rule was dropped together with lowering the minimum to 6.
     if len(password) < min_length:
-        return "weak_password"
-    if not any(c.isupper() for c in password):
-        return "weak_password"
-    if not any(c.islower() for c in password):
-        return "weak_password"
-    if not any(c.isdigit() for c in password):
         return "weak_password"
     return None
 

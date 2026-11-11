@@ -54,7 +54,7 @@ const ru = {
   "register.terms": "условия использования",
   "register.and": "и",
   "register.privacy": "политику конфиденциальности",
-  "register.passwordTooShort": "Пароль: минимум 10 символов, заглавная и строчная буква и цифра",
+  "register.passwordTooShort": "Пароль: минимум 6 символов",
   "register.otpTitle": "Подтвердите номер",
 
   
@@ -670,7 +670,7 @@ const tg: Messages = {
   "register.terms": "шартҳои истифода",
   "register.and": "ва",
   "register.privacy": "сиёсати махфият",
-  "register.passwordTooShort": "Парол: ҳадди ақал 10 аломат, ҳарфи калон ва хурд ва рақам",
+  "register.passwordTooShort": "Парол: ҳадди ақал 6 аломат",
   "register.otpTitle": "Рақамро тасдиқ кунед",
 
   "forgot.title": "Барқарорсозии парол",
@@ -1262,7 +1262,7 @@ const en: Messages = {
   "register.terms": "terms of use",
   "register.and": "and the",
   "register.privacy": "privacy policy",
-  "register.passwordTooShort": "Password: at least 10 characters, an upper- and a lower-case letter and a digit",
+  "register.passwordTooShort": "Password: at least 6 characters",
   "register.otpTitle": "Confirm your number",
 
   "forgot.title": "Reset your password",

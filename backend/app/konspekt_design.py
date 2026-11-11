@@ -22,7 +22,8 @@ from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, KeepTogether, 
                                 Spacer, Table, TableStyle)
 
 from app.export_builder import (CODE_FONT, FONT_NAME, FONT_NAME_BOLD, MATH_FONT, MATH_FONT_BOLD,
-                                Paragraph, _math_inline, _pdf_code_card, _pdf_concept_card_grid)
+                                Paragraph, _format_grade, _math_inline, _pdf_code_card,
+                                _pdf_concept_card_grid)
 from app.lecture_builder import (_Design, _formula_block, _split_definition,
                                  _split_main_content, _uid, _visual)
 from app.lecture_templates import get_lecture_template
@@ -199,11 +200,20 @@ MARGIN = 1.75 * cm
 WIDTH = A4[0] - 2 * MARGIN
 
 
-def new_doc(buf, content: dict, s: _Style) -> BaseDocTemplate:
+_GRADE_SUFFIX = {'Русский': 'класс', 'Таджикский': 'синф', 'Английский': 'grade',
+                 'English': 'grade'}
+
+
+def new_doc(buf, content: dict, s: _Style, language: str | None = None) -> BaseDocTemplate:
     """A4 page with the footer line, title · subject and page number."""
     title = str(content.get('title') or '')
     subject = str(content.get('subject') or '')
     grade = str(content.get('grade') or '')
+    # The stored grade is the Russian "8 класс"; print it in the document's
+    # language so a Tajik page does not end in a Russian footer.
+    lang = language or str(content.get('language') or 'Русский')
+    if grade:
+        grade = _format_grade(grade, _GRADE_SUFFIX.get(lang, 'класс'))
     footer_text = ' · '.join(p for p in (title, ', '.join(q for q in (subject, grade) if q)) if p)
     mx = MARGIN
 
@@ -259,7 +269,7 @@ def build(content: dict, words: dict, language: str, family: str) -> io.BytesIO:
     width = WIDTH
     subject = str(content.get('subject') or '')
     grade = str(content.get('grade') or '')
-    doc = new_doc(buf, content, s)
+    doc = new_doc(buf, content, s, language)
     helper = _Design(get_lecture_template('planspekt'), s.accent, words)
 
     duration = str(content.get('duration') or '').strip() or words.get('duration_value', '')
