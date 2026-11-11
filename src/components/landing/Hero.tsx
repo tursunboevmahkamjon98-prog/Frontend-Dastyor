@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Smartphone, Download } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { SUBJECTS, LANGUAGES } from "@/lib/material-types";
 import TeacherStage from "./TeacherStage";
@@ -15,7 +15,7 @@ const STATS = [
   { value: "4", key: "landing.stat.formats" },
 ] as const;
 
-export default function Hero() {
+export default function Hero({ apkSize }: { apkSize: string | null }) {
   const t = useT();
 
   return (
@@ -86,6 +86,32 @@ export default function Hero() {
               {t("landing.hero.ctaSecondary")}
             </Link>
           </div>
+
+          {/* Direct APK download: the app is not on Google Play, so this is the
+              install path. The file lives in public/ so the same deploy that
+              ships the code ships the APK. */}
+          <a
+            href="/dastyor.apk"
+            download
+            className="group relative mt-5 inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-text-primary px-5 py-3 text-left shadow-[0_4px_0_0_rgba(0,0,0,0.35),0_14px_28px_-10px_rgba(41,19,21,0.45)] transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
+          >
+            <span
+              className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/10 transition-transform duration-700 group-hover:translate-x-[350%]"
+              aria-hidden
+            />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/25">
+              <Smartphone className="h-5 w-5 text-primary-light" />
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[11px] font-medium text-white/60">{t("landing.hero.apkTitle")}</span>
+              <span className="flex items-center gap-1.5 text-sm font-bold text-white">
+                dastyor.apk
+                {apkSize && <span className="font-normal text-white/55">· {apkSize} {t("landing.hero.apkMb")}</span>}
+              </span>
+            </span>
+            <Download className="ml-1 h-4 w-4 shrink-0 text-white/70 transition group-hover:translate-y-0.5" />
+          </a>
+          <p className="mt-2 text-xs text-text-tertiary">{t("landing.hero.apkNote")}</p>
 
           {/* Inline stats — a slim row of numbers, not boxed cards, so the
               hero reads as one composition instead of hero + a stats
