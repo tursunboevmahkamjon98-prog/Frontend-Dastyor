@@ -894,10 +894,19 @@ def _tag_for_toc(flowables: list, label: str):
         flowables[0]._toc_label = label
 
 
+# A numbered plan question the model ran into the end of the previous
+# paragraph ("…мешаванд. 2. Чӣ тавр …?") instead of starting a new line.
+# Put it on its own line so it becomes a subheading like the first one,
+# instead of printing "2. …?" in the middle of body text.
+_INLINE_QUESTION = re.compile(
+    r'(?<=[.!?…»"”)])[ \t]+(\d{1,2}[.)][ \t]+[^\n?!]{4,180}?\?)(?=[ \t]|$)', re.M)
+
+
 def _split_main_content(text: str) -> list[tuple[str, list[str]]]:
     raw = str(text or '').strip()
     if not raw:
         return []
+    raw = _INLINE_QUESTION.sub(lambda m: '\n' + m.group(1) + '\n', raw)
     parts: list[tuple[str, list[str]]] = []
     current_head = ''
     current: list[str] = []
@@ -905,7 +914,7 @@ def _split_main_content(text: str) -> list[tuple[str, list[str]]]:
         line = block.strip()
         if not line:
             continue
-        m = re.match(r'^(\d{1,2})[.)]\s+(.{4,120})$', line)
+        m = re.match(r'^(\d{1,2})[.)]\s+(.{4,180})$', line)
         if m and not line.rstrip().endswith(('.', ':', ';')) or (m and line.rstrip().endswith('?')):
             if current_head or current:
                 parts.append((current_head, current))

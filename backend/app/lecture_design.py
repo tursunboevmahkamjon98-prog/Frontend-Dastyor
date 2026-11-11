@@ -54,7 +54,7 @@ def build(content: dict, language: str = 'Русский') -> io.BytesIO:
     w = _words(language)
     s = _Style('general')
     buf = io.BytesIO()
-    doc = new_doc(buf, content, s)
+    doc = new_doc(buf, content, s, language)
     helper = _Design(get_lecture_template('planspekt'), s.accent, w)
 
     grade = str(content.get('grade') or '')
