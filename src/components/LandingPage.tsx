@@ -8,11 +8,11 @@ import Faq from "@/components/landing/Faq";
 import FinalCta from "@/components/landing/FinalCta";
 import Footer from "@/components/landing/Footer";
 
-export default function LandingPage() {
+export default function LandingPage({ apkSize }: { apkSize: string | null }) {
   return (
     <main className="flex min-h-screen flex-col overflow-x-clip bg-background">
       <Header />
-      <Hero />
+      <Hero apkSize={apkSize} />
       <Features />
       <HowItWorks />
       <div id="subjects">
