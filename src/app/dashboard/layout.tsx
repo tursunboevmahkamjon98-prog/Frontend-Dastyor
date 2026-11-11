@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet, LogOut, Gamepad2 } from "lucide-react";
+import { Home, Layers, PlusCircle, User, WifiOff, BookOpen, Wallet, LogOut, Gamepad2, Smartphone, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { markBackNavigationListener } from "@/lib/back-navigation";
@@ -116,6 +116,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
+
+        {/* Android app download, same file as the landing hero button
+            (public/dastyor.apk). */}
+        <a
+          href="/dastyor.apk"
+          download
+          className="group mx-3 mb-3 flex items-center gap-3 overflow-hidden rounded-xl bg-text-primary p-3 shadow-[0_3px_0_0_rgba(0,0,0,0.35)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_rgba(0,0,0,0.35),0_10px_20px_-8px_rgba(41,19,21,0.45)]"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/25 transition group-hover:scale-110">
+            <Smartphone className="h-4 w-4 text-primary-light" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[11px] text-white/60">{t("landing.hero.apkTitle")}</span>
+            <span className="block truncate text-sm font-bold text-white">dastyor.apk</span>
+          </span>
+          <Download className="h-4 w-4 shrink-0 text-white/70 transition group-hover:translate-y-0.5" />
+        </a>
 
         {}
         <BillingLink
