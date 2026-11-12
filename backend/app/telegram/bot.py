@@ -901,13 +901,10 @@ class PaymentBot:
     # next succeed.
 
 
-    async def cmd_topup_history(self, chat_id: int) -> None:
+    async def _history_lines(self, limit: int) -> list[str]:
         lang = self.admin_lang
-        entries = await topup.topup_history(limit=12)
-        if not entries:
-            await self._say_admin(chat_id, topup_t("history_empty"), menu=True)
-            return
-        lines = [topup_t("history_header")]
+        entries = await topup.topup_history(limit=limit)
+        lines = []
         for e in entries:
             lines.append(topup_t(
                 "history_line", code=e.operation_code or "—",
@@ -917,12 +914,19 @@ class PaymentBot:
                 when=e.created_at.strftime("%d.%m %H:%M"),
                 note=topup_t("history_note", note=e.note) if e.note else "",
             ))
-        await self._say_admin(chat_id, "\n\n".join(lines), menu=True)
+        return lines
 
-    async def cmd_topup_stats(self, chat_id: int) -> None:
+    async def cmd_topup_history(self, chat_id: int) -> None:
+        lines = await self._history_lines(limit=12)
+        if not lines:
+            await self._say_admin(chat_id, topup_t("history_empty"), menu=True)
+            return
+        await self._say_admin(chat_id, "\n\n".join([topup_t("history_header"), *lines]), menu=True)
+
+    async def _stats_text(self) -> str:
         lang = self.admin_lang
         s = await topup.topup_stats()
-        await self._say_admin(chat_id, topup_t(
+        return topup_t(
             "stats",
             today_count=s.today_count,
             today_amount=fmt_somoni(s.today_dirams, lang),
@@ -931,7 +935,10 @@ class PaymentBot:
             total_count=s.total_count,
             total_amount=fmt_somoni(s.total_dirams, lang),
             users=s.distinct_users, currency=currency(lang),
-        ), menu=True)
+        )
+
+    async def cmd_topup_stats(self, chat_id: int) -> None:
+        await self._say_admin(chat_id, await self._stats_text(), menu=True)
 
     async def handle_find_user(self, chat_id: int, body: str) -> None:
         lang = self.admin_lang
@@ -1228,7 +1235,15 @@ class PaymentBot:
             return
 
         if command == "/finance":
-            await self._say_admin(chat_id, await admin_crm_bridge.finance_report_text(telegram_user_id))
+            # One "Report" button instead of three: the weekly report, then
+            # the all-time statistics and the last few top-ups.
+            parts = [await admin_crm_bridge.finance_report_text(telegram_user_id)]
+            if await service.has_admin_permission(telegram_user_id, "reports.view"):
+                parts.append(await self._stats_text())
+                recent = await self._history_lines(limit=5)
+                if recent:
+                    parts.append("\n\n".join([topup_t("history_header"), *recent]))
+            await self._say_admin(chat_id, "\n\n— — —\n\n".join(parts))
             return
 
         if command == "/audit":
