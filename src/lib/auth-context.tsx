@@ -33,10 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!getToken() && !getRefreshToken()) {
-      setLoading(false);
-      return;
-    }
     
     
     
@@ -54,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     
     async function loadUser() {
+      if (!getToken() && !getRefreshToken()) return;
       const outcome = await ensureAccessToken();
       if (outcome !== "ok") {
         if (outcome === "rejected") clearToken();

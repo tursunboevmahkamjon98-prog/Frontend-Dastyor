@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
 
 
 export default function Reveal({
@@ -13,22 +21,22 @@ export default function Reveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
+  const [inView, setInView] = useState(false);
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false
+  );
+  // With reduced motion the content is shown at once, without the animation.
+  const shown = inView || reducedMotion;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    
-    
-    
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setShown(true);
-      return;
-    }
+    if (!el || reducedMotion) return;
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setShown(true);
+          setInView(true);
           io.disconnect();
         }
       },
@@ -36,7 +44,7 @@ export default function Reveal({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <div
@@ -44,7 +52,7 @@ export default function Reveal({
       className={className}
       style={{
         opacity: shown ? 1 : 0,
-        animation: shown ? `landing-reveal 0.7s ease-out ${delay}ms both` : undefined,
+        animation: shown && !reducedMotion ? `landing-reveal 0.7s ease-out ${delay}ms both` : undefined,
       }}
     >
       {children}

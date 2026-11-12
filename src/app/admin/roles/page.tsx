@@ -54,8 +54,14 @@ export default function AdminRolesPage() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    // First load: error is still null, so only the request itself is needed.
+    let cancelled = false;
+    adminApi
+      .roster()
+      .then((r) => { if (!cancelled) setRoster(r); })
+      .catch((e) => { if (!cancelled) setError(e instanceof ApiError ? e.message : "Не удалось загрузить список"); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function handlePromote(userId: string, tier: AdminTier) {
     setBusyId(userId);

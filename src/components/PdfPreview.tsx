@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, ExternalLink, Loader2 } from "lucide-react";
 import { fetchMaterialExport, downloadMaterial, ExportBody, ApiError } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -8,8 +8,9 @@ import { useT } from "@/lib/i18n";
 
 export default function PdfPreview({ body }: { body: ExportBody }) {
   const t = useT();
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // The result remembers which content it belongs to, so a stale preview
+  // disappears as soon as the content changes, without a reset in the effect.
+  const [result, setResult] = useState<{ key: string; url?: string; error?: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   
@@ -17,28 +18,39 @@ export default function PdfPreview({ body }: { body: ExportBody }) {
   
   
   const contentKey = JSON.stringify(body.content);
+  const current = result?.key === contentKey ? result : null;
+  const url = current?.url ?? null;
+  const error = current?.error ?? null;
+
+  // The fetch below re-runs only when the content changes; it reads the
+  // latest body and translator from here.
+  const latest = useRef({ body, t });
+  useEffect(() => {
+    latest.current = { body, t };
+  });
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let cancelled = false;
-    setUrl(null);
-    setError(null);
 
-    fetchMaterialExport("pdf", body)
+    fetchMaterialExport("pdf", latest.current.body)
       .then((blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
+        setResult({ key: contentKey, url: objectUrl });
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : t("material.pdfFailed"));
+        if (cancelled) return;
+        setResult({
+          key: contentKey,
+          error: err instanceof ApiError ? err.message : latest.current.t("material.pdfFailed"),
+        });
       });
 
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-    
   }, [contentKey]);
 
   async function handleDownload() {

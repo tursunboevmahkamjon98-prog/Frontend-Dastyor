@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Check, Clock3, CreditCard, FileImage, LoaderCircle, Wallet } from "lucide-react";
@@ -37,20 +37,28 @@ export default function BillingPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const load = useCallback(async () => {
-    const [b, text, requests] = await Promise.all([
-      billingApi.balance(), billingApi.payInstructions(), billingApi.topupHistory(),
-    ]);
-    setBalance(b.balance_somoni);
-    setInstructions(text.text);
-    setHistory(requests);
-  }, []);
+  const load = useCallback(
+    () =>
+      Promise.all([billingApi.balance(), billingApi.payInstructions(), billingApi.topupHistory()]).then(
+        ([b, text, requests]) => {
+          setBalance(b.balance_somoni);
+          setInstructions(text.text);
+          setHistory(requests);
+        }
+      ),
+    []
+  );
+
+  // Read the translator through a ref so a language switch does not restart polling.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  });
 
   useEffect(() => {
-    load().catch(() => setError(t("billing.loadFailed")));
+    load().catch(() => setError(tRef.current("billing.loadFailed")));
     const timer = window.setInterval(() => { load().catch(() => undefined); }, 20000);
     return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   const bankInstructions = useMemo(() => {

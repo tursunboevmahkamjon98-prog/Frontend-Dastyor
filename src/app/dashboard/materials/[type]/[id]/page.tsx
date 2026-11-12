@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Download, FileText, Trash2, Loader2, Undo2, RefreshCw, Pencil, Play, Send, Sparkles, RotateCw } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Loader2, Undo2, RefreshCw, Pencil, Play, Send, Sparkles } from "lucide-react";
 import { materialsApi, downloadMaterial, MaterialOut, MaterialType, ApiError } from "@/lib/api";
 import PdfPreview from "@/components/PdfPreview";
 import { useT } from "@/lib/i18n";
 import { MATERIAL_TYPE_CONFIG, KONSPEKT_TEMPLATES, getSubjectAccent } from "@/lib/material-types";
-import KonspektBody from "@/components/konspekt/KonspektBody";
 import GamePlayer from "@/components/GamePlayer";
 import PresentMode from "@/components/PresentMode";
 import VisualBlockView, { VisualBlock, SlideHeader } from "@/components/presentation/SlideVisuals";
@@ -53,13 +52,7 @@ export default function MaterialViewerPage() {
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
-  const [regenerating, setRegenerating] = useState<string | null>(null);
-  const [fetchingImage, setFetchingImage] = useState(false);
-  const [replacingLessonImage, setReplacingLessonImage] = useState<number | null>(null);
-  const [uploadingLessonImage, setUploadingLessonImage] = useState<number | null>(null);
   const [regeneratingSlide, setRegeneratingSlide] = useState<number | null>(null);
-  const [regeneratingQuestion, setRegeneratingQuestion] = useState<number | null>(null);
-  const [regeneratingTask, setRegeneratingTask] = useState<{ kind: "individual_tasks" | "group_tasks"; index: number } | null>(null);
   const [hasUndo, setHasUndo] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -70,7 +63,6 @@ export default function MaterialViewerPage() {
   
   
   
-  const [view, setView] = useState<"content" | "pdf">("content");
   const [chatInstruction, setChatInstruction] = useState("");
   const [chatSubmitting, setChatSubmitting] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -88,100 +80,15 @@ export default function MaterialViewerPage() {
           setContent({});
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t("material.loadFailed")));
+      // "" means "no server message": the translated fallback is chosen at render time.
+      .catch((err) => setError(err instanceof ApiError ? err.message : ""));
   }, [type, id]);
 
-  if (error) {
-    return <div className="px-4 pt-10 text-center text-sm text-primary-dark">{error}</div>;
+  if (error !== null) {
+    return <div className="px-4 pt-10 text-center text-sm text-primary-dark">{error || t("material.loadFailed")}</div>;
   }
   if (!item || !config) {
     return <div className="px-4 pt-10 text-center text-sm text-text-secondary">Загрузка...</div>;
-  }
-
-  
-  
-  
-  
-  
-  async function handleRegenerateSection(section: string) {
-    if (!item) return;
-    setRegenerating(section);
-    try {
-      const result = await materialsApi.regenerateKonspektSection(
-        {
-          topic: item.title,
-          subject: item.subject,
-          language: typeof content.language === "string" ? content.language : "Русский",
-          level: typeof content.level === "string" ? content.level : "Средний",
-          grade: item.grade,
-          section,
-          existing_content: content,
-        },
-        type === "lektsiya" ? "lektsiya" : "konspekt"
-      );
-      const nextContent = { ...content, ...result.item };
-      setContent(nextContent);
-      const updated = await materialsApi.update(type, id, { content: JSON.stringify(nextContent) });
-      
-      
-      
-      setHasUndo(Boolean(updated.has_undo));
-    } catch {
-      
-    } finally {
-      setRegenerating(null);
-    }
-  }
-
-  
-  
-  
-  
-  async function handleFetchImage() {
-    if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
-    setFetchingImage(true);
-    try {
-      const updated = await materialsApi.fetchMissingImage(id, type);
-      const raw = updated.content ?? "{}";
-      setContent(JSON.parse(raw));
-    } catch {
-      
-    } finally {
-      setFetchingImage(false);
-    }
-  }
-
-  
-  
-  
-  async function handleReplaceLessonImage(index: number) {
-    if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
-    setReplacingLessonImage(index);
-    try {
-      const updated = await materialsApi.replaceLessonImage(id, index, type);
-      const raw = updated.content ?? "{}";
-      setContent(JSON.parse(raw));
-    } catch {
-      
-    } finally {
-      setReplacingLessonImage(null);
-    }
-  }
-
-  
-  
-  async function handleUploadLessonImage(index: number, file: File) {
-    if (!item || (type !== "konspekt" && type !== "lektsiya")) return;
-    setUploadingLessonImage(index);
-    try {
-      const updated = await materialsApi.uploadLessonImage(id, index, file, type);
-      const raw = updated.content ?? "{}";
-      setContent(JSON.parse(raw));
-    } catch {
-      
-    } finally {
-      setUploadingLessonImage(null);
-    }
   }
 
   
@@ -214,66 +121,6 @@ export default function MaterialViewerPage() {
       setRegeneratingSlide(null);
     }
   }
-
-  
-  
-  
-  async function handleRegenerateQuestion(index: number) {
-    if (!item) return;
-    const questions = (content.questions as Record<string, unknown>[] | undefined) ?? [];
-    if (index < 0 || index >= questions.length) return;
-    setRegeneratingQuestion(index);
-    try {
-      const result = await materialsApi.regenerateTestQuestion({
-        topic: item.title,
-        subject: item.subject,
-        language: typeof content.language === "string" ? content.language : "Русский",
-        level: typeof content.level === "string" ? content.level : "Средний",
-        grade: item.grade,
-        item_index: index,
-        existing_items: questions,
-      });
-      const nextQuestions = questions.map((q, i) => (i === index ? result.item : q));
-      const nextContent = { ...content, questions: nextQuestions };
-      setContent(nextContent);
-      await materialsApi.update(type, id, { questions_json: JSON.stringify(nextContent) });
-    } catch {
-      
-    } finally {
-      setRegeneratingQuestion(null);
-    }
-  }
-
-  
-  
-  
-  async function handleRegeneratePracticalTask(kind: "individual_tasks" | "group_tasks", index: number) {
-    if (!item) return;
-    const items = (content[kind] as Record<string, unknown>[] | undefined) ?? [];
-    if (index < 0 || index >= items.length) return;
-    setRegeneratingTask({ kind, index });
-    try {
-      const result = await materialsApi.regeneratePracticalTask({
-        topic: item.title,
-        subject: item.subject,
-        language: typeof content.language === "string" ? content.language : "Русский",
-        level: typeof content.level === "string" ? content.level : "Средний",
-        grade: item.grade,
-        item_index: index,
-        existing_items: items,
-        kind,
-      });
-      const nextItems = items.map((t, i) => (i === index ? result.item : t));
-      const nextContent = { ...content, [kind]: nextItems };
-      setContent(nextContent);
-      await materialsApi.update(type, id, { tasks_json: JSON.stringify(nextContent) });
-    } catch {
-      
-    } finally {
-      setRegeneratingTask(null);
-    }
-  }
-
   
   
   async function handleUndo() {
@@ -518,7 +365,7 @@ export default function MaterialViewerPage() {
       )}
 
       {}
-      {((view === "content" && type === "prezentatsiya") || type === "igra") && (
+      {(type === "prezentatsiya" || type === "igra") && (
         <>
           {type === "prezentatsiya" && (
             <PresentationBody content={content} onRegenerateSlide={handleRegenerateSlide} regeneratingSlide={regeneratingSlide} />
@@ -539,182 +386,6 @@ export default function MaterialViewerPage() {
     </div>
   );
 }
-
-function TestBody({
-  content,
-  onRegenerateQuestion,
-  regeneratingQuestion,
-}: {
-  content: Record<string, unknown>;
-  onRegenerateQuestion?: (index: number) => void;
-  regeneratingQuestion?: number | null;
-}) {
-  const description = content.description as string | undefined;
-  const questions = (content.questions as Question[] | undefined) ?? [];
-  return (
-    <div>
-      {description && <p className="mb-6 text-sm italic text-text-secondary">{description}</p>}
-      {questions.map((q, i) => (
-        <div key={i} className="mb-4 rounded-2xl border border-border-light bg-surface p-4">
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <p className="font-medium text-text-primary">
-              {i + 1}. {q.question}
-            </p>
-            {onRegenerateQuestion && (
-              <button
-                onClick={() => onRegenerateQuestion(i)}
-                disabled={regeneratingQuestion === i}
-                title="Пересоздать этот вопрос заново"
-                className="shrink-0 rounded-lg p-1 text-text-tertiary hover:bg-surface-muted hover:text-primary disabled:opacity-50"
-              >
-                <RotateCw className={`h-3.5 w-3.5 ${regeneratingQuestion === i ? "animate-spin" : ""}`} />
-              </button>
-            )}
-          </div>
-          {q.type === "open_ended" ? (
-            q.model_answer && (
-              <p className="rounded-lg bg-surface-muted p-3 text-sm text-text-secondary">
-                <span className="font-medium text-primary">Ответ: </span>
-                {q.model_answer}
-              </p>
-            )
-          ) : (
-            <ul className="space-y-1.5">
-              {(q.options ?? []).map((opt, j) => {
-                const isCorrect = q.correct_indices ? q.correct_indices.includes(j) : q.correct_index === j;
-                return (
-                  <li
-                    key={j}
-                    className={`rounded-lg px-3 py-1.5 text-sm ${
-                      isCorrect ? "bg-primary-50 font-medium text-primary-dark" : "text-text-secondary"
-                    }`}
-                  >
-                    {String.fromCharCode(65 + j)}) {opt}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {q.explanation && <p className="mt-2 text-xs italic text-text-tertiary">{q.explanation}</p>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface PracticalTaskItem {
-  title?: string;
-  difficulty?: string;
-  group_size?: string;
-  roles?: string[];
-  instructions?: string;
-  expected_outcome?: string;
-}
-
-const DIFFICULTY_STYLE: Record<string, string> = {
-  easy: "bg-green-100 text-green-700",
-  medium: "bg-amber-100 text-amber-700",
-  hard: "bg-red-100 text-red-700",
-};
-
-
-
-
-function PracticalBody({
-  content,
-  onRegenerateTask,
-  regeneratingTask,
-}: {
-  content: Record<string, unknown>;
-  onRegenerateTask?: (kind: "individual_tasks" | "group_tasks", index: number) => void;
-  regeneratingTask?: { kind: "individual_tasks" | "group_tasks"; index: number } | null;
-}) {
-  const description = content.description as string | undefined;
-  const individual = (content.individual_tasks as PracticalTaskItem[] | undefined) ?? [];
-  const group = (content.group_tasks as PracticalTaskItem[] | undefined) ?? [];
-
-  function TaskCard({
-    task,
-    index,
-    kind,
-  }: {
-    task: PracticalTaskItem;
-    index: number;
-    kind: "individual_tasks" | "group_tasks";
-  }) {
-    const isRegenerating = regeneratingTask?.kind === kind && regeneratingTask.index === index;
-    return (
-      <div className="mb-4 rounded-2xl border border-border-light bg-surface p-4">
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <p className="font-medium text-text-primary">
-            {index + 1}. {task.title}
-          </p>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {task.difficulty && (
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
-                  DIFFICULTY_STYLE[task.difficulty.toLowerCase()] ?? "bg-surface-muted text-text-secondary"
-                }`}
-              >
-                {task.difficulty}
-              </span>
-            )}
-            {onRegenerateTask && (
-              <button
-                onClick={() => onRegenerateTask(kind, index)}
-                disabled={isRegenerating}
-                title="Пересоздать это задание заново"
-                className="rounded-lg p-1 text-text-tertiary hover:bg-surface-muted hover:text-primary disabled:opacity-50"
-              >
-                <RotateCw className={`h-3.5 w-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
-              </button>
-            )}
-          </div>
-        </div>
-        {task.group_size && <p className="mb-2 text-xs text-text-tertiary">{task.group_size}</p>}
-        {task.instructions && <p className="mb-2 text-sm text-text-secondary">{task.instructions}</p>}
-        {(task.roles?.length ?? 0) > 0 && (
-          <ul className="mb-2 space-y-1 text-sm text-text-secondary">
-            {task.roles!.map((role, j) => (
-              <li key={j}>• {role}</li>
-            ))}
-          </ul>
-        )}
-        {task.expected_outcome && (
-          <p className="rounded-lg bg-surface-muted p-2.5 text-xs text-text-tertiary">{task.expected_outcome}</p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {description && <p className="mb-6 text-sm italic text-text-secondary">{description}</p>}
-      {individual.length > 0 && (
-        <>
-          <h3 className="mb-3 text-sm font-bold text-text-primary">Индивидуальные задания</h3>
-          {individual.map((t, i) => (
-            <TaskCard key={i} task={t} index={i} kind="individual_tasks" />
-          ))}
-        </>
-      )}
-      {group.length > 0 && (
-        <>
-          <h3 className="mb-3 mt-4 text-sm font-bold text-text-primary">Групповые задания</h3>
-          {group.map((t, i) => (
-            <TaskCard key={i} task={t} index={i} kind="group_tasks" />
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-
-
-
-
-
 
 function PresentationBody({
   content,
