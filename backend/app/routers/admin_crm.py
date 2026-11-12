@@ -600,6 +600,11 @@ def _raise_for_decision_outcome(outcome: str) -> None:
             status_code=409,
             detail="This bank reference has already been credited on another request",
         )
+    if outcome == "duplicate_receipt":
+        raise HTTPException(
+            status_code=409,
+            detail="The same receipt has already been credited on another request",
+        )
     if outcome == "amount_conflict":
         raise HTTPException(
             status_code=400,

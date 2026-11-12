@@ -950,6 +950,33 @@ async def get_request(request_id: str) -> PaymentRequestView | None:
     )
 
 
+# Two requests from the same user for the same amount with a receipt file
+# of exactly the same size are the same receipt sent twice (a double
+# submit on the website, or a retry). Without OCR'd bank references -
+# often missing on web receipts - nothing else told them apart, and two
+# admins could each approve one copy: the user was credited twice.
+_DUPLICATE_RECEIPT_SQL = (
+    "SELECT o.public_code FROM payment_requests o "
+    "WHERE o.user_id = :uid AND o.requested_dirams = :dirams "
+    "  AND o.receipt_bytes IS NOT NULL AND o.receipt_bytes = :size "
+    "  AND o.status IN ({statuses}) AND o.id <> :exclude "
+    "  AND o.created_at > now() - interval '30 days' "
+    "ORDER BY o.created_at LIMIT 1"
+)
+
+
+async def find_duplicate_receipt_request(user_id: str, dirams: int,
+                                         size_bytes: int) -> str | None:
+    """Public code of an open or approved request carrying the same receipt."""
+    async with async_session() as db:
+        return (await db.execute(text(_DUPLICATE_RECEIPT_SQL.format(
+            statuses=":pending, :needs_info, :approved")), {
+            "uid": user_id, "dirams": dirams, "size": size_bytes, "exclude": "",
+            "pending": STATUS_PENDING, "needs_info": STATUS_NEEDS_INFO,
+            "approved": STATUS_APPROVED,
+        })).scalar()
+
+
 async def find_duplicate_reference(reference_normalized: str | None,
                                    exclude_request_id: str) -> str | None:
     """The public code of an earlier request carrying the same reference.
@@ -1209,6 +1236,29 @@ async def approve_payment(request_id: str, admin_telegram_id: int | None, *,
 
             user_id, public_code, requested_dirams, chat_id, reference_norm = row
             amount = amount_override_dirams or requested_dirams
+
+            # Lock the user's row before looking for a duplicate receipt.
+            # Two admins approving two copies of one receipt at the same
+            # moment then run one after the other, so the second sees the
+            # first's committed approval and stops here.
+            await conn.execute(text(
+                "SELECT 1 FROM users WHERE id = :uid FOR UPDATE"
+            ), {"uid": user_id})
+            size = (await conn.execute(text(
+                "SELECT receipt_bytes FROM payment_requests WHERE id = :id"
+            ), {"id": request_id})).scalar()
+            if size:
+                duplicate_of = (await conn.execute(text(
+                    _DUPLICATE_RECEIPT_SQL.format(statuses=":approved")
+                ), {"uid": user_id, "dirams": requested_dirams, "size": size,
+                    "exclude": request_id, "approved": STATUS_APPROVED})).scalar()
+                if duplicate_of:
+                    await db.rollback()
+                    logger.warning(
+                        f"Approve refused for {public_code}: same receipt already "
+                        f"credited on {duplicate_of} (admin {admin_telegram_id})"
+                    )
+                    return DecisionResult(outcome="duplicate_receipt", request=existing)
 
             # Credit. RETURNING gives the post-update balance, so
             # balance_before is derived rather than read separately —
@@ -1546,6 +1596,7 @@ class AdminEntry:
     full_name: str | None = None
     added_by_telegram_id: int | None = None
     added_at: datetime | None = None
+    tier: str | None = None
 
     @property
     def pending(self) -> bool:
@@ -1615,7 +1666,7 @@ async def list_admins() -> list[AdminEntry]:
     async with async_session() as db:
         rows = (await db.execute(text(
             "SELECT ta.telegram_user_id, ta.user_id, u.short_id, u.full_name, "
-            "       ta.added_by_telegram_id, ta.added_at "
+            "       ta.added_by_telegram_id, ta.added_at, u.admin_tier "
             "FROM telegram_admins ta LEFT JOIN users u ON u.id = ta.user_id "
             "WHERE ta.revoked = FALSE "
             "ORDER BY ta.telegram_user_id IS NULL, ta.added_at"
@@ -1628,8 +1679,62 @@ async def list_admins() -> list[AdminEntry]:
             telegram_user_id=r[0], is_root=False, user_id=r[1],
             short_id=r[2], full_name=r[3],
             added_by_telegram_id=r[4], added_at=r[5],
+            # NULL means "admin from before tiers existed", which counts as super.
+            tier=r[6] or "super",
         ))
     return entries
+
+
+async def set_admin_tier(identifier: str, tier: str,
+                         actor_telegram_id: int) -> AdminChangeResult:
+    """Change the access level of someone who is ALREADY an admin.
+
+    add_admin_by_short_id refuses an existing admin ("already"), so before
+    this there was no way to fix an admin who had been granted the wrong
+    tier - typically 'support', the silent default, which cannot approve
+    payments or top up balances.
+    """
+    from app.admin_roles import ADMIN_TIERS
+    if tier not in ADMIN_TIERS:
+        return AdminChangeResult(outcome="not_found")
+    raw = (identifier or "").strip()
+    short_id = raw.lstrip("#")
+    async with async_session() as db:
+        conn = await db.connection()
+        if short_id.isdigit():
+            row = (await conn.execute(text(
+                "SELECT id, short_id, full_name, role FROM users WHERE short_id = :sid"
+            ), {"sid": short_id})).first()
+        else:
+            username = normalize_username(raw)
+            row = None
+            if username:
+                row = (await conn.execute(text(
+                    "SELECT u.id, u.short_id, u.full_name, u.role "
+                    "FROM telegram_accounts ta JOIN users u ON u.id = ta.user_id "
+                    "WHERE ta.username = :uname AND ta.revoked = FALSE"
+                ), {"uname": username})).first()
+        if row is None:
+            await db.rollback()
+            return AdminChangeResult(outcome="not_found")
+        user_id, found_short, full_name, role = row
+        if role != "admin":
+            await db.rollback()
+            return AdminChangeResult(outcome="not_admin")
+        await conn.execute(text(
+            "UPDATE users SET admin_tier = :tier WHERE id = :uid"
+        ), {"tier": tier, "uid": user_id})
+        await _admin_audit(conn, "admin_tier_changed", actor_telegram_id, {
+            "dastyor_user_id": user_id, "short_id": found_short, "tier": tier,
+        })
+        await db.commit()
+    logger.warning(
+        f"Admin tier of Dastyor #{found_short} set to {tier} by admin {actor_telegram_id}"
+    )
+    return AdminChangeResult(outcome="tier_changed", entry=AdminEntry(
+        telegram_user_id=None, is_root=False, user_id=user_id,
+        short_id=found_short, full_name=full_name, tier=tier,
+    ))
 
 
 @dataclass

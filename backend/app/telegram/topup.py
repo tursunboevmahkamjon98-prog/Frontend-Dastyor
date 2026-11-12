@@ -233,6 +233,44 @@ class CreditResult:
     user: FoundUser | None = None
 
 
+async def double_credit_warning(user_id: str) -> str | None:
+    """A warning for the manual top-up confirmation, or None.
+
+    Shown when the user has a top-up request still waiting for review
+    (approving it later would pay them again), or was credited in the
+    last two hours (possibly for the same transfer, by another admin).
+    """
+    async with async_session() as db:
+        waiting = (await db.execute(text(
+            "SELECT public_code, requested_dirams FROM payment_requests "
+            "WHERE user_id = :uid AND status IN ('pending', 'needs_info') "
+            "ORDER BY created_at LIMIT 3"
+        ), {"uid": user_id})).all()
+        recent = (await db.execute(text(
+            "SELECT amount_dirams, created_at FROM balance_transactions "
+            "WHERE user_id = :uid AND kind = 'topup' AND amount_dirams > 0 "
+            "  AND created_at > now() - interval '2 hours' "
+            "ORDER BY created_at DESC LIMIT 3"
+        ), {"uid": user_id})).all()
+    return format_double_credit_warning(waiting, recent, datetime.now(timezone.utc))
+
+
+def format_double_credit_warning(waiting, recent, now: datetime) -> str | None:
+    """Pure formatting half of double_credit_warning, kept apart for tests."""
+    if not waiting and not recent:
+        return None
+    lines = ["⚠️ ВНИМАНИЕ: возможно двойное зачисление!"]
+    for code, dirams in waiting:
+        lines.append(f"• Заявка {code} на {dirams / 100:.2f} сомони ещё ждёт проверки в «🧾 Проверить чеки». "
+                     "Если деньги за неё — подтвердите заявку, а не пополняйте вручную.")
+    for dirams, created_at in recent:
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        minutes = max(0, int((now - created_at).total_seconds() // 60))
+        lines.append(f"• {minutes} мин. назад этому пользователю уже начислено {dirams / 100:.2f} сомони.")
+    return "\n".join(lines)
+
+
 async def find_by_idempotency_key(key: str) -> CreditResult | None:
     """Has a credit with this key already landed?
 

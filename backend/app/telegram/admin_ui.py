@@ -36,8 +36,10 @@ HELP_TEXT = (
     '❌ «Отмена» — прервать незавершённое действие.\n\n'
     'Сначала проверьте поступление денег в банковском приложении.'
 )
-TIERS = {'super': '👑 Полный доступ', 'finance': '💳 Финансы',
-         'support': '🎧 Поддержка', 'readonly': '👁 Только просмотр'}
+# The label says what each level may do, so nobody picks "Support" for an
+# admin who is meant to handle money.
+TIERS = {'super': '👑 Полный доступ', 'finance': '💳 Финансы (чеки и баланс)',
+         'support': '🎧 Поддержка (без денег)', 'readonly': '👁 Только просмотр'}
 
 def button(action, label=None):
     return {'text': label or LABELS[action], 'callback_data': 'ui:' + action}

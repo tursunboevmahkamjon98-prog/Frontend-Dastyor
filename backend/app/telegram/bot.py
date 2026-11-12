@@ -361,6 +361,9 @@ class PaymentBot:
                 alert=True,
             )
             return
+        if result.outcome == "duplicate_receipt":
+            await self._ack(callback_id, text="⛔ Этот чек уже зачислен по другой заявке этого пользователя (та же сумма и тот же файл чека). Баланс не изменён.", alert=True)
+            return
         if result.outcome == "self_approval":
             await self._ack(
                 callback_id,
@@ -450,6 +453,9 @@ class PaymentBot:
             return
         if result.outcome == "duplicate_reference":
             await self._say_admin(admin_id, admin_t("ack_duplicate", lang))
+            return
+        if result.outcome == "duplicate_receipt":
+            await self._say_admin(admin_id, "⛔ Этот чек уже зачислен по другой заявке этого пользователя (та же сумма и тот же файл чека). Баланс не изменён.")
             return
         if result.outcome == "self_approval":
             await self._say_admin(admin_id, admin_t("ack_self_approval", lang))
@@ -800,6 +806,12 @@ class PaymentBot:
             await self._say_admin(chat_id, topup_t("user_gone"), menu=True)
             return
 
+        # Warn when this person may already have been paid: a top-up
+        # request still waiting in "Checks", or a credit in the last two
+        # hours. Two admins handling one payment - one approving the
+        # request, the other topping up by hand - credited it twice.
+        warning = await topup.double_credit_warning(user.user_id)
+
         key = topup.new_idempotency_key()
         self._staged_topups[key] = {
             "chat_id": chat_id,
@@ -819,6 +831,8 @@ class PaymentBot:
             currency=currency(lang),
             note=state.topup_note or "—",
         )
+        if warning:
+            text_body = warning + "\n\n" + text_body
 
         await self._say_admin(chat_id, text_body, reply_markup={
             "inline_keyboard": [
@@ -1168,6 +1182,7 @@ class PaymentBot:
                 else:
                     tag = admin_t("admins_added_tag", lang,
                                   by=e.added_by_telegram_id or "—")
+                    tag += "\n   " + ui.TIERS.get(e.tier or "super", e.tier or "")
                 lines.append(f"• {who}\n   {tag}")
             lines.append("")
             await self._say_admin(chat_id, "\n".join(lines), reply_markup={"inline_keyboard": [[ui.button("addadmin")], [ui.button("deladmin")], [ui.button("menu")]]})
@@ -1184,9 +1199,30 @@ class PaymentBot:
             # Optional trailing tier word: "/addadmin 123456 finance".
             ident_part, _, tier_part = argument.partition(" ")
             tier_part = tier_part.strip().lower() or None
+            if tier_part not in ui.TIERS:
+                # No (valid) tier given: ask for one. It used to silently
+                # default to 'support', which cannot approve payments or
+                # top up balances - admins were added and then could not work.
+                state = self._state(chat_id)
+                state.admin_target = ident_part
+                state.admin_action = "role"
+                rows = [[ui.button("grant:" + key, label)] for key, label in ui.TIERS.items()]
+                rows.extend(ui.navigation()["inline_keyboard"])
+                await self._say_admin(chat_id, "👤 Аккаунт: " + ident_part + "\nВыберите уровень доступа:\n"
+                                      + "💳 Финансы — проверка чеков и пополнение баланса.",
+                                      reply_markup={"inline_keyboard": rows})
+                return
             result = await service.add_admin_by_short_id(
                 ident_part, telegram_user_id, tier=tier_part
             )
+            if result.outcome == "already":
+                # Already an admin: change their level instead of refusing.
+                changed = await service.set_admin_tier(ident_part, tier_part, telegram_user_id)
+                if changed.outcome == "tier_changed":
+                    entry = changed.entry
+                    await self._say_admin(chat_id, f"✅ Уровень доступа изменён: {entry.full_name or '—'} "
+                                          f"(#{entry.short_id or '—'}) — {ui.TIERS[tier_part]}")
+                    return
             if result.outcome not in ("added", "added_pending"):
                 await self._say_admin(chat_id, admin_t({
                     "already": "admin_already",

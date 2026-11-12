@@ -167,6 +167,13 @@ async def create_topup_request(
     raw = await receipt.read()
     if len(raw) > 8 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Chek 8 MB dan kichik bo‘lishi kerak")
+    # The same receipt sent twice (double click, retry) used to become two
+    # requests that two admins could each approve - paying the user twice.
+    duplicate_of = await telegram_service.find_duplicate_receipt_request(
+        user.id, round(amount_somoni * 100), len(raw))
+    if duplicate_of:
+        raise HTTPException(status_code=409, detail=(
+            f"Bu chek allaqachon yuborilgan ({duplicate_of}). Admin tekshirishini kuting."))
     mime = (receipt.content_type or "").lower()
     if mime not in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
         raise HTTPException(status_code=422, detail="JPG, PNG, WEBP yoki PDF chek yuklang")
