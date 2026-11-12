@@ -2,11 +2,10 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Search, Star, Trash2, FolderOpen, ChevronRight, Undo2, CheckSquare, Square, X, Copy, Loader2, Download } from "lucide-react";
+import { Search, Star, Trash2, Undo2, CheckSquare, Square, X, Copy, Loader2, Download } from "lucide-react";
 import { materialsApi, downloadMaterial, MaterialOut, MaterialType } from "@/lib/api";
 import { MATERIAL_TYPE_CONFIG, LIBRARY_TYPES, MATERIAL_TYPE_LABEL_KEY } from "@/lib/material-types";
 import { useT } from "@/lib/i18n";
-import type { MessageKey } from "@/lib/messages";
 
 type Item = MaterialOut & { type: MaterialType };
 type Tab = "all" | MaterialType;
@@ -36,13 +35,6 @@ const DOWNLOAD_FORMAT: Record<MaterialType, "docx" | "pptx"> = {
   igra: "docx",
 };
 
-const CURRICULUM_STATUS_KEY: Record<string, MessageKey> = {
-  draft: "materials.statusDraft",
-  generating: "materials.statusGenerating",
-  ready: "materials.statusReady",
-  partial_failed: "materials.statusPartialFailed",
-};
-
 const FILTER_SELECT =
   "rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-text-secondary shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none focus:border-primary";
 
@@ -56,8 +48,8 @@ export default function MaterialsPage() {
   
   
   
-  const [subjectFilter, setSubjectFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [rawSubjectFilter, setSubjectFilter] = useState("all");
+  const [rawGradeFilter, setGradeFilter] = useState("all");
 
   
   
@@ -94,10 +86,10 @@ export default function MaterialsPage() {
   
   
   
-  useEffect(() => {
+  function changeTab(next: Tab) {
+    setTab(next);
     exitSelectMode();
-    
-  }, [tab]);
+  }
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -126,15 +118,11 @@ export default function MaterialsPage() {
   
   
   
-  useEffect(() => {
-    if (subjectFilter !== "all" && !items.some((i) => i.subject === subjectFilter)) {
-      setSubjectFilter("all");
-    }
-    if (gradeFilter !== "all" && !items.some((i) => i.grade === gradeFilter)) {
-      setGradeFilter("all");
-    }
-    
-  }, [items]);
+  // A filter whose value no longer exists in the list counts as "all".
+  const subjectFilter =
+    rawSubjectFilter !== "all" && items.some((i) => i.subject === rawSubjectFilter) ? rawSubjectFilter : "all";
+  const gradeFilter =
+    rawGradeFilter !== "all" && items.some((i) => i.grade === rawGradeFilter) ? rawGradeFilter : "all";
 
   async function toggleFavorite(item: Item) {
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_favorite: !i.is_favorite } : i)));
@@ -276,12 +264,12 @@ export default function MaterialsPage() {
       </div>
 
       <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-        <TabChip active={tab === "all"} onClick={() => setTab("all")}>
+        <TabChip active={tab === "all"} onClick={() => changeTab("all")}>
           {t("materials.all")}
         </TabChip>
         {}
         {LIBRARY_TYPES.map((type) => (
-          <TabChip key={type} active={tab === type} onClick={() => setTab(type)}>
+          <TabChip key={type} active={tab === type} onClick={() => changeTab(type)}>
             {t(MATERIAL_TYPE_LABEL_KEY[type])}
           </TabChip>
         ))}

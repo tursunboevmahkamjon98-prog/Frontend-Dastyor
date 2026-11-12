@@ -24,6 +24,8 @@
 *.pid
 
 # debug
+# Local dev server output (e.g. frontend_dev.log) is personal noise, not source.
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

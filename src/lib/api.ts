@@ -1,3 +1,5 @@
+import { translate } from "./locale-store";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 
@@ -67,9 +69,9 @@ export class ApiError extends Error {
 
 function extractError(detail: unknown, status?: number): string {
   if (detail == null && status != null && status >= 502 && status <= 504) {
-    return "Сервер не успел ответить (шлюз прервал запрос). Попробуйте ещё раз.";
+    return translate("api.gatewayTimeout");
   }
-  if (detail == null) return "Ошибка сервера";
+  if (detail == null) return translate("api.serverError");
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
     const messages = detail
@@ -154,7 +156,7 @@ async function request<T>(
     
     
     if (signal?.aborted) throw err;
-    throw new ApiError("Не удалось подключиться к серверу");
+    throw new ApiError(translate("api.connectFailed"));
   }
 
   
@@ -604,12 +606,12 @@ export async function streamGenerateKonspekt(
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return;
-    throw new ApiError("Не удалось подключиться к серверу");
+    throw new ApiError(translate("api.connectFailed"));
   }
 
   if (!response.ok || !response.body) {
     const data = await response.json().catch(() => ({}));
-    throw new ApiError(extractError(data.detail) || "Не удалось начать генерацию");
+    throw new ApiError(extractError(data.detail) || translate("api.generationStartFailed"));
   }
 
   const reader = response.body.getReader();
@@ -642,7 +644,7 @@ export async function streamGenerateKonspekt(
     }
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return;
-    throw new ApiError("Соединение прервано во время генерации");
+    throw new ApiError(translate("api.generationInterrupted"));
   }
 }
 
@@ -682,13 +684,13 @@ export async function streamGenerateAll(
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError("Не удалось подключиться к серверу");
+    throw new ApiError(translate("api.connectFailed"));
   }
 
   if (!response.ok || !response.body) {
     const data = await response.json().catch(() => ({}));
     throw new ApiError(
-      extractError(data.detail, response.status) || "Не удалось начать генерацию",
+      extractError(data.detail, response.status) || translate("api.generationStartFailed"),
       response.status
     );
   }
@@ -725,11 +727,11 @@ export async function streamGenerateAll(
     }
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError("Соединение оборвалось во время генерации. Попробуйте ещё раз.");
+    throw new ApiError(translate("api.generationDroppedRetry"));
   }
 
   if (failure) throw new ApiError(failure);
-  if (!result) throw new ApiError("Соединение прервано во время генерации");
+  if (!result) throw new ApiError(translate("api.generationInterrupted"));
   return result;
 }
 

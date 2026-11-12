@@ -1,9 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useSyncExternalStore, ReactNode } from "react";
 import { MESSAGES, MessageKey, Locale, localeFromAccountLanguage } from "./messages";
-
-const STORAGE_KEY = "dastyor_web_locale";
+import { DEFAULT_LOCALE, hasStoredLocale, readStoredLocale, storeLocale } from "./locale-store";
 
 interface LocaleContextValue {
   locale: Locale;
@@ -13,22 +12,31 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
+const LOCALE_EVENT = "dastyor-locale-change";
+
+function subscribeLocale(onChange: () => void) {
+  // "storage" keeps other tabs in sync; the custom event covers this tab.
+  window.addEventListener("storage", onChange);
+  window.addEventListener(LOCALE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(LOCALE_EVENT, onChange);
+  };
+}
+
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("ru");
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
-    if (stored && stored in MESSAGES) setLocaleState(stored);
-  }, []);
+  // The server renders the default locale; the stored choice replaces it
+  // right after hydration without a mismatch.
+  const locale = useSyncExternalStore(subscribeLocale, readStoredLocale, () => DEFAULT_LOCALE);
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
   const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    storeLocale(next);
+    window.dispatchEvent(new Event(LOCALE_EVENT));
   }, []);
 
   const t = useCallback((key: MessageKey) => MESSAGES[locale][key], [locale]);
@@ -52,7 +60,7 @@ export function useAccountLocale(accountLanguage: string | null | undefined) {
   const { setLocale } = useLocale();
   useEffect(() => {
     if (!accountLanguage) return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    if (hasStoredLocale()) return;
     setLocale(localeFromAccountLanguage(accountLanguage));
   }, [accountLanguage, setLocale]);
 }
