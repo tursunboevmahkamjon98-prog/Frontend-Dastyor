@@ -23,7 +23,7 @@ export default function AppUpdateBanner() {
     <div className="flex items-start gap-3 border-b border-border-light bg-primary-50 px-4 py-2.5 text-sm sm:px-6">
       <Download className="mt-0.5 h-4 w-4 shrink-0 text-primary-dark" />
       <p className="flex-1 text-text-primary">
-        Вышла новая версия приложения Dastyor.{" "}
+        Вышла новая версия приложения Rahnamo.{" "}
         <a href="/dastyor.apk" className="font-medium text-primary-dark underline">
           Скачать
         </a>{" "}

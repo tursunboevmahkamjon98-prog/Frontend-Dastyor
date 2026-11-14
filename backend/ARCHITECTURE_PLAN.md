@@ -1,4 +1,4 @@
-# Dastyor backend — miqyoslash va xavfsizlik rejasi
+# Rahnamo backend — miqyoslash va xavfsizlik rejasi
 
 **Maqsad:** ~5 000 ro'yxatdan o'tgan o'qituvchi, cho'qqida 100–200 bir vaqtda faol.
 **Holat:** reja. Kod o'zgarishi bosqichma-bosqich, har bosqich alohida tekshiriladi.

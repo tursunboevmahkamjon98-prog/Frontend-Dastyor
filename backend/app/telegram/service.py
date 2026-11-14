@@ -201,7 +201,7 @@ async def issue_link_code(user_id: str) -> IssuedLinkCode:
 
 @dataclass
 class LinkedAccount:
-    """The non-sensitive view of a linked Dastyor account.
+    """The non-sensitive view of a linked Rahnamo account.
 
     ``short_id`` and ``full_name`` only. No email, no phone, no password
     hash, no access token — the bot shows the teacher enough to recognise
@@ -260,7 +260,7 @@ async def ensure_contact_account(telegram_user_id: int, chat_id: int,
                                  username: str | None,
                                  first_name: str | None) -> None:
     """Make ``/addadmin @username`` resolvable for anyone who has written
-    to the admin bot at all, not only people who linked a real Dastyor
+    to the admin bot at all, not only people who linked a real Rahnamo
     account first.
 
     Deliberately weaker than the linking flow: a message proves only
@@ -518,7 +518,7 @@ async def redeem_link_token(raw: str, chat_id: int,
     if account_row is None:
         return RedeemResult(outcome="invalid")
 
-    logger.info(f"Linked Telegram chat {chat_id} to Dastyor user {user_id}")
+    logger.info(f"Linked Telegram chat {chat_id} to Rahnamo user {user_id}")
 
     # A grant may have been waiting for exactly this moment. Done after
     # the link commits, and failure here must not undo the link — the
@@ -555,12 +555,12 @@ class UnlinkResult:
 async def unlink_account(*, user_id: str | None = None,
                          chat_id: int | None = None,
                          actor: str = "user") -> UnlinkResult:
-    """Disconnect a Telegram chat from its Dastyor account.
+    """Disconnect a Telegram chat from its Rahnamo account.
 
     Reachable two ways, and both matter:
 
     * from the bot, by whoever holds the chat;
-    * from the app or web, by whoever holds the Dastyor password — which
+    * from the app or web, by whoever holds the Rahnamo password — which
       is the path that still works when the Telegram account itself has
       been lost, sold with the phone, or taken over.
 
@@ -570,7 +570,7 @@ async def unlink_account(*, user_id: str | None = None,
 
     Any admin grant riding on that Telegram id is revoked at the same
     time. The grant only existed because the link proved which Telegram
-    account belonged to the Dastyor user; once that proof is withdrawn,
+    account belonged to the Rahnamo user; once that proof is withdrawn,
     the power it justified has to go with it.
     """
     if user_id is None and chat_id is None:
@@ -591,7 +591,7 @@ async def unlink_account(*, user_id: str | None = None,
             ), {"u": user_id})).first()
 
         if row is None:
-            # No active link. When the caller named a Dastyor user we
+            # No active link. When the caller named a Rahnamo user we
             # still burn their outstanding link tokens: "disconnect my
             # Telegram" has to cancel a pending invitation too, or a
             # deep link requested moments earlier survives the very
@@ -641,7 +641,7 @@ async def unlink_account(*, user_id: str | None = None,
         await db.commit()
 
     logger.warning(
-        f"Telegram chat {found_chat} unlinked from Dastyor user {found_user} "
+        f"Telegram chat {found_chat} unlinked from Rahnamo user {found_user} "
         f"by {actor}; admin_revoked={admin_revoked}, "
         f"open_requests={open_requests}"
     )
@@ -682,7 +682,7 @@ class PasswordLinkResult:
 async def link_by_password(phone: str, password: str, chat_id: int,
                            telegram_user_id: int | None,
                            username: str | None = None) -> PasswordLinkResult:
-    """Link a chat by Dastyor phone + password.
+    """Link a chat by Rahnamo phone + password.
 
     An alternative to the deep link, added because ``t.me`` is blocked
     by ISPs in the region this serves, which makes every link form
@@ -777,7 +777,7 @@ async def link_by_password(phone: str, password: str, chat_id: int,
             logger.error(f"Pending admin activation failed for {user_id}: {e}")
 
     logger.info(
-        f"Linked Telegram chat {chat_id} to Dastyor user {user_id} "
+        f"Linked Telegram chat {chat_id} to Rahnamo user {user_id} "
         f"by phone+password"
     )
     return PasswordLinkResult(
@@ -1149,7 +1149,7 @@ async def approve_payment(request_id: str, admin_telegram_id: int | None, *,
     in practice — every existing call site passes a real id. It is
     typed ``| None`` only so the CRM can call this directly for a web
     admin who has no linked Telegram chat at all: pass ``None`` here and
-    the Dastyor user id as ``admin_user_id`` instead. Exactly one of the
+    the Rahnamo user id as ``admin_user_id`` instead. Exactly one of the
     two should be set; the audit row and ledger reason record whichever
     one is.
 
@@ -1297,7 +1297,7 @@ async def approve_payment(request_id: str, admin_telegram_id: int | None, *,
                     "before": new_balance - amount,
                     "after": new_balance,
                     # actor_id is a users.id FK and a Telegram admin need
-                    # not have a Dastyor account, so the acting identity
+                    # not have a Rahnamo account, so the acting identity
                     # goes in reason, where the existing admin
                     # balance-history screen already shows it.
                     "reason": (
@@ -1375,7 +1375,7 @@ async def _decide_without_credit(request_id: str, admin_telegram_id: int | None,
     ``users.balance_dirams``.
 
     ``admin_telegram_id``/``admin_user_id`` follow approve_payment's
-    convention: pass the Dastyor user id instead when the caller is a
+    convention: pass the Rahnamo user id instead when the caller is a
     web admin with no linked Telegram chat.
     """
     async with async_session() as db:
@@ -1610,7 +1610,7 @@ class AdminEntry:
 
 
 async def granted_admin_ids() -> set[int]:
-    """Telegram ids of every linked account whose Dastyor User.role is
+    """Telegram ids of every linked account whose Rahnamo User.role is
     'admin' right now.
 
     This used to read the telegram_admins table directly. It now
@@ -1729,7 +1729,7 @@ async def set_admin_tier(identifier: str, tier: str,
         })
         await db.commit()
     logger.warning(
-        f"Admin tier of Dastyor #{found_short} set to {tier} by admin {actor_telegram_id}"
+        f"Admin tier of Rahnamo #{found_short} set to {tier} by admin {actor_telegram_id}"
     )
     return AdminChangeResult(outcome="tier_changed", entry=AdminEntry(
         telegram_user_id=None, is_root=False, user_id=user_id,
@@ -1746,9 +1746,9 @@ class AdminChangeResult:
 async def add_admin_by_short_id(identifier: str, actor_telegram_id: int,
                                 note: str | None = None,
                                 tier: str | None = None) -> AdminChangeResult:
-    """Promote a Dastyor account by @username or by 6-digit short id.
+    """Promote a Rahnamo account by @username or by 6-digit short id.
 
-    Both forms resolve to the same thing: a Dastyor ``users`` row whose
+    Both forms resolve to the same thing: a Rahnamo ``users`` row whose
     Telegram id (if any) came from that account's own verified link —
     which only its owner could have created, since linking needs a token
     minted for an authenticated session.
@@ -1873,7 +1873,7 @@ async def add_admin_by_short_id(identifier: str, actor_telegram_id: int,
 
     state = "GRANTED" if telegram_user_id else "GRANTED (pending link)"
     logger.warning(
-        f"Telegram admin {state} to Dastyor #{found_short} "
+        f"Telegram admin {state} to Rahnamo #{found_short} "
         f"(telegram {telegram_user_id}) by admin {actor_telegram_id}"
     )
     return AdminChangeResult(
@@ -1912,14 +1912,14 @@ async def activate_pending_admin(user_id: str, telegram_user_id: int) -> bool:
         await db.commit()
 
     logger.warning(
-        f"Pending Telegram admin ACTIVATED for Dastyor user {user_id} "
+        f"Pending Telegram admin ACTIVATED for Rahnamo user {user_id} "
         f"as telegram {telegram_user_id}"
     )
     return True
 
 
 async def remove_admin(identifier: str, actor_telegram_id: int) -> AdminChangeResult:
-    """Revoke a granted admin, by Telegram id or Dastyor short id."""
+    """Revoke a granted admin, by Telegram id or Rahnamo short id."""
     settings = get_telegram_settings()
     raw = (identifier or "").strip()
     numeric = raw.lstrip("#")
@@ -1942,7 +1942,7 @@ async def remove_admin(identifier: str, actor_telegram_id: int) -> AdminChangeRe
                 return AdminChangeResult(outcome="not_found")
             numeric = None
         else:
-            # Resolve by Dastyor short id first — that also catches a
+            # Resolve by Rahnamo short id first — that also catches a
             # PENDING grant, which has no Telegram id to name it by.
             # Fall back to treating the argument as a literal Telegram id.
             row = (await conn.execute(text(
@@ -2163,7 +2163,7 @@ async def set_pay_instructions_web(value: str, actor_user_id: str) -> str | None
 
     Stored under the same key, so whichever channel an admin used, the
     other sees the live value immediately. The audit entry says
-    ``admin_web`` and carries the Dastyor user id rather than a
+    ``admin_web`` and carries the Rahnamo user id rather than a
     Telegram id — the two channels authenticate differently, and the
     log should say which one was actually used, not force a fake
     Telegram id to make the row look like the other kind.

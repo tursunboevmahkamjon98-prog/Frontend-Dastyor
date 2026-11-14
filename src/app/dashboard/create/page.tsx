@@ -84,6 +84,7 @@ export default function CreatePage() {
   
   
   const [testType, setTestType] = useState("mixed");
+  const [includeExamples, setIncludeExamples] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export default function CreatePage() {
         slide_count: slideCount,
         question_count: questionCount,
         test_type: testType,
+        include_examples: includeExamples,
         types: selected,
       });
       setResult(res);
@@ -170,6 +172,9 @@ export default function CreatePage() {
         <p className="mt-3 text-sm text-text-secondary">{names}</p>
         <p className="mt-1 max-w-full truncate text-sm text-text-tertiary">{topic}</p>
         <p className="mt-5 max-w-md text-xs leading-relaxed text-text-tertiary">{t("create.generatingHint")}</p>
+        <p className="mt-7 max-w-xl text-sm font-semibold leading-relaxed text-red-600">
+          Внимание! Данный материал создан с помощью ИИ. После генерации обязательно проверьте его — в нём могут быть ошибки
+        </p>
       </div>
     );
   }
@@ -319,6 +324,21 @@ export default function CreatePage() {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="mb-6 grid gap-1.5">
+        <label htmlFor="include-examples" className="text-sm font-semibold text-text-primary">
+          Приводить примеры по теме?
+        </label>
+        <select
+          id="include-examples"
+          value={includeExamples ? "yes" : "no"}
+          onChange={(e) => setIncludeExamples(e.target.value === "yes")}
+          className={SELECT}
+        >
+          <option value="yes">Да — с примерами</option>
+          <option value="no">Нет — без примеров</option>
+        </select>
       </div>
 
       <div className="mb-2 flex items-center justify-between">

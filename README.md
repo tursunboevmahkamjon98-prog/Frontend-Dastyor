@@ -1,4 +1,4 @@
-# Dastyor
+# Rahnamo
 
 AI orqali dars materiallari (konspekt, lektsiya, test, prezentatsiya,
 amaliy topshiriq) yaratadigan platforma — o'qituvchilar uchun.

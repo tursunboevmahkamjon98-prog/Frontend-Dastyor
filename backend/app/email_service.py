@@ -40,16 +40,16 @@ async def send_reset_code(email: str, code: str) -> bool:
     msg["To"] = email
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="teachai.app")
-    msg["X-Mailer"] = "Dastyor"
+    msg["X-Mailer"] = "Rahnamo"
     msg["List-Unsubscribe"] = f"<mailto:{user}?subject=unsubscribe>"
 
     text = f"""
-Код восстановления пароля Dastyor
+Код восстановления пароля Rahnamo
 Код: {code}
 Действителен: 15 минут
     """.strip()
 
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Dastyor" style="height:48px;margin-bottom:16px">' if logo_b64 else ""
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Rahnamo" style="height:48px;margin-bottom:16px">' if logo_b64 else ""
 
     html = f"""<!DOCTYPE html>
 <html>

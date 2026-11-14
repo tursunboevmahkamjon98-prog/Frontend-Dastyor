@@ -1,4 +1,4 @@
-"""Service-only HTTP API for the separate Dastyor Telegram bot.
+"""Service-only HTTP API for the separate Rahnamo Telegram bot.
 
 The bearer authenticates the bot process. Telegram IDs are still resolved
 against backend links and reviewer grants on every relevant operation.

@@ -156,7 +156,7 @@ def _row_to_user(row) -> FoundUser:
 
 
 async def find_user(identifier: str) -> FoundUser | None:
-    """Resolve one user by Dastyor short id, uuid or phone.
+    """Resolve one user by Rahnamo short id, uuid or phone.
 
     Exact matches only. A fuzzy match here would mean an admin could
     credit the wrong person by typing a near-miss, which is the one

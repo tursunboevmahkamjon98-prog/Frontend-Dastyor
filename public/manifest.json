@@ -1,6 +1,6 @@
 {
-  "name": "Dastyor",
-  "short_name": "Dastyor",
+  "name": "Rahnamo",
+  "short_name": "Rahnamo",
   "description": "ИИ-помощник для учителей: конспект, тест, презентация, лекция и учебный план.",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -8,7 +8,7 @@
   "theme_color": "#dc2626",
   "icons": [
     {
-      "src": "/brand/dastyor-icon.png",
+      "src": "/brand/rahnamo-mark-tight.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

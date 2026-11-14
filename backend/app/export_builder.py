@@ -2699,7 +2699,7 @@ def _pdf_footer():
     elements.append(Spacer(1, 20))
     d = Drawing(500, 20)
     d.add(Rect(0, 0, 500, 20, fillColor=HexColor(_PDF_DARK), strokeColor=None))
-    d.add(String(150, 6, 'Dastyor — AI-помощник для учителей', fontName=FONT_NAME, fontSize=8, fillColor=HexColor('#94A3B8')))
+    d.add(String(150, 6, 'Rahnamo — AI-помощник для учителей', fontName=FONT_NAME, fontSize=8, fillColor=HexColor('#94A3B8')))
     elements.append(d)
     return elements
 
@@ -2847,7 +2847,7 @@ def build_konspekt_pdf(content: dict, language: str = 'Русский', doc_type
         canvas_obj.setFont(FONT_NAME, 8)
         canvas_obj.setFillColor(HexColor('#94A3B8'))
         canvas_obj.drawString(1.6 * cm, 0.65 * cm, title[:70])
-        canvas_obj.drawRightString(A4[0] - 1.6 * cm, 0.65 * cm, f'Dastyor  •  Страница {doc_obj.page}')
+        canvas_obj.drawRightString(A4[0] - 1.6 * cm, 0.65 * cm, f'Rahnamo  •  Страница {doc_obj.page}')
         canvas_obj.setFont(FONT_NAME, 7.5)
         canvas_obj.setFillColor(HexColor('#CBD5E1'))
         canvas_obj.drawRightString(A4[0] - 1.6 * cm, A4[1] - 0.7 * cm, _academic_year())

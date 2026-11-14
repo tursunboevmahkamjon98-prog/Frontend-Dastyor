@@ -18,14 +18,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dastyor — учебные материалы с помощью ИИ",
+  title: "Rahnamo — учебные материалы с помощью ИИ",
   description:
     "ИИ-помощник для учителей: создавайте конспект, тест, презентацию, лекцию и целый учебный план за несколько секунд.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/brand/rahnamo-mark-tight.png",
+    apple: "/brand/rahnamo-mark-tight.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Dastyor",
+    title: "Rahnamo",
   },
 };
 

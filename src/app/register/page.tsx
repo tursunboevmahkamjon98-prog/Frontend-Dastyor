@@ -94,7 +94,7 @@ export default function RegisterPage() {
     <AuthLayout>
       <div className="mb-8 lg:text-left">
         {}
-        <img src="/brand/dastyor-mark.webp" alt="Dastyor" className="mb-4 h-11 w-auto lg:hidden" />
+        <img src="/brand/rahnamo-mark-tight.png" alt="" className="mb-4 h-12 w-auto lg:hidden" />
         <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">
           {step === "form" ? t("register.title") : t("register.otpTitle")}
         </h1>

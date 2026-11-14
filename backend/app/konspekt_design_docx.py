@@ -23,7 +23,7 @@ from docx.shared import Cm, Pt, RGBColor
 from app.docx_builder import (_add_code_card, _add_formula_card,
                               _add_visual_block, _add_worked_examples, _clear_cell,
                               _set_cell_shading, _strip_item_label, _typeset_math_runs)
-from app.konspekt_design import _FAMILIES, _LABELS
+from app.konspekt_design import _FAMILIES, _LABELS, _format_duration
 from app.lecture_builder import _split_definition, _split_main_content
 from app.subject_templates import safe_font
 
@@ -242,8 +242,6 @@ def header(doc, tag: str, content: dict, meta: list[tuple[str, str]], s: _Style)
     """Tag, title, subtitle, short accent rule and the shaded meta cells."""
     _run(_para(doc, after=4), tag, s, 8.5, True, s.accent, s.head)
     _run(_para(doc, after=3), str(content.get('title') or ''), s, 24, False, INK, s.head)
-    if content.get('subtitle'):
-        _run(_para(doc, after=8), content['subtitle'], s, 12, False, MUTED)
     _rule_below(_para(doc, after=8), s.accent, '18')
     cells, _ = _grid(doc, len(meta), len(meta), 0.2)
     for cell, (k, v) in zip(cells, meta):
@@ -283,7 +281,7 @@ def build(content: dict, L: dict, language: str, family: str) -> io.BytesIO:
         ('Subject' if en else 'Фан' if language == 'Таджикский' else 'Предмет',
          str(content.get('subject') or '')),
         (lab['grade'], str(content.get('grade') or '')),
-        (L.get('duration', 'Время урока'), str(content.get('duration') or '').strip() or '—'),
+        (L.get('duration', 'Время урока'), _format_duration(str(content.get('duration') or '').strip() or '—', language)),
         ('Date' if en else 'Сана' if language == 'Таджикский' else 'Дата', '____________')], s)
 
     n = [0]

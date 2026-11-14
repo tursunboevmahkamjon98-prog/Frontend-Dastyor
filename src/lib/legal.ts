@@ -2,7 +2,7 @@
 
 export type LegalDoc = { title: string; updated: string; sections: { h: string; p: string[] }[] };
 
-const OWNER = "Dastyor";
+const OWNER = "Rahnamo";
 const CONTACT_LINE = "dastyor.rahnamo@gmail.com";
 const UPDATED = "30 августа 2026";
 

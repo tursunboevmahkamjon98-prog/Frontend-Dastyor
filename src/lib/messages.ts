@@ -37,7 +37,7 @@ const ru = {
 
   
   "login.title": "С возвращением",
-  "login.subtitle": "Войдите в свой аккаунт Dastyor",
+  "login.subtitle": "Войдите в свой аккаунт Rahnamo",
   "login.otpTitle": "Подтвердите вход",
   "login.otpSubtitle": "Мы отправили код на",
   "login.phone": "Номер телефона",
@@ -53,7 +53,7 @@ const ru = {
 
   
   "register.title": "Создать аккаунт",
-  "register.subtitle": "Начните пользоваться Dastyor бесплатно",
+  "register.subtitle": "Начните пользоваться Rahnamo бесплатно",
   "register.fullName": "Имя и фамилия",
   "register.fullNamePlaceholder": "Имя Фамилия",
   "register.email": "Email",
@@ -284,7 +284,7 @@ const ru = {
   "prog.ready": "Готово!",
   "prog.someFailed": "Некоторые дни завершились с ошибкой",
   "prog.draft": "Черновик",
-  "prog.notifyReady": "Dastyor — Маҷмӯа готов",
+  "prog.notifyReady": "Rahnamo — Маҷмӯа готов",
   "material.loadFailed": "Не удалось загрузить",
   "material.editFailed": "Не удалось применить изменение",
   "material.editHint": "Что изменить? Например: добавь 5 вопросов, сделай короче…",
@@ -468,7 +468,7 @@ const ru = {
   
   "landing.nav.home": "Главная",
   "landing.nav.features": "Возможности",
-  "landing.nav.how": "Как это работает",
+  "landing.nav.how": "Как это работает?",
   "landing.nav.samples": "Примеры",
   "landing.nav.subjects": "Предметы",
   "landing.nav.faq": "Вопросы",
@@ -511,7 +511,7 @@ const ru = {
   "landing.feature.igra.title": "Интерактивные игры",
   "landing.feature.igra.desc": "Игровая викторина по теме урока — соло или дуэль, прямо на экране класса.",
 
-  "landing.how.title": "Как это работает",
+  "landing.how.title": "Как это работает?",
   "landing.how.subtitle": "Три шага — от пустого экрана до готового урока.",
   "landing.step1.title": "Выберите предмет, класс и тему",
   "landing.step1.desc": "Так же, как вы бы объяснили коллеге, что нужно на завтра — без специальных «промптов» и настроек.",
@@ -534,7 +534,7 @@ const ru = {
   "landing.subjects.scrollRight": "Прокрутить вправо",
 
   "landing.samples.title": "Как выглядит результат",
-  "landing.samples.subtitle": "Настоящие страницы, созданные Dastyor — не макеты.",
+  "landing.samples.subtitle": "Настоящие страницы, созданные Rahnamo — не макеты.",
   "landing.samples.cta": "Создать такой же",
   "landing.samples.viewAll": "посмотреть все страницы",
   "landing.samples.exampleAlt": "Пример",
@@ -543,7 +543,7 @@ const ru = {
   "landing.samples.slides": "слайдов",
   "landing.samples.close": "Закрыть",
 
-  "landing.trust.title": "Почему этому можно доверять",
+  "landing.trust.title": "Почему этому можно доверять?",
   "landing.trust.subtitle": "Никаких подписок и закрытых форматов — вы всегда владеете результатом.",
   "landing.trust1.title": "Без подписки",
   "landing.trust1.desc": "Ничего не списывается ежемесячно. Вы платите только за материалы, которые действительно создали.",
@@ -634,7 +634,7 @@ const ru = {
   "book.error.invalid_pages": "Проверьте диапазон страниц.",
   "book.error.invalid_chapter": "Выберите главу из списка.",
   "book.error.not_found": "Книга недоступна или срок хранения истёк. Загрузите её снова.",
-  "book.error.api_route_missing": "Сервис загрузки книг не найден на сервере. Обновите backend Dastyor и попробуйте снова.",
+  "book.error.api_route_missing": "Сервис загрузки книг не найден на сервере. Обновите backend Rahnamo и попробуйте снова.",
 } as const;
 
 
@@ -666,7 +666,7 @@ const tg: Messages = {
   "nav.somoni": "смн",
 
   "login.title": "Хуш омадед",
-  "login.subtitle": "Ба ҳисоби Dastyor ворид шавед",
+  "login.subtitle": "Ба ҳисоби Rahnamo ворид шавед",
   "login.otpTitle": "Воридро тасдиқ кунед",
   "login.otpSubtitle": "Мо рамзро фиристодем ба",
   "login.phone": "Рақами телефон",
@@ -681,7 +681,7 @@ const tg: Messages = {
   "login.register": "Бақайдгирӣ",
 
   "register.title": "Ҳисоб созед",
-  "register.subtitle": "Ройгон истифодаи Dastyor-ро оғоз кунед",
+  "register.subtitle": "Ройгон истифодаи Rahnamo-ро оғоз кунед",
   "register.fullName": "Ному насаб",
   "register.fullNamePlaceholder": "Ном Насаб",
   "register.email": "Email",
@@ -899,7 +899,7 @@ const tg: Messages = {
   "prog.ready": "Тайёр!",
   "prog.someFailed": "Баъзе рӯзҳо бо хатогӣ анҷом ёфтанд",
   "prog.draft": "Сиёҳнавис",
-  "prog.notifyReady": "Dastyor — Маҷмӯа тайёр",
+  "prog.notifyReady": "Rahnamo — Маҷмӯа тайёр",
   "material.loadFailed": "Боргирӣ нашуд",
   "material.editFailed": "Тағйиротро татбиқ кардан нашуд",
   "material.editHint": "Чиро тағйир диҳем? Масалан: 5 савол илова кун, кӯтоҳтар кун…",
@@ -1076,7 +1076,7 @@ const tg: Messages = {
   
   "landing.nav.home": "Асосӣ",
   "landing.nav.features": "Имкониятҳо",
-  "landing.nav.how": "Чӣ тавр кор мекунад",
+  "landing.nav.how": "Чӣ тавр кор мекунад?",
   "landing.nav.samples": "Намунаҳо",
   "landing.nav.subjects": "Фанҳо",
   "landing.nav.faq": "Саволҳо",
@@ -1119,7 +1119,7 @@ const tg: Messages = {
   "landing.feature.igra.title": "Бозиҳои интерактивӣ",
   "landing.feature.igra.desc": "Викторинаи бозӣ аз рӯи мавзӯи дарс — танҳоӣ ё дуэл, бевосита дар экрани синф.",
 
-  "landing.how.title": "Чӣ тавр кор мекунад",
+  "landing.how.title": "Чӣ тавр кор мекунад?",
   "landing.how.subtitle": "Се қадам — аз экрани холӣ то дарси тайёр.",
   "landing.step1.title": "Фан, синф ва мавзӯъро интихоб кунед",
   "landing.step1.desc": "Ҳамон тавре ки ба ҳамкоратон мегӯед, ки пагоҳ чӣ лозим аст — бе «промпт»-ҳои махсус ва танзимот.",
@@ -1142,7 +1142,7 @@ const tg: Messages = {
   "landing.subjects.scrollRight": "Ба рост ҳаракат додан",
 
   "landing.samples.title": "Натиҷа чӣ гуна менамояд",
-  "landing.samples.subtitle": "Саҳифаҳои воқеӣ, ки Dastyor сохтааст — на макет.",
+  "landing.samples.subtitle": "Саҳифаҳои воқеӣ, ки Rahnamo сохтааст — на макет.",
   "landing.samples.cta": "Ҳамин хелашро созед",
   "landing.samples.viewAll": "ҳамаи саҳифаҳоро дидан",
   "landing.samples.exampleAlt": "Намуна",
@@ -1241,7 +1241,7 @@ const tg: Messages = {
   "book.error.invalid_pages": "Фосилаи саҳифаҳоро санҷед.",
   "book.error.invalid_chapter": "Аз рӯйхат бобро интихоб кунед.",
   "book.error.not_found": "Китоб дастрас нест ё муҳлати нигоҳдорӣ гузашт. Онро дубора бор кунед.",
-  "book.error.api_route_missing": "Хидмати боркунии китоб дар сервер ёфт нашуд. Backend-и Dastyor-ро нав карда, дубора кӯшиш кунед.",
+  "book.error.api_route_missing": "Хидмати боркунии китоб дар сервер ёфт нашуд. Backend-и Rahnamo-ро нав карда, дубора кӯшиш кунед.",
 };
 
 const en: Messages = {
@@ -1270,7 +1270,7 @@ const en: Messages = {
   "nav.somoni": "TJS",
 
   "login.title": "Welcome back",
-  "login.subtitle": "Sign in to your Dastyor account",
+  "login.subtitle": "Sign in to your Rahnamo account",
   "login.otpTitle": "Confirm sign-in",
   "login.otpSubtitle": "We sent a code to",
   "login.phone": "Phone number",
@@ -1285,7 +1285,7 @@ const en: Messages = {
   "login.register": "Sign up",
 
   "register.title": "Create an account",
-  "register.subtitle": "Start using Dastyor for free",
+  "register.subtitle": "Start using Rahnamo for free",
   "register.fullName": "Full name",
   "register.fullNamePlaceholder": "First Last",
   "register.email": "Email",
@@ -1500,7 +1500,7 @@ const en: Messages = {
   "prog.ready": "Done!",
   "prog.someFailed": "Some days finished with an error",
   "prog.draft": "Draft",
-  "prog.notifyReady": "Dastyor — the set is ready",
+  "prog.notifyReady": "Rahnamo — the set is ready",
   "material.loadFailed": "Could not load",
   "material.editFailed": "Could not apply the change",
   "material.editHint": "What to change? For example: add 5 questions, make it shorter…",
@@ -1677,7 +1677,7 @@ const en: Messages = {
   
   "landing.nav.home": "Home",
   "landing.nav.features": "Features",
-  "landing.nav.how": "How it works",
+  "landing.nav.how": "How does it work?",
   "landing.nav.samples": "Samples",
   "landing.nav.subjects": "Subjects",
   "landing.nav.faq": "FAQ",
@@ -1720,7 +1720,7 @@ const en: Messages = {
   "landing.feature.igra.title": "Interactive games",
   "landing.feature.igra.desc": "A quiz game on the lesson topic — solo or duel, right on the classroom screen.",
 
-  "landing.how.title": "How it works",
+  "landing.how.title": "How does it work?",
   "landing.how.subtitle": "Three steps — from a blank screen to a finished lesson.",
   "landing.step1.title": "Pick a subject, grade and topic",
   "landing.step1.desc": "Just as you would tell a colleague what you need for tomorrow — no special «prompts» and no settings.",
@@ -1743,7 +1743,7 @@ const en: Messages = {
   "landing.subjects.scrollRight": "Scroll right",
 
   "landing.samples.title": "What the result looks like",
-  "landing.samples.subtitle": "Real pages made by Dastyor — not mockups.",
+  "landing.samples.subtitle": "Real pages made by Rahnamo — not mockups.",
   "landing.samples.cta": "Create one like this",
   "landing.samples.viewAll": "view all pages",
   "landing.samples.exampleAlt": "Sample",
@@ -1843,7 +1843,7 @@ const en: Messages = {
   "book.error.invalid_pages": "Check the page range.",
   "book.error.invalid_chapter": "Choose a chapter from the list.",
   "book.error.not_found": "The book is unavailable or its storage period has expired. Upload it again.",
-  "book.error.api_route_missing": "The book-upload service wasn't found on the server. Update the Dastyor backend and try again.",
+  "book.error.api_route_missing": "The book-upload service wasn't found on the server. Update the Rahnamo backend and try again.",
 };
 
 export type MessageKey = keyof typeof ru;

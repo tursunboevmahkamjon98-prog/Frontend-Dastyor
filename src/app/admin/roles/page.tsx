@@ -138,7 +138,7 @@ export default function AdminRolesPage() {
               <thead>
                 <tr>
                   <th style={head}>Пользователь</th>
-                  <th style={head}>ID Dastyor</th>
+                  <th style={head}>ID Rahnamo</th>
                   <th style={head}>Telegram ID</th>
                   <th style={head}>Назначен</th>
                   <th style={head}>Действия</th>
@@ -197,7 +197,7 @@ export default function AdminRolesPage() {
             <thead>
               <tr>
                 <th style={head}>Имя</th>
-                <th style={head}>ID Dastyor</th>
+                <th style={head}>ID Rahnamo</th>
                 <th style={head}>Роль</th>
                 <th style={head}>Действия</th>
               </tr>

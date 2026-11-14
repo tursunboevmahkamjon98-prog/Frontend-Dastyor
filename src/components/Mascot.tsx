@@ -12,7 +12,7 @@ const MASCOT_IMAGES: Record<MascotMood, string> = {
   sad: "/mascot/thinking.webp",
 };
 
-/** Official Dastyor 3D robot poses with a restrained float animation. */
+/** Official Rahnamo 3D robot poses with a restrained float animation. */
 export default function Mascot({
   mood = "idle",
   size = 96,

@@ -87,8 +87,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border-light bg-white lg:flex">
         <Link href="/dashboard" className="flex items-center gap-2.5 px-5 py-6">
           {}
-          <img src="/brand/dastyor-mark.webp" alt="" className="h-8 w-auto" />
-          <span className="text-lg font-bold text-text-primary">Dastyor</span>
+          <img src="/brand/rahnamo-mark-tight.png" alt="" className="h-9 w-auto" />
+          <span className="text-lg font-bold text-text-primary">Rahnamo</span>
         </Link>
 
         {}
@@ -122,14 +122,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <a
           href="/dastyor.apk"
           download
-          className="group mx-3 mb-3 flex items-center gap-3 overflow-hidden rounded-xl bg-text-primary p-3 shadow-[0_3px_0_0_rgba(0,0,0,0.35)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_rgba(0,0,0,0.35),0_10px_20px_-8px_rgba(41,19,21,0.45)]"
+          className="group mx-3 mb-3 flex min-h-[64px] items-center gap-3 overflow-hidden rounded-xl bg-text-primary p-3.5 shadow-[0_3px_0_0_rgba(0,0,0,0.35)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_rgba(0,0,0,0.35),0_10px_20px_-8px_rgba(41,19,21,0.45)]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/25 transition group-hover:scale-110">
             <Smartphone className="h-4 w-4 text-primary-light" />
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[11px] text-white/60">{t("landing.hero.apkTitle")}</span>
-            <span className="block truncate text-sm font-bold text-white">dastyor.apk</span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-[11px] leading-tight text-white/60">{t("landing.hero.apkTitle")}</span>
+            <span className="block text-sm font-bold leading-tight text-white">rahnamo.apk</span>
           </span>
           <Download className="h-4 w-4 shrink-0 text-white/70 transition group-hover:translate-y-0.5" />
         </a>

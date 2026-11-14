@@ -93,7 +93,7 @@ async def delete_telegram_link(user: User = Depends(get_current_user)):
     """Disconnect this account's Telegram chat.
 
     The bot has its own ``/unlink``, but that one needs the Telegram
-    account. This path needs only the Dastyor password, which is what
+    account. This path needs only the Rahnamo password, which is what
     makes it the one that still works when the phone has been lost or
     sold with the Telegram session still signed in — exactly when
     unlinking matters most.
@@ -122,7 +122,7 @@ async def create_telegram_link(user: User = Depends(get_current_user)):
 async def get_pay_instructions(user: User = Depends(get_current_user)):
     """The same card/requisites text an administrator sets with `/paycontrol`.
 
-    One instruction either way a teacher reaches Dastyor — by bot or by
+    One instruction either way a teacher reaches Rahnamo — by bot or by
     the app — so there is exactly one place an administrator has to keep
     it current, not two that can drift apart.
     """

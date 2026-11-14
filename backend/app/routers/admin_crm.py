@@ -59,7 +59,7 @@ async def _audit(db: AsyncSession, actor: User, event: str, subject_user_id: str
 
     payment_request_id is reused as a generic subject key, exactly as
     telegram/service.py already does for grants ("admin:<telegram id>").
-    Here it holds the Dastyor user_id directly: that column is only 36
+    Here it holds the Rahnamo user_id directly: that column is only 36
     chars, which a uuid already fills, so there is no room for a prefix
     the way the shorter numeric Telegram id gets one.
     """

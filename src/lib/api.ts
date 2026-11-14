@@ -509,6 +509,7 @@ export const materialsApi = {
     include_homework?: boolean;
     include_fun_facts?: boolean;
     include_assessment?: boolean;
+    include_examples?: boolean;
     
     
     
@@ -524,6 +525,7 @@ export const materialsApi = {
     slide_count?: number;
     question_count?: number;
     test_type?: string;
+    include_examples?: boolean;
     
     types?: MaterialType[];
   }) => streamGenerateAll(body),
@@ -657,6 +659,7 @@ export interface GenerateAllBody {
   slide_count?: number;
   question_count?: number;
   test_type?: string;
+  include_examples?: boolean;
   types?: MaterialType[];
 }
 

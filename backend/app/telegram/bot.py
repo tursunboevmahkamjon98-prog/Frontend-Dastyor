@@ -568,7 +568,7 @@ class PaymentBot:
             sender_id, chat_id, sender.get("username"), sender.get("first_name")
         )
         if not await service.is_admin(sender_id):
-            await self.admin_client.send_message(chat_id, "🔒 Этот бот доступен только администраторам Dastyor.")
+            await self.admin_client.send_message(chat_id, "🔒 Этот бот доступен только администраторам Rahnamo.")
             return
         body = (message.get("text") or "").strip()
         tapped = admin_button_action(body)
@@ -585,7 +585,7 @@ class PaymentBot:
                 await self._say_admin(chat_id, "⛔ Недостаточно прав для управления администраторами.")
                 return
             if not body or len(body) > 64 or len(body.split()) != 1:
-                await self._say_admin(chat_id, "Пришлите один ID аккаунта Dastyor или известный боту @username.")
+                await self._say_admin(chat_id, "Пришлите один ID аккаунта Rahnamo или известный боту @username.")
                 return
             state.admin_target = body
             if state.admin_action == "add":
@@ -1121,7 +1121,7 @@ class PaymentBot:
             return
         if command in ("/start", "/menu"):
             if command == "/start":
-                await self._say_admin(chat_id, "👋 Добро пожаловать в панель администратора Dastyor!", menu=True)
+                await self._say_admin(chat_id, "👋 Добро пожаловать в панель администратора Rahnamo!", menu=True)
             await self.cmd_menu(chat_id)
             return
         if command == "/help":
@@ -1129,7 +1129,7 @@ class PaymentBot:
             return
         if command in ("/addadmin", "/deladmin") and not argument:
             self._state(chat_id).admin_action = "add" if command == "/addadmin" else "remove"
-            await self._say_admin(chat_id, "👤 Пришлите 6-значный ID аккаунта Dastyor или известный боту @username.")
+            await self._say_admin(chat_id, "👤 Пришлите 6-значный ID аккаунта Rahnamo или известный боту @username.")
             return
 
         if command == "/credit":

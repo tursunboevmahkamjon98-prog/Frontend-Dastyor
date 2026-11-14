@@ -12,9 +12,9 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-border-light/60 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:px-6 md:grid-cols-[auto_1fr] md:gap-x-6 xl:grid-cols-[1fr_auto_1fr] xl:gap-4">
-        <Link href="/" className="flex min-w-0 items-center gap-2.5 justify-self-start" aria-label="Dastyor">
-          <img src="/brand/dastyor-mark.webp" alt="" className="h-9 w-auto shrink-0" />
-          <span className="truncate text-lg font-bold text-text-primary">Dastyor</span>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 justify-self-start" aria-label="Rahnamo">
+          <img src="/brand/rahnamo-mark-tight.png" alt="" className="h-10 w-auto shrink-0" />
+          <span className="truncate text-lg font-bold text-text-primary">Rahnamo</span>
         </Link>
         <nav className="col-span-2 row-start-2 hidden w-full items-center justify-center gap-0.5 rounded-full border border-white/90 bg-white/55 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_24px_-16px_rgba(41,19,21,0.28)] backdrop-blur-xl md:flex xl:col-span-1 xl:row-start-auto xl:w-auto" aria-label={t("landing.nav.home")}>
           <Link

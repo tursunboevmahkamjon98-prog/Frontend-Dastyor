@@ -87,9 +87,9 @@ _robita_client = RobitaClient()
 
 
 _OTP_TEXTS = {
-    "ru": "Dastyor: код подтверждения — {code}. Действует 10 минут.",
-    "en": "Dastyor: verification code — {code}. Valid for 10 minutes.",
-    "tg": "Dastyor: код тасдиқ — {code}. Амал 10 дақиқа.",
+    "ru": "Rahnamo: код подтверждения — {code}. Действует 10 минут.",
+    "en": "Rahnamo: verification code — {code}. Valid for 10 minutes.",
+    "tg": "Rahnamo: код тасдиқ — {code}. Амал 10 дақиқа.",
 }
 
 

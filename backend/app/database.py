@@ -282,7 +282,7 @@ async def init_db():
         # Rows already present predate the admin bot, so they are all
         # from the user bot and backfill to 'user'.
         # telegram_admins was first created keyed on telegram_user_id,
-        # which made it impossible to grant admin to a Dastyor account
+        # which made it impossible to grant admin to a Rahnamo account
         # that had not linked Telegram yet — there was no key to store.
         # Re-key on a surrogate id so a grant can sit PENDING with a NULL
         # telegram_user_id and activate on link.
@@ -331,7 +331,7 @@ async def init_db():
             "ON telegram_accounts (username) WHERE username IS NOT NULL"
         ))
 
-        # One active grant per Telegram id, and one per Dastyor account.
+        # One active grant per Telegram id, and one per Rahnamo account.
         # Partial so revoked rows stay as history and a pending grant
         # (NULL telegram id) does not collide with another pending one.
         await conn.execute(text(

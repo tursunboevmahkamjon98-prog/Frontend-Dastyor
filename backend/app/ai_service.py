@@ -353,6 +353,7 @@ def _konspekt_prompt(
     include_homework: bool = True,
     include_fun_facts: bool = True,
     include_assessment: bool = True,
+    include_examples: bool = True,
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
     variant_out: dict | None = None,
@@ -437,10 +438,18 @@ def _konspekt_prompt(
         "Cut generic filler (\"this plays an important role\"). \"main_content\" explains HOW and WHY in flowing "
         "prose (no numbered lists inside it). Be concise: no sentence that repeats another."
     )
-    extra_rules.append(
-        "- Each \"key_concepts\" entry: \"Term: definition\" and ends with one tiny concrete example (introduced by the "
-        f"lesson language's word for \"For example\") a grade {grade} pupil follows at once; a different example each time."
-    )
+    if include_examples:
+        extra_rules.append(
+            "- Each \"key_concepts\" entry: \"Term: definition\" and ends with one tiny concrete example (introduced by the "
+            f"lesson language's word for \"For example\") a grade {grade} pupil follows at once; a different example each time."
+        )
+    else:
+        extra_rules.append(
+            '- EXAMPLES OPTION OFF: do not add illustrative or real-life examples; keep each key concept to its definition and explanation only.'
+        )
+        extra_rules.append(
+            '- Set "real_life_examples" to an empty list and do not create a separate examples section.'
+        )
     if subject in _CODE_SUBJECTS:
         extra_rules.append(
             "- \"code_blocks\": topic tied to one language's syntax → 1 entry in that language. Language-agnostic "
@@ -554,6 +563,9 @@ Use its own definitions, terminology, examples and order, condensed into the sec
 supplement from general knowledge only where it has nothing for a section. If it is about a different topic than
 "{topic}", ignore it completely."""
 
+    real_life_examples_shape = '["Specific real scenario", "..."]' if include_examples else '[]'
+    main_content_rule = 'with real facts and examples' if include_examples else 'with real facts and explanations, without illustrative examples'
+
     return f"""Create a concise, formal school lesson plan (konspekt) about "{topic}" for grade {grade}, subject "{subject}".
 
 Subject style: {subject_hint}
@@ -572,10 +584,10 @@ RETURN THIS JSON:
   "competencies": ["Short skill phrase", "...", "..."],
   "objectives": ["Short goal phrase", "...", "..."],
   "key_concepts": ["Term: explanation. For example, ...", "...", "...", "..."],
-  "real_life_examples": ["Specific real scenario", "..."],
+  "real_life_examples": {real_life_examples_shape},
   "lesson_stages": [{{"minutes": 5, "stage": "1-3 words", "activity": "one short sentence"}}, {{"minutes": 15, "stage": "...", "activity": "..."}}],
   "tools": ["Tool: how used", "..."],
-  "main_content": "2-3 paragraphs of 3-4 sentences explaining {topic}.",
+  "main_content": "2-3 paragraphs of 3-4 sentences explaining {topic}, {main_content_rule}.",
   "visual_blocks": [{{"type": "table|timeline|flowchart|process|comparison", "title": "short label", "description": "1 sentence", "position_after": "section key", "data": {{}}}}],
   "consolidation": "2-3 sentence consolidation activity.",
   "group_work": ["Group 1 task", "Group 2 task", "Group 3 task"],
@@ -2786,6 +2798,7 @@ async def generate_material(
     include_homework: bool = True,
     include_fun_facts: bool = True,
     include_assessment: bool = True,
+    include_examples: bool = True,
     template: str | None = None,
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
@@ -2807,9 +2820,16 @@ async def generate_material(
         user_prompt = prompt_fn(topic, subject, level, grade, language, question_count or 10, test_type, source_excerpt)
     elif material_type == "konspekt":
         user_prompt = prompt_fn(topic, subject, level, grade, language, include_homework, include_fun_facts,
-                                include_assessment, source_excerpt, previous_digests, variant)
+                                include_assessment, include_examples, source_excerpt, previous_digests, variant)
     else:
         user_prompt = prompt_fn(topic, subject, level, grade, language, source_text=source_excerpt)
+
+    if not include_examples:
+        user_prompt += (
+            '\n\nUSER OPTION: examples are disabled. Do not add illustrative or real-life examples. '
+            'For any real_life_examples field, return an empty list. Keep only necessary exercises or solutions '
+            'that are intrinsic to the requested material type.'
+        )
 
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = _language_rules(language)
@@ -2863,6 +2883,9 @@ CRITICAL RULES:
 
     content = await _call_ai(system_prompt, user_prompt, language, log_label=f"{material_type} topic={topic[:50]}",
                              max_tokens=KONSPEKT_MAX_TOKENS if material_type == "konspekt" else 24000)
+
+    if not include_examples and material_type in ("konspekt", "lektsiya"):
+        content["real_life_examples"] = []
 
     # The konspekt skips the verify pass: it re-sent the whole document and
     # roughly doubled the tokens per konspekt.
@@ -3278,6 +3301,7 @@ async def generate_konspekt_stream(
     include_homework: bool = True,
     include_fun_facts: bool = True,
     include_assessment: bool = True,
+    include_examples: bool = True,
     source_text: str | None = None,
     template: str | None = None,
     previous_digests: list[dict] | None = None,
@@ -3297,7 +3321,7 @@ async def generate_konspekt_stream(
         variant: dict = {}
         user_prompt = _konspekt_prompt(
             topic, subject, level, grade, language,
-            include_homework, include_fun_facts, include_assessment,
+            include_homework, include_fun_facts, include_assessment, include_examples,
             source_excerpt, previous_digests, variant,
         )
         yield {"stage": "extract_info", "status": "done"}
@@ -3695,6 +3719,7 @@ async def generate_all_materials(
     slide_count: int = 10,
     question_count: int = 10,
     test_type: str | None = None,
+    include_examples: bool = True,
     types: list[str] | None = None,
     source_text: str | None = None,
 ) -> dict:
@@ -3721,6 +3746,7 @@ async def generate_all_materials(
                     slide_count=slide_count if mt == "prezentatsiya" else None,
                     question_count=question_count if mt == "test" else None,
                     test_type=test_type if mt == "test" else None,
+                    include_examples=include_examples,
                     template=_default_template_for(mt, subject, grade),
                     source_text=source_text,
                 )

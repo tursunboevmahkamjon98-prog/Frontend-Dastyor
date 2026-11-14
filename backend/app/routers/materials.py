@@ -1085,6 +1085,7 @@ async def generate(
                 include_homework=data.include_homework,
                 include_fun_facts=data.include_fun_facts,
                 include_assessment=data.include_assessment,
+                include_examples=data.include_examples,
                 template=data.template,
                 source_text=data.source_text,
             )
@@ -1185,6 +1186,7 @@ async def generate_konspekt_stream_endpoint(
                 include_homework=data.include_homework,
                 include_fun_facts=data.include_fun_facts,
                 include_assessment=data.include_assessment,
+                include_examples=data.include_examples,
                 source_text=source_text,
                 previous_digests=previous_digests,
                 template=data.template,
@@ -1438,6 +1440,7 @@ async def _generate_all_impl(
                 slide_count=data.slide_count or 10,
                 question_count=data.question_count or 10,
                 test_type=data.test_type,
+                include_examples=data.include_examples,
                 types=types_to_generate,
                 source_text=source_context.get("text") if source_context else None,
             )

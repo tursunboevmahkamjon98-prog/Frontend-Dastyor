@@ -2,24 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { Layers, ChevronRight, Clock, Sparkles, TrendingUp } from "lucide-react";
+import { Layers, ChevronRight, Clock, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { materialsApi, DashboardStats, SearchResultItem } from "@/lib/api";
 import { MATERIAL_TYPE_CONFIG, LIBRARY_TYPES, CREATABLE_TYPES, MATERIAL_TYPE_LABEL_KEY } from "@/lib/material-types";
 import { useT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
 import Reveal from "@/components/Reveal";
+import MaterialOverview from "@/components/dashboard/ProgressBars3D";
 
 /* A distinct 3D asset from the landing/auth card stack — standing bars
  * instead of fanned cards, and its heights are driven by the user's own
  * material counts (see `barValues` below) rather than being pure
  * decoration. High-frequency chrome (sidebar, buttons) still stays flat;
  * this is the one dashboard spot where a 3D centerpiece earns its keep. */
-const ProgressBars3D = dynamic(() => import("@/components/dashboard/ProgressBars3D"), {
-  ssr: false,
-  loading: () => null,
-});
 
 const STAT_KEYS: Record<(typeof LIBRARY_TYPES)[number], keyof DashboardStats> = {
   konspekt: "konspekt_count",
@@ -67,53 +63,26 @@ export default function DashboardHome() {
     () => (stats ? LIBRARY_TYPES.map((type) => stats[STAT_KEYS[type]]) : undefined),
     [stats]
   );
-  const total = useMemo(
-    () => (stats ? LIBRARY_TYPES.reduce((sum, type) => sum + stats[STAT_KEYS[type]], 0) : null),
-    [stats]
-  );
   const maxCount = stats ? Math.max(1, ...LIBRARY_TYPES.map((type) => stats[STAT_KEYS[type]])) : 1;
   const { icon: GameIcon, bg: gameBg, color: gameColor } = MATERIAL_TYPE_CONFIG.igra;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 lg:max-w-6xl lg:px-8">
+    <div className="mx-auto max-w-3xl px-4 pt-1 sm:px-6 lg:max-w-6xl lg:px-8 lg:pt-8">
       {}
-      <div className="relative mb-6 overflow-hidden rounded-3xl border border-border-light bg-gradient-to-br from-primary-50/60 via-white to-white p-6 shadow-[0_4px_0_0_var(--color-border-light),0_20px_40px_-14px_rgba(220,38,38,0.12)] sm:p-8">
-        <div
-          className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full bg-primary/[0.08] blur-3xl"
-          style={{ animation: "landing-blob-drift 18s ease-in-out infinite" }}
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -right-10 bottom-0 h-48 w-48 rounded-full bg-note-icon/[0.08] blur-3xl"
-          style={{ animation: "landing-blob-drift 22s ease-in-out infinite", animationDelay: "-6s" }}
-          aria-hidden
-        />
-        <div className="relative grid grid-cols-1 items-center gap-6 sm:grid-cols-[1.2fr_1fr]">
-          <div>
-            <h1 className="text-xl font-bold text-text-primary sm:text-2xl">
-              {t(greetingKey())}, {user?.full_name?.split(" ")[0]}! 👋
-            </h1>
-            <p className="mt-0.5 text-sm text-text-secondary">{t("home.prompt")}</p>
-          </div>
-          <div className="relative mx-auto h-36 w-full max-w-[14rem] sm:h-40">
-            <div
-              className="absolute inset-x-4 bottom-0 top-2 -z-10 rounded-[2rem] bg-gradient-to-b from-primary/10 to-transparent"
-              aria-hidden
-            />
-            <ProgressBars3D className="h-full w-full" values={barValues} />
-            {total !== null && (
-              <div
-                className="absolute -top-1 right-0 flex items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[11px] font-semibold text-primary shadow-[0_2px_0_0_var(--color-border-light),0_8px_16px_-6px_rgba(220,38,38,0.25)]"
-                style={{ ["--chip-rot" as string]: "-3deg", animation: "landing-float-chip 5s ease-in-out infinite" }}
-              >
-                <TrendingUp className="h-3 w-3" />
-                {total} {t("home.totalShort")}
-              </div>
-            )}
-          </div>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0 lg:mb-6 lg:grid lg:grid-cols-[1fr_320px] lg:gap-8 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-[#fafafa] lg:p-6">
+        <div className="min-w-0">
+          <div className="mb-5 hidden h-1 w-8 rounded-full bg-red-600 lg:block" aria-hidden="true" />
+          <h1 className="break-words text-xs font-medium leading-tight tracking-tight text-slate-900 lg:text-3xl lg:font-semibold">
+            {t(greetingKey())}, {user?.full_name?.split(" ")[0]}!
+          </h1>
+          <p className="mt-3 hidden max-w-sm text-sm leading-relaxed text-slate-500 lg:block">{t("home.prompt")}</p>
         </div>
+        <p className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[11px] text-slate-400 lg:hidden">
+          <span className="font-semibold tabular-nums text-slate-600">{barValues ? barValues.reduce((sum, value) => sum + value, 0) : "—"}</span>
+          {t("home.totalShort")}
+        </p>
+        <MaterialOverview className="hidden w-full lg:block" values={barValues} />
       </div>
-
       {}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {LIBRARY_TYPES.map((type, i) => {

@@ -117,7 +117,7 @@ def _draw_ornamental_border(draw, W, H, margin=44, step=26,
 
 def _watermark(draw, color=(255, 255, 255, 200)):
     wm_font = _font(_FONT_REGULAR, 20)
-    draw.text((100, _H - 50), "Dastyor — AI-помощник для учителей", font=wm_font, fill=color)
+    draw.text((100, _H - 50), "Rahnamo — AI-помощник для учителей", font=wm_font, fill=color)
 
 
 

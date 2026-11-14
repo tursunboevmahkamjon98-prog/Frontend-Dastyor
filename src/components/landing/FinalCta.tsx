@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Languages, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import { useT } from "@/lib/i18n";
 
@@ -26,10 +26,6 @@ export default function FinalCta() {
       />
       <div className="relative mx-auto max-w-2xl px-4">
         <Reveal>
-          <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white">
-            <Languages className="h-3.5 w-3.5" />
-            {t("landing.cta.langs")}
-          </div>
           <h2 className="mb-3 text-2xl font-bold text-white sm:text-3xl">{t("landing.cta.title")}</h2>
           <p className="mb-7 text-white/80">{t("landing.cta.subtitle")}</p>
           <Link

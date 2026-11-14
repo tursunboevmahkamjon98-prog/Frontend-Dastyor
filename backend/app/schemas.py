@@ -383,6 +383,7 @@ class GenerateRequest(BaseModel):
     include_homework: bool = True
     include_fun_facts: bool = True
     include_assessment: bool = True
+    include_examples: bool = True
     template: str | None = None
     source_text: str | None = None
 
@@ -396,6 +397,7 @@ class GenerateKonspektStreamRequest(BaseModel):
     include_homework: bool = True
     include_fun_facts: bool = True
     include_assessment: bool = True
+    include_examples: bool = True
     generation_mode: str = "ai"
     source_text: str | None = None
     template: str | None = None
@@ -410,6 +412,7 @@ class GenerateAllRequest(BaseModel):
     slide_count: int | None = 10
     question_count: int | None = 10
     test_type: str | None = None
+    include_examples: bool = True
     types: list[str] | None = None
 
 
@@ -686,7 +689,7 @@ class AdminRosterEntry(BaseModel):
 
 
 class UnreviewedTelegramAdminOut(BaseModel):
-    """A telegram_admins grant whose Dastyor account is not (yet) a web
+    """A telegram_admins grant whose Rahnamo account is not (yet) a web
     admin — surfaced for a human to promote or dismiss, never acted on
     automatically."""
     grant_id: str

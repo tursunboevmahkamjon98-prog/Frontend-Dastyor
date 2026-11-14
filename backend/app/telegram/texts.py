@@ -58,11 +58,11 @@ MESSAGES: dict[str, dict[str, str]] = {
 
         "start_unlinked": (
             "Салом! 👋\n\n"
-            "Ман боти пардохти Dastyor ҳастам. Ман ба шумо кӯмак мекунам, "
+            "Ман боти пардохти Rahnamo ҳастам. Ман ба шумо кӯмак мекунам, "
             "ки тавозуни худро пур кунед.\n\n"
             "Аввал ҳисоби худро пайваст кунем.\n"
             "Тугмаи «🔑 Ворид шудан»-ро зер кунед — ҳамон рақами телефон ва "
-            "паролеро, ки бо онҳо ба Dastyor ворид мешавед, пурсида мешавад.\n\n"
+            "паролеро, ки бо онҳо ба Rahnamo ворид мешавед, пурсида мешавад.\n\n"
             "Ҳамин тавр. Дигар чизе лозим нест."
         ),
         "start_linked": (
@@ -78,13 +78,13 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "link_token_invalid": (
             "Пайванди пайвастшавӣ нодуруст аст.\n\n"
-            "Барномаи Dastyor-ро кушоед ва аз «Тавозун» тугмаи «Пур кардани тавозун "
+            "Барномаи Rahnamo-ро кушоед ва аз «Тавозун» тугмаи «Пур кардани тавозун "
             "тавассути Telegram»-ро зер кунед — он пайванди нави дурустро месозад."
         ),
         "link_token_expired": (
             "Мӯҳлати пайванди пайвастшавӣ гузаштааст.\n\n"
             "Ин пайвандҳо кӯтоҳмуддатанд — ин барои амният аст. Дар барномаи "
-            "Dastyor «Тавозун» -> «Пур кардани тавозун тавассути Telegram»-ро "
+            "Rahnamo «Тавозун» -> «Пур кардани тавозун тавассути Telegram»-ро "
             "бори дигар зер кунед."
         ),
         "link_token_used": (
@@ -93,13 +93,13 @@ MESSAGES: dict[str, dict[str, str]] = {
             "ба мо хабар диҳед. Барои пайвастшавии нав аз барнома пайванди нав гиред."
         ),
         "link_chat_taken": (
-            "Ин чати Telegram аллакай ба ҳисоби дигари Dastyor пайваст аст.\n\n"
+            "Ин чати Telegram аллакай ба ҳисоби дигари Rahnamo пайваст аст.\n\n"
             "Агар ин иштибоҳ бошад, ба мо муроҷиат кунед — як чат ҳамзамон ба ду "
             "ҳисоб пайваст намешавад."
         ),
 
         "not_linked_short": (
-            "Ҳисоби шумо пайваст нест. Барномаи Dastyor -> «Тавозун» -> "
+            "Ҳисоби шумо пайваст нест. Барномаи Rahnamo -> «Тавозун» -> "
             "«Пур кардани тавозун тавассути Telegram».\n"
             "/start — тавзеҳи муфассал"
         ),
@@ -108,13 +108,13 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Чӣ тавр тавозунро пур кунем:\n\n"
             "1️⃣  «➕ Пур кардани баланс»-ро зер кунед — ман рақами картаро медиҳам\n"
             "2️⃣  Пулро мефиристед\n"
-            "3️⃣  ID Dastyor-и худро ба администратор мегӯед — он дар «👤 Ҳисоби ман» аст\n"
+            "3️⃣  ID Rahnamo-и худро ба администратор мегӯед — он дар «👤 Ҳисоби ман» аст\n"
             "4️⃣  Администратор расидани пулро месанҷад ва тавозунро пур мекунад\n\n"
             "❗ Тавозун танҳо баъд аз он пур мешавад, ки администратор "
             "расидани пулро бо чашми худ бинад. Ин аз расидҳои "
             "сохта муҳофизат мекунад.\n\n"
             "📸 Фиристодани сурати расид ҳатмӣ нест, вале мумкин аст.\n\n"
-            "Саволе ҳаст? Ба дастаи Dastyor нависед."
+            "Саволе ҳаст? Ба дастаи Rahnamo нависед."
         ),
 
         "balance": (
@@ -126,7 +126,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "pay_not_configured": (
             "Дастури пардохт ҳоло ба бот ворид нашудааст.\n\n"
             "Мо намехоҳем рақами тахминии ҳисоб нишон диҳем — пули шумо бояд ба "
-            "ҷои дуруст равад. Лутфан ба дастаи Dastyor муроҷиат кунед."
+            "ҷои дуруст равад. Лутфан ба дастаи Rahnamo муроҷиат кунед."
         ),
         "pay_choose_amount": (
             "Чӣ қадар пул мефиристед?\n\n"
@@ -140,7 +140,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "{instructions}\n\n"
             "Маблағ: {amount} {currency}\n"
             "Рақами дархост: {code}\n\n"
-            "❗ ID Dastyor-и худро ба администратор гӯед: {account_id}\n"
+            "❗ ID Rahnamo-и худро ба администратор гӯед: {account_id}\n"
             "Ӯ расидани пулро месанҷад ва тавозуни шуморо пур мекунад — "
             "ман дарҳол ба шумо менависам.\n\n"
             "📸 Фиристодани сурати расид ҳатмӣ нест. Агар фиристед, "
@@ -154,7 +154,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "amount_too_large": (
             "Маблағ аз ҳадди имкон зиёд аст. Ҳадди аксар {max_amount} {currency}.\n"
-            "Барои маблағи калон ба дастаи Dastyor муроҷиат кунед."
+            "Барои маблағи калон ба дастаи Rahnamo муроҷиат кунед."
         ),
 
         "receipt_need_request": (
@@ -219,7 +219,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Сабабҳои эҳтимолӣ: пул ҳанӯз нарасидааст, маблағ мувофиқат "
             "намекунад, ё расид ба интиқоли дигар тааллуқ дорад.\n\n"
             "Агар мутмаин бошед, ки пулро фиристодаед, расиди аслиро нигоҳ "
-            "доред ва ба дастаи Dastyor муроҷиат кунед."
+            "доред ва ба дастаи Rahnamo муроҷиат кунед."
         ),
         "needs_info_user": (
             "Барои дархости {code} маълумоти иловагӣ лозим аст.\n\n"
@@ -237,12 +237,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Ҳисоби {account}-ро аз ин чат ҷудо кунам?\n\n"
             "Баъд аз ҷудошавӣ ин чат тавозунро намебинад ва дархости "
             "пардохт сохта наметавонад. Тавозун ва таърихи пардохтҳои "
-            "шумо дар Dastyor бетағйир мемонад.\n\n"
+            "шумо дар Rahnamo бетағйир мемонад.\n\n"
             "Барои тасдиқ нависед: /unlink ҳа"
         ),
         "unlink_done": (
             "Ҳисоб аз ин чат ҷудо шуд.\n\n"
-            "Барои пайвасти дубора: барномаи Dastyor -> «Тавозун» -> "
+            "Барои пайвасти дубора: барномаи Rahnamo -> «Тавозун» -> "
             "«Пур кардани баланс тавассути Telegram»."
         ),
         "unlink_open_requests": (
@@ -260,15 +260,15 @@ MESSAGES: dict[str, dict[str, str]] = {
 
         "login_ask_phone": (
             "Пайвастшавӣ бо рақами телефон.\n\n"
-            "Рақами телефонеро, ки бо он дар Dastyor сабти ном кардаед, "
+            "Рақами телефонеро, ки бо он дар Rahnamo сабти ном кардаед, "
             "фиристед.\n"
             "Масалан: +992900000000"
         ),
         "login_ask_password": (
-            "Акнун пароли Dastyor-и худро фиристед.\n\n"
+            "Акнун пароли Rahnamo-и худро фиристед.\n\n"
             "⚠️ Паролро фавран пас аз санҷиш нест мекунем.\n"
             "⚠️ Паролро ба ҳеҷ боти дигар нафиристед — ин ягона боти "
-            "расмии пардохти Dastyor аст (@{bot})."
+            "расмии пардохти Rahnamo аст (@{bot})."
         ),
         "login_bad_phone": (
             "Рақами телефон нодуруст аст.\n"
@@ -280,7 +280,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "login_throttled": (
             "Кӯшишҳои зиёд. Як соат интизор шавед ва бори дигар кӯшиш кунед.\n\n"
-            "Агар паролро фаромӯш карда бошед, онро дар барномаи Dastyor "
+            "Агар паролро фаромӯш карда бошед, онро дар барномаи Rahnamo "
             "барқарор кунед."
         ),
         "login_restart": "Аз нав оғоз кунед: /login",
@@ -293,12 +293,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Ин фармонро намедонам.\n"
             "/pay — пардохт   /balance — тавозун   /status — дархостҳо   /help — кӯмак"
         ),
-        "admin_only": "Ин амал танҳо барои маъмурони Dastyor дастрас аст.",
+        "admin_only": "Ин амал танҳо барои маъмурони Rahnamo дастрас аст.",
 
 
         "account": (
             "👤 {name}\n"
-            "🆔 ID Dastyor: {short_id}\n"
+            "🆔 ID Rahnamo: {short_id}\n"
             "💰 Тавозун: {balance} {currency}\n"
             "📱 Telegram: пайваст аст\n\n"
             "❗ ID-и худро ба администратор "
@@ -325,8 +325,8 @@ MESSAGES: dict[str, dict[str, str]] = {
         # for it to explain the bot's purpose immediately rather than
         # only on a teacher's very first visit.
         "start_unlinked": (
-            "👋 Добро пожаловать в Dastyor Pay!\n\n"
-            "Этот бот предназначен для пополнения баланса вашего аккаунта Dastyor.\n\n"
+            "👋 Добро пожаловать в Rahnamo Pay!\n\n"
+            "Этот бот предназначен для пополнения баланса вашего аккаунта Rahnamo.\n\n"
             "Вы можете:\n"
             "• Пополнить баланс.\n"
             "• Отправить чек об оплате.\n"
@@ -337,11 +337,11 @@ MESSAGES: dict[str, dict[str, str]] = {
             "платежа администратором.\n\n"
             "Сначала подключим ваш аккаунт.\n"
             "Нажмите кнопку «🔑 Войти в аккаунт» — я спрошу номер телефона "
-            "и пароль, те же, с которыми вы входите в Dastyor."
+            "и пароль, те же, с которыми вы входите в Rahnamo."
         ),
         "start_linked": (
-            "👋 Добро пожаловать в Dastyor Pay!\n\n"
-            "Этот бот предназначен для пополнения баланса вашего аккаунта Dastyor.\n\n"
+            "👋 Добро пожаловать в Rahnamo Pay!\n\n"
+            "Этот бот предназначен для пополнения баланса вашего аккаунта Rahnamo.\n\n"
             "Вы можете:\n"
             "• Пополнить баланс.\n"
             "• Отправить чек об оплате.\n"
@@ -355,8 +355,8 @@ MESSAGES: dict[str, dict[str, str]] = {
             "💰 Баланс: {balance} {currency}"
         ),
         "start_already_linked": (
-            "👋 Добро пожаловать в Dastyor Pay!\n\n"
-            "Пополняйте баланс Dastyor, отправляйте чеки и отслеживайте "
+            "👋 Добро пожаловать в Rahnamo Pay!\n\n"
+            "Пополняйте баланс Rahnamo, отправляйте чеки и отслеживайте "
             "платежи в одном месте.\n\n"
             "💳 Отправьте чек после оплаты.\n"
             "🔎 Система проверит данные и передаст заявку администратору.\n"
@@ -366,7 +366,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "link_token_invalid": (
             "Ссылка привязки недействительна.\n\n"
-            "Откройте приложение Dastyor и нажмите «Пополнить баланс через "
+            "Откройте приложение Rahnamo и нажмите «Пополнить баланс через "
             "Telegram» в разделе «Баланс» — он создаст новую корректную ссылку."
         ),
         "link_token_expired": (
@@ -380,13 +380,13 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Для новой привязки получите новую ссылку в приложении."
         ),
         "link_chat_taken": (
-            "Этот Telegram-чат уже привязан к другому аккаунту Dastyor.\n\n"
+            "Этот Telegram-чат уже привязан к другому аккаунту Rahnamo.\n\n"
             "Если это ошибка, обратитесь к нам — один чат не может быть привязан "
             "к двум аккаунтам одновременно."
         ),
 
         "not_linked_short": (
-            "Аккаунт не привязан. Приложение Dastyor -> «Баланс» -> "
+            "Аккаунт не привязан. Приложение Rahnamo -> «Баланс» -> "
             "«Пополнить баланс через Telegram».\n"
             "/start — подробнее"
         ),
@@ -404,7 +404,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "счёт. Фото чека помогает проверке, но само по себе "
             "её не заменяет — так мы защищены от поддельных чеков.\n\n"
             "🧾 «Проверить статус платежа» покажет, на каком этапе заявка.\n\n"
-            "Есть вопрос? Напишите команде Dastyor."
+            "Есть вопрос? Напишите команде Rahnamo."
         ),
 
         "balance": (
@@ -416,7 +416,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "pay_not_configured": (
             "Инструкция оплаты пока не настроена в боте.\n\n"
             "Мы не показываем примерные реквизиты — ваши деньги должны уйти "
-            "именно туда, куда нужно. Обратитесь к команде Dastyor."
+            "именно туда, куда нужно. Обратитесь к команде Rahnamo."
         ),
         "pay_choose_amount": (
             "Сколько вы переводите?\n\n"
@@ -432,13 +432,13 @@ MESSAGES: dict[str, dict[str, str]] = {
             "📸 После перевода отправьте фото чека сюда.\n"
             "✅ Баланс пополнится после проверки оплаты.\n\n"
             "Номер заявки: {code}\n"
-            "❗ Ваш ID Dastyor: {account_id}"
+            "❗ Ваш ID Rahnamo: {account_id}"
         ),
         "amount_invalid": "Не понял сумму. Напишите только число — например {example}.",
         "amount_too_small": "Сумма слишком мала. Минимум {min_amount} {currency}.",
         "amount_too_large": (
             "Сумма больше допустимой. Максимум {max_amount} {currency}.\n"
-            "Для крупной суммы обратитесь к команде Dastyor."
+            "Для крупной суммы обратитесь к команде Rahnamo."
         ),
 
         "receipt_need_request": (
@@ -489,10 +489,10 @@ MESSAGES: dict[str, dict[str, str]] = {
 
         "approved_user": (
             "✅ Оплата подтверждена!\n\n"
-            "На ваш баланс Dastyor зачислено: {amount} {currency}.\n\n"
+            "На ваш баланс Rahnamo зачислено: {amount} {currency}.\n\n"
             "Номер операции: {code}\n"
             "Новый баланс: {balance} {currency}\n\n"
-            "Спасибо за использование Dastyor!"
+            "Спасибо за использование Rahnamo!"
         ),
         "rejected_user": (
             "❌ Заявка на пополнение отклонена.\n\n"
@@ -516,12 +516,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Отвязать аккаунт {account} от этого чата?\n\n"
             "После отвязки этот чат не будет показывать баланс и не "
             "сможет создавать заявки на оплату. Ваш баланс и история "
-            "платежей в Dastyor остаются без изменений.\n\n"
+            "платежей в Rahnamo остаются без изменений.\n\n"
             "Для подтверждения напишите: /unlink да"
         ),
         "unlink_done": (
             "Аккаунт отвязан от этого чата.\n\n"
-            "Чтобы привязать снова: приложение Dastyor -> «Баланс» -> "
+            "Чтобы привязать снова: приложение Rahnamo -> «Баланс» -> "
             "«Пополнить баланс через Telegram»."
         ),
         "unlink_open_requests": (
@@ -538,14 +538,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "login_ask_phone": (
             "Привязка по номеру телефона.\n\n"
             "Отправьте номер, на который зарегистрирован ваш аккаунт "
-            "Dastyor.\n"
+            "Rahnamo.\n"
             "Например: +992900000000"
         ),
         "login_ask_password": (
-            "Теперь отправьте пароль от Dastyor.\n\n"
+            "Теперь отправьте пароль от Rahnamo.\n\n"
             "⚠️ Мы удалим пароль сразу после проверки.\n"
             "⚠️ Никогда не отправляйте пароль другим ботам — официальный "
-            "платёжный бот Dastyor только один (@{bot})."
+            "платёжный бот Rahnamo только один (@{bot})."
         ),
         "login_bad_phone": (
             "Неверный номер телефона.\n"
@@ -557,7 +557,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "login_throttled": (
             "Слишком много попыток. Подождите час и попробуйте снова.\n\n"
-            "Если забыли пароль — восстановите его в приложении Dastyor."
+            "Если забыли пароль — восстановите его в приложении Rahnamo."
         ),
         "login_restart": "Начните заново: /login",
         "login_delete_failed": (
@@ -569,12 +569,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Не знаю такую команду.\n"
             "/pay — оплата   /balance — баланс   /status — заявки   /help — помощь"
         ),
-        "admin_only": "Это действие доступно только администраторам Dastyor.",
+        "admin_only": "Это действие доступно только администраторам Rahnamo.",
 
 
         "account": (
             "👤 {name}\n"
-            "🆔 ID Dastyor: {short_id}\n"
+            "🆔 ID Rahnamo: {short_id}\n"
             "💰 Баланс: {balance} {currency}\n"
             "📱 Telegram: привязан\n\n"
             "❗ Назовите свой ID администратору — "
@@ -597,11 +597,11 @@ MESSAGES: dict[str, dict[str, str]] = {
         "currency": "somoni",
 
         "start_unlinked": (
-            "Hello! This is the official Dastyor payment bot.\n\n"
+            "Hello! This is the official Rahnamo payment bot.\n\n"
             "Your account is not linked yet. Linking is only started from the "
             "app itself — that is what keeps your account safe.\n\n"
             "What to do:\n"
-            "1. Open the Dastyor app\n"
+            "1. Open the Rahnamo app\n"
             "2. Balance -> \"Top up balance via Telegram\"\n"
             "3. Tap the button — the bot opens and the account gets linked\n\n"
             "The linking link is valid for 5 minutes and works only "
@@ -626,7 +626,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "link_token_invalid": (
             "That linking link is not valid.\n\n"
-            "Open the Dastyor app and tap \"Top up balance via Telegram\" on the "
+            "Open the Rahnamo app and tap \"Top up balance via Telegram\" on the "
             "Balance screen — it creates a fresh, valid link."
         ),
         "link_token_expired": (
@@ -640,13 +640,13 @@ MESSAGES: dict[str, dict[str, str]] = {
             "For a new link, start again from the app."
         ),
         "link_chat_taken": (
-            "This Telegram chat is already linked to a different Dastyor "
+            "This Telegram chat is already linked to a different Rahnamo "
             "account.\n\nIf that is a mistake, contact us — one chat cannot be "
             "linked to two accounts at once."
         ),
 
         "not_linked_short": (
-            "Your account is not linked. Dastyor app -> Balance -> \"Top up "
+            "Your account is not linked. Rahnamo app -> Balance -> \"Top up "
             "balance via Telegram\".\n/start — details"
         ),
 
@@ -654,14 +654,14 @@ MESSAGES: dict[str, dict[str, str]] = {
             "How topping up works:\n\n"
             "1. «➕ Top up balance» — I send you the card number\n"
             "2. Make the transfer\n"
-            "3. Tell the administrator your Dastyor ID — it is under "
+            "3. Tell the administrator your Rahnamo ID — it is under "
             "«👤 My account»\n"
             "4. They confirm the money arrived and top up your balance\n\n"
             "❗ A balance is only credited after an administrator has "
             "seen the money arrive in the receiving account. That is what "
             "protects against forged receipts.\n\n"
             "📸 Sending a photo of the receipt is optional.\n\n"
-            "Questions? Message the Dastyor team."
+            "Questions? Message the Rahnamo team."
         ),
 
         "balance": (
@@ -674,7 +674,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "pay_not_configured": (
             "Payment instructions have not been configured in the bot yet.\n\n"
             "We will not show approximate account details — your money has to go "
-            "to the right place. Please contact the Dastyor team."
+            "to the right place. Please contact the Rahnamo team."
         ),
         "pay_choose_amount": (
             "How much are you transferring?\n\n"
@@ -688,7 +688,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Request ID: {code}\n"
             "Amount: {amount} {currency}\n\n"
             "{instructions}\n\n"
-            "Tell the administrator your Dastyor ID: {account_id}\n"
+            "Tell the administrator your Rahnamo ID: {account_id}\n"
             "They will check that the money arrived and top up your "
             "balance — I will message you as soon as they do.\n\n"
             "A photo of the receipt is optional. Sending one just makes "
@@ -699,7 +699,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "amount_too_small": "That amount is too small. Minimum {min_amount} {currency}.",
         "amount_too_large": (
             "That amount is above the limit. Maximum {max_amount} {currency}.\n"
-            "For a larger amount, contact the Dastyor team."
+            "For a larger amount, contact the Rahnamo team."
         ),
 
         "receipt_need_request": (
@@ -765,7 +765,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Possible reasons: the money has not arrived yet, the amount does "
             "not match, or the receipt belongs to a different transfer.\n\n"
             "If you are sure you sent it, keep the original receipt and contact "
-            "the Dastyor team."
+            "the Rahnamo team."
         ),
         "needs_info_user": (
             "Request {code} needs more information.\n\n"
@@ -782,13 +782,13 @@ MESSAGES: dict[str, dict[str, str]] = {
         "unlink_confirm": (
             "Disconnect account {account} from this chat?\n\n"
             "Afterwards this chat will not show your balance and cannot "
-            "create payment requests. Your Dastyor balance and payment "
+            "create payment requests. Your Rahnamo balance and payment "
             "history are unchanged.\n\n"
             "To confirm, send: /unlink yes"
         ),
         "unlink_done": (
             "Account disconnected from this chat.\n\n"
-            "To link again: Dastyor app -> Balance -> \"Top up balance "
+            "To link again: Rahnamo app -> Balance -> \"Top up balance "
             "via Telegram\"."
         ),
         "unlink_open_requests": (
@@ -804,14 +804,14 @@ MESSAGES: dict[str, dict[str, str]] = {
 
         "login_ask_phone": (
             "Linking by phone number.\n\n"
-            "Send the number your Dastyor account is registered to.\n"
+            "Send the number your Rahnamo account is registered to.\n"
             "For example: +992900000000"
         ),
         "login_ask_password": (
-            "Now send your Dastyor password.\n\n"
+            "Now send your Rahnamo password.\n\n"
             "⚠️ We delete the password as soon as it is checked.\n"
             "⚠️ Never send your password to any other bot — there is only "
-            "one official Dastyor payment bot (@{bot})."
+            "one official Rahnamo payment bot (@{bot})."
         ),
         "login_bad_phone": (
             "That phone number is not valid.\n"
@@ -822,7 +822,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
         "login_throttled": (
             "Too many attempts. Wait an hour and try again.\n\n"
-            "If you forgot the password, reset it in the Dastyor app."
+            "If you forgot the password, reset it in the Rahnamo app."
         ),
         "login_restart": "Start again: /login",
         "login_delete_failed": (
@@ -834,12 +834,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "I do not know that command.\n"
             "/pay — payment   /balance — balance   /status — requests   /help — help"
         ),
-        "admin_only": "This action is only available to Dastyor administrators.",
+        "admin_only": "This action is only available to Rahnamo administrators.",
 
 
         "account": (
             "👤 {name}\n"
-            "🆔 Dastyor ID: {short_id}\n"
+            "🆔 Rahnamo ID: {short_id}\n"
             "💰 Balance: {balance} {currency}\n"
             "📱 Telegram: linked\n\n"
             "❗ Give your ID to the administrator — that is how they "
@@ -886,8 +886,8 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
         "review_header": "🔔 Новая оплата",
         "mismatch_short": "⚠️ Сумма не совпадает",
         "f_code": "Номер заявки",
-        "f_account": "Аккаунт Dastyor",
-        "f_user_id": "ID пользователя Dastyor",
+        "f_account": "Аккаунт Rahnamo",
+        "f_user_id": "ID пользователя Rahnamo",
         "f_telegram_id": "Telegram ID",
         "f_requested": "Запрошенная сумма",
         "receipt_header": "— Прочитано с квитанции —",
@@ -955,9 +955,9 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
             "приходить не будут."
         ),
         "ack_error": "Временная ошибка.",
-        "admin_only": "Это действие доступно только администраторам Dastyor.",
+        "admin_only": "Это действие доступно только администраторам Rahnamo.",
         "not_admin_chat": (
-            '🔒 Этот бот доступен только администраторам Dastyor. Для пополнения баланса откройте раздел «Баланс» на сайте.'
+            '🔒 Этот бот доступен только администраторам Rahnamo. Для пополнения баланса откройте раздел «Баланс» на сайте.'
         ),
 
         "pending_empty": "✅ Нерассмотренных заявок нет.",
@@ -1028,7 +1028,7 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
             'Нажмите «➖ Снять права» и следуйте подсказкам.'
         ),
         "admin_username_unknown": (
-            'Этот @username боту неизвестен. Укажите 6-значный ID аккаунта Dastyor из профиля на сайте.'
+            'Этот @username боту неизвестен. Укажите 6-значный ID аккаунта Rahnamo из профиля на сайте.'
         ),
         # The name and ID are echoed back deliberately. A @username is
         # resolved from a stored copy that can be stale, so the admin
@@ -1046,7 +1046,7 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
         "admin_already": "Этот пользователь уже администратор.",
         "admin_not_found": (
             "Аккаунт с таким ID не найден. Проверьте 6-значный номер — "
-            "он указан в заявке как «Аккаунт Dastyor: #123456»."
+            "он указан в заявке как «Аккаунт Rahnamo: #123456»."
         ),
         "admin_not_linked": (
             "У этого аккаунта нет привязанного Telegram.\n\n"
@@ -1060,7 +1060,7 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
             "некому было бы подтверждать."
         ),
         "admin_promoted_notice": (
-            "Вам выдали права администратора Dastyor.\n\n"
+            "Вам выдали права администратора Rahnamo.\n\n"
             "Сюда будут приходить заявки на оплату от учителей. По "
             "каждой нужно проверить, действительно ли деньги пришли на "
             "счёт, и нажать кнопку.\n\n"
@@ -1073,7 +1073,7 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
     "tg": {
         "review_header": "🧾 Дархости нави пардохт",
         "f_code": "Рақами дархост",
-        "f_account": "Ҳисоби Dastyor",
+        "f_account": "Ҳисоби Rahnamo",
         "f_user_id": "User ID",
         "f_requested": "Маблағи дархостшуда",
         "receipt_header": "— Аз расид хонда шуд —",
@@ -1106,10 +1106,10 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
             "Ин рақами амалиёт аллакай тасдиқ шудааст. Тавозун тағйир наёфт."
         ),
         "ack_error": "Хатои муваққатӣ.",
-        "admin_only": "Ин амал танҳо барои маъмурони Dastyor дастрас аст.",
+        "admin_only": "Ин амал танҳо барои маъмурони Rahnamo дастрас аст.",
         "not_admin_chat": (
-            "Ин боти хизматии Dastyor барои маъмурон аст.\n\n"
-            "Агар шумо хоҳед тавозунро пур кунед, барномаи Dastyor-ро "
+            "Ин боти хизматии Rahnamo барои маъмурон аст.\n\n"
+            "Агар шумо хоҳед тавозунро пур кунед, барномаи Rahnamo-ро "
             "кушоед ва «Пур кардани баланс тавассути Telegram»-ро зер "
             "кунед — он боти лозимиро мекушояд."
         ),
@@ -1117,7 +1117,7 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "review_header": "🧾 New payment request",
         "f_code": "Request ID",
-        "f_account": "Dastyor account",
+        "f_account": "Rahnamo account",
         "f_user_id": "User ID",
         "f_requested": "Requested amount",
         "receipt_header": "— Read from the receipt —",
@@ -1148,10 +1148,10 @@ ADMIN_MESSAGES: dict[str, dict[str, str]] = {
             "This transaction number is already approved. Balance unchanged."
         ),
         "ack_error": "Temporary error.",
-        "admin_only": "This action is only available to Dastyor administrators.",
+        "admin_only": "This action is only available to Rahnamo administrators.",
         "not_admin_chat": (
-            "This is the Dastyor service bot for administrators.\n\n"
-            "To top up your balance, open the Dastyor app and tap "
+            "This is the Rahnamo service bot for administrators.\n\n"
+            "To top up your balance, open the Rahnamo app and tap "
             "\"Top up balance via Telegram\" — it opens the right bot."
         ),
     },
@@ -1415,14 +1415,14 @@ TOPUP_TEXTS: dict[str, str] = {
         '➕ Начисление средств\n\nКому начислить? Пришлите:\n• ID аккаунта — 6 цифр, например 123456\n• или номер телефона\n• или часть имени — покажу список\n\nДля отмены нажмите «❌ Отмена».'
     ),
     "user_not_found": (
-        'Никого не нашёл по «{query}».\n\nID аккаунта — это 6 цифр, он виден у пользователя в профиле Dastyor. Можно также прислать номер телефона или часть имени.\n\nДля отмены нажмите «❌ Отмена».'
+        'Никого не нашёл по «{query}».\n\nID аккаунта — это 6 цифр, он виден у пользователя в профиле Rahnamo. Можно также прислать номер телефона или часть имени.\n\nДля отмены нажмите «❌ Отмена».'
     ),
     "pick_user": (
         'Нашёл несколько. Кого из них?\n\n{options}\nПришлите ID нужного.\nДля отмены нажмите «❌ Отмена».'
     ),
     "pick_user_line": "• {short_id} — {name} (баланс {balance} {currency})",
     "ask_amount": (
-        '👤 {name}\n🆔 ID Dastyor: {short_id}\n💰 Текущий баланс: {balance} {currency}\n\nСколько начислить? Напишите сумму числом — например 25 или 25,50\n\nДля отмены нажмите «❌ Отмена».'
+        '👤 {name}\n🆔 ID Rahnamo: {short_id}\n💰 Текущий баланс: {balance} {currency}\n\nСколько начислить? Напишите сумму числом — например 25 или 25,50\n\nДля отмены нажмите «❌ Отмена».'
     ),
     "amount_not_a_number": (
         'Не понял сумму. Напишите только число — например 25 или 25,50\nДля отмены нажмите «❌ Отмена».'
@@ -1439,7 +1439,7 @@ TOPUP_TEXTS: dict[str, str] = {
     "confirm": (
         "Проверьте перед начислением:\n\n"
         "👤 Пользователь: {name}\n"
-        "🆔 ID Dastyor: {short_id}\n"
+        "🆔 ID Rahnamo: {short_id}\n"
         "💰 Текущий баланс: {balance_before} {currency}\n"
         "➕ Сумма начисления: {amount} {currency}\n"
         "✅ Баланс после операции: {balance_after} {currency}\n"
@@ -1480,7 +1480,7 @@ TOPUP_TEXTS: dict[str, str] = {
         '👥 Поиск пользователя\n\nПришлите ID аккаунта, номер телефона или часть имени.\nДля отмены нажмите «❌ Отмена».'
     ),
     "found_user": (
-        '👤 {name}\n🆔 ID Dastyor: {short_id}\n💰 Баланс: {balance} {currency}\n\nДля пополнения нажмите «💰 Пополнить баланс».'
+        '👤 {name}\n🆔 ID Rahnamo: {short_id}\n💰 Баланс: {balance} {currency}\n\nДля пополнения нажмите «💰 Пополнить баланс».'
     ),
     "telegram_linked": "привязан",
     "telegram_not_linked": "не привязан",
@@ -1526,25 +1526,25 @@ def topup_t(key: str, **kwargs) -> str:
 
 CREDITED_NOTICE: dict[str, str] = {
     "tg": (
-        "✅ Тавозуни Dastyor пур шуд!\n\n"
+        "✅ Тавозуни Rahnamo пур шуд!\n\n"
         "Илова шуд: {amount} {currency}\n"
         "Тавозуни ҳозира: {balance} {currency}\n"
         "Рақами амалиёт: {code}{note}\n\n"
-        "Ташаккур барои истифодаи Dastyor!"
+        "Ташаккур барои истифодаи Rahnamo!"
     ),
     "ru": (
-        "✅ Баланс Dastyor пополнен!\n\n"
+        "✅ Баланс Rahnamo пополнен!\n\n"
         "Начислено: {amount} {currency}\n"
         "Текущий баланс: {balance} {currency}\n"
         "Номер операции: {code}{note}\n\n"
-        "Спасибо за использование Dastyor!"
+        "Спасибо за использование Rahnamo!"
     ),
     "en": (
-        "✅ Your Dastyor balance has been topped up!\n\n"
+        "✅ Your Rahnamo balance has been topped up!\n\n"
         "Credited: {amount} {currency}\n"
         "Current balance: {balance} {currency}\n"
         "Operation number: {code}{note}\n\n"
-        "Thank you for using Dastyor!"
+        "Thank you for using Rahnamo!"
     ),
 }
 

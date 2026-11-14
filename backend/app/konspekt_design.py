@@ -203,6 +203,26 @@ WIDTH = A4[0] - 2 * MARGIN
 _GRADE_SUFFIX = {'Русский': 'класс', 'Таджикский': 'синф', 'Английский': 'grade',
                  'English': 'grade'}
 
+_DURATION_UNITS = {
+    'Русский': 'минут',
+    'Таджикский': 'дақиқа',
+    'Английский': 'minutes',
+    'English': 'minutes',
+}
+
+
+def _format_duration(value: str, language: str) -> str:
+    text = str(value or '').strip()
+    unit = _DURATION_UNITS.get(language)
+    if not unit:
+        return text
+    match = re.fullmatch(
+        r'(\d+)\s*(?:minutes?|mins?|min|мин(?:ут(?:а|ы)?)?|дақ(?:иқа)?)',
+        text,
+        flags=re.IGNORECASE,
+    )
+    return f'{match.group(1)} {unit}' if match else text
+
 
 def new_doc(buf, content: dict, s: _Style, language: str | None = None) -> BaseDocTemplate:
     """A4 page with the footer line, title · subject and page number."""
@@ -232,7 +252,7 @@ def new_doc(buf, content: dict, s: _Style, language: str | None = None) -> BaseD
 
     doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=mx, rightMargin=mx,
                           topMargin=1.5 * cm, bottomMargin=1.9 * cm,
-                          title=title or 'Dastyor', author='Dastyor')
+                          title=title or 'Rahnamo', author='Rahnamo')
     doc.addPageTemplates([PageTemplate(id='p', frames=[Frame(
         mx, 1.9 * cm, WIDTH, A4[1] - 3.4 * cm, id='f', leftPadding=0, rightPadding=0,
         topPadding=0, bottomPadding=0)], onPage=furniture)])
@@ -243,8 +263,6 @@ def header(tag: str, content: dict, meta: list[tuple[str, str]], s: _Style) -> l
     """Tag, serif title, subtitle, short accent bar and the shaded meta cells."""
     out = [Paragraph(tag, s.p(8.5, s.head, s.accent, 11, after=6)),
            Paragraph(str(content.get('title') or ''), s.p(25, s.head, INK, 30, after=4))]
-    if content.get('subtitle'):
-        out.append(Paragraph(str(content['subtitle']), s.p(12, s.body, MUTED, 16, after=2)))
     bar = _box(Spacer(48, 0.1), bg=s.accent, pad=1.2, radius=0)
     bar.hAlign = 'LEFT'
     cells = [_box([Paragraph(k.upper(), s.p(7, s.bold, MUTED, 9)),
@@ -272,7 +290,10 @@ def build(content: dict, words: dict, language: str, family: str) -> io.BytesIO:
     doc = new_doc(buf, content, s, language)
     helper = _Design(get_lecture_template('planspekt'), s.accent, words)
 
-    duration = str(content.get('duration') or '').strip() or words.get('duration_value', '')
+    duration = _format_duration(
+        str(content.get('duration') or '').strip() or words.get('duration_value', ''),
+        language,
+    )
     story: list = header(lab['tag'], content, [
         (words['subject'], subject), (lab['grade'], grade), (words['duration'], duration),
         (words['date'], '____________')], s)

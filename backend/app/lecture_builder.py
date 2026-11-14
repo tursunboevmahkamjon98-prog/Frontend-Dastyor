@@ -185,7 +185,7 @@ def _cover_classic(c, content, d: _Design):
 
     c.setFont(FONT_NAME, 8.5)
     c.setFillColor(HexColor('#9AA3AF'))
-    c.drawCentredString(W / 2, 2.2 * cm, 'Dastyor')
+    c.drawCentredString(W / 2, 2.2 * cm, 'Rahnamo')
 
 
 def _cover_split(c, content, d: _Design):
@@ -211,7 +211,7 @@ def _cover_split(c, content, d: _Design):
         c.drawString(1.3 * cm, 4.6 * cm - i * 0.55 * cm, line)
     c.setFont(FONT_NAME, 9)
     c.drawString(1.3 * cm, 3.2 * cm, _academic_year())
-    c.drawString(1.3 * cm, 2.4 * cm, 'Dastyor')
+    c.drawString(1.3 * cm, 2.4 * cm, 'Rahnamo')
 
     tx = panel_w + 1.5 * cm
     tw = W - tx - 1.8 * cm
@@ -290,7 +290,7 @@ def _cover_banner(c, content, d: _Design):
 
     c.setFillColor(HexColor('#9AA3AF'))
     c.setFont(FONT_NAME, 8.5)
-    c.drawString(mx, 1.9 * cm, 'Dastyor')
+    c.drawString(mx, 1.9 * cm, 'Rahnamo')
     c.drawRightString(W - mx, 1.9 * cm, _academic_year())
 
 
@@ -365,7 +365,7 @@ def _cover_worksheet(c, content, d: _Design):
 
     c.setFont(FONT_NAME, 8.5)
     c.setFillColor(HexColor('#9AA3AF'))
-    c.drawCentredString(W / 2, 2.55 * cm, f"Dastyor   ·   {_academic_year()}")
+    c.drawCentredString(W / 2, 2.55 * cm, f"Rahnamo   ·   {_academic_year()}")
 
 
 def _cover_plan(c, content, d: _Design, x, y, width, *, rule=False, numbers='plain',
@@ -961,7 +961,7 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
     mx = tmpl.margin_x * cm
     doc = _LectureDoc(buf, pagesize=A4, leftMargin=mx, rightMargin=mx,
                       topMargin=tmpl.margin_top * cm, bottomMargin=2.0 * cm,
-                      title=str(content.get('title') or 'Лекция'), author='Dastyor',
+                      title=str(content.get('title') or 'Лекция'), author='Rahnamo',
                       page_offset=0 if tmpl.cover == 'none' else 1)
 
     def _furniture(canvas_obj, doc_obj):
@@ -982,7 +982,7 @@ def build_lecture_pdf(content: dict, language: str = 'Русский') -> io.Byt
                                    str(doc_obj.page - getattr(doc_obj, 'page_offset', 1)))
         canvas_obj.setFillColor(HexColor('#A8B0BB'))
         canvas_obj.setFont(FONT_NAME, 8)
-        canvas_obj.drawString(mx, 1.05 * cm, 'Dastyor')
+        canvas_obj.drawString(mx, 1.05 * cm, 'Rahnamo')
         canvas_obj.restoreState()
 
     def _paint_cover(canvas_obj, doc_obj):

@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "C:\\Users\\user\\Desktop\\Frontend-Rahnamo\\backend\\.venv\\Scripts\\uvicorn.exe",
+      "runtimeArgs": ["app.main:app", "--reload", "--port", "8009", "--app-dir", "C:\\Users\\user\\Desktop\\Frontend-Rahnamo\\backend"],
+      "cwd": "C:\\Users\\user\\Desktop\\Frontend-Rahnamo\\backend",
+      "port": 8009
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}

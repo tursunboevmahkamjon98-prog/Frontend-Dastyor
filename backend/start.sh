@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Production entrypoint for the Dastyor backend.
+# Production entrypoint for the Rahnamo backend.
 #
 # Usage on a host (Render/Railway/Fly/plain VPS):
 #     ./start.sh
@@ -33,7 +33,7 @@ fi
 # Tables are created on startup by app/database.py's create_all (see the
 # lifespan handler in app/main.py), so there is no separate migration step
 # to run here.
-echo "Starting Dastyor backend on ${HOST}:${PORT} (workers=${WORKERS})"
+echo "Starting Rahnamo backend on ${HOST}:${PORT} (workers=${WORKERS})"
 exec uvicorn app.main:app \
     --host "$HOST" \
     --port "$PORT" \

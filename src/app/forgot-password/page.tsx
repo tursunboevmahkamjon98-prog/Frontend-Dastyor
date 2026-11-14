@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
     <AuthLayout>
         <div className="mb-8 lg:text-left">
           {}
-          <img src="/brand/dastyor-mark.webp" alt="Dastyor" className="mb-4 h-11 w-auto lg:hidden" />
+          <img src="/brand/rahnamo-mark-tight.png" alt="" className="mb-4 h-12 w-auto lg:hidden" />
           <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">{t("forgot.title")}</h1>
           <p className="mt-1.5 text-sm text-text-secondary">
             {step === "phone" && t("forgot.stepPhone")}

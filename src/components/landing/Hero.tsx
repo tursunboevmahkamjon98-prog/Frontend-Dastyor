@@ -105,7 +105,7 @@ export default function Hero({ apkSize }: { apkSize: string | null }) {
             <span className="leading-tight">
               <span className="block text-[11px] font-medium text-white/60">{t("landing.hero.apkTitle")}</span>
               <span className="flex items-center gap-1.5 text-sm font-bold text-white">
-                dastyor.apk
+                rahnamo.apk
                 {apkSize && <span className="font-normal text-white/55">· {apkSize} {t("landing.hero.apkMb")}</span>}
               </span>
             </span>

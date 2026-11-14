@@ -347,7 +347,7 @@ class BalanceTransaction(Base):
 
     # The acting administrator's numeric Telegram id. Distinct from
     # actor_id, which is a users.id FK — an admin who reviews payments
-    # in Telegram need not have a Dastyor account at all.
+    # in Telegram need not have a Rahnamo account at all.
     actor_telegram_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
 
     # What makes a credit happen exactly once. The confirm button
@@ -571,7 +571,7 @@ class TelegramAdmin(Base):
     )
 
     # NULL until the account links Telegram. A grant can be made for any
-    # Dastyor user, including one who has never opened the bot — it then
+    # Rahnamo user, including one who has never opened the bot — it then
     # sits PENDING and activates the moment they link, because only then
     # does a Telegram id exist to authorize against. Granting still
     # cannot invent an identity; it just stops the owner having to wait
