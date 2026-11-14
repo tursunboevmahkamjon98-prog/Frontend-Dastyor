@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { KONSPEKT_TEMPLATES } from "@/lib/material-types";
+import { useT } from "@/lib/i18n";
 import VisualBlockView, { VisualBlock } from "@/components/presentation/SlideVisuals";
 
 export interface PresentSlide {
@@ -53,6 +54,7 @@ export default function PresentMode({
   initialIndex?: number;
   onClose: () => void;
 }) {
+  const t = useT();
   const [i, setI] = useState(() => Math.min(Math.max(initialIndex, 0), Math.max(slides.length - 1, 0)));
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export default function PresentMode({
     >
       <button
         onClick={onClose}
-        aria-label="Закрыть"
+        aria-label={t("common.close")}
         className="present-close absolute z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/5 text-gray-500 hover:bg-black/10 hover:text-gray-800"
       >
         <X className="h-5 w-5" />
@@ -171,7 +173,7 @@ export default function PresentMode({
         <button
           onClick={prev}
           disabled={i === 0}
-          aria-label="Предыдущий слайд"
+          aria-label={t("common.previous")}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:opacity-30"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -182,7 +184,7 @@ export default function PresentMode({
         <button
           onClick={next}
           disabled={i === last}
-          aria-label="Следующий слайд"
+          aria-label={t("common.next")}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:bg-gray-50 disabled:opacity-30"
         >
           <ChevronRight className="h-5 w-5" />

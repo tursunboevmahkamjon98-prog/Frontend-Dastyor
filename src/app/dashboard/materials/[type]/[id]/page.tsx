@@ -88,7 +88,7 @@ export default function MaterialViewerPage() {
     return <div className="px-4 pt-10 text-center text-sm text-primary-dark">{error || t("material.loadFailed")}</div>;
   }
   if (!item || !config) {
-    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">Загрузка...</div>;
+    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">{t("material.loading")}</div>;
   }
 
   
@@ -195,7 +195,7 @@ export default function MaterialViewerPage() {
   }
 
   async function handleDelete() {
-    if (!item || !confirm(`Удалить «${item.title}»?`)) return;
+    if (!item || !confirm(`${t("material.deleteConfirm")} «${item.title}»?`)) return;
     await materialsApi.remove(type, id);
     router.push("/dashboard/materials");
   }
@@ -219,7 +219,7 @@ export default function MaterialViewerPage() {
           className="flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-sm font-medium text-text-secondary shadow-[0_2px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5 hover:text-text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Назад
+          {t("material.back")}
         </button>
         <button
           onClick={handleDelete}
@@ -243,14 +243,14 @@ export default function MaterialViewerPage() {
 
       {(type === "konspekt" || type === "lektsiya") && hasUndo && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary-50 px-4 py-2.5">
-          <p className="text-xs text-primary-dark">Раздел изменён. Можно вернуть предыдущую версию.</p>
+          <p className="text-xs text-primary-dark">{t("material.sectionChanged")}</p>
           <button
             onClick={handleUndo}
             disabled={undoing}
             className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/15 bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark shadow-[0_2px_0_0_var(--color-primary-50)] transition-all duration-150 hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
           >
             {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
-            Отменить
+            {t("materials.undo")}
           </button>
         </div>
       )}
@@ -262,7 +262,7 @@ export default function MaterialViewerPage() {
             className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-primary-light to-primary py-2.5 text-sm font-semibold text-white shadow-[0_3px_0_0_var(--color-primary-dark),0_10px_20px_-6px_rgba(220,38,38,0.4)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_0_0_var(--color-primary-dark),0_12px_22px_-6px_rgba(220,38,38,0.45)] active:translate-y-0.5 active:shadow-[0_1px_0_0_var(--color-primary-dark)]"
           >
             <Play className="h-4 w-4" />
-            Показать на весь экран
+            {t("material.openFull")}
           </button>
           {}
           <button
@@ -270,7 +270,7 @@ export default function MaterialViewerPage() {
             className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5"
           >
             <Pencil className="h-4 w-4" />
-            Редактировать
+            {t("material.edit")}
           </button>
         </div>
       )}
@@ -283,7 +283,7 @@ export default function MaterialViewerPage() {
             className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-[0_3px_0_0_var(--color-border-light)] transition-all duration-150 hover:-translate-y-0.5"
           >
             <Pencil className="h-4 w-4" />
-            Редактировать тест
+            {t("material.editTest")}
           </button>
         </div>
       ) : null}

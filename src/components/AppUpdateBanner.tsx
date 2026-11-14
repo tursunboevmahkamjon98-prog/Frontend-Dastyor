@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const DISMISS_KEY = "dastyor_apk_notice_dismissed";
 
 export default function AppUpdateBanner() {
+  const t = useT();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -23,12 +25,12 @@ export default function AppUpdateBanner() {
     <div className="flex items-start gap-3 border-b border-border-light bg-primary-50 px-4 py-2.5 text-sm sm:px-6">
       <Download className="mt-0.5 h-4 w-4 shrink-0 text-primary-dark" />
       <p className="flex-1 text-text-primary">
-        Вышла новая версия приложения Rahnamo.{" "}
+        {t("update.available")} {" "}
         <a href="/dastyor.apk" className="font-medium text-primary-dark underline">
-          Скачать
+          {t("update.download")}
         </a>{" "}
         <span className="text-text-secondary">
-          — установите поверх старой, она обновится сама.
+          {t("update.note")}
         </span>
       </p>
       <button
@@ -36,7 +38,7 @@ export default function AppUpdateBanner() {
           localStorage.setItem(DISMISS_KEY, "1");
           setShow(false);
         }}
-        aria-label="Закрыть"
+        aria-label={t("common.close")}
         className="shrink-0 rounded p-0.5 text-text-tertiary hover:text-text-primary"
       >
         <X className="h-4 w-4" />

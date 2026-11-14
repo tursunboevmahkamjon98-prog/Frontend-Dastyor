@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { materialsApi, ApiError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 
 
@@ -55,6 +56,7 @@ function normalizedType(q: Question): QuestionType {
 
 
 export default function TestEditorPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -79,7 +81,7 @@ export default function TestEditorPage() {
           setContent({});
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить тест"));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("material.loadFailed")));
   }, [id]);
 
   const questions = useMemo(() => (content.questions as Question[] | undefined) ?? [], [content]);
@@ -169,7 +171,7 @@ export default function TestEditorPage() {
   }
 
   function removeQuestion(index: number) {
-    if (!confirm("Удалить этот вопрос?")) return;
+    if (!confirm(`${t("material.deleteConfirm")} этот вопрос?`)) return;
     updateQuestions(questions.filter((_, i) => i !== index));
     setOpen(null);
   }
@@ -222,7 +224,7 @@ export default function TestEditorPage() {
     return <div className="px-4 pt-10 text-center text-sm text-primary-dark">{error}</div>;
   }
   if (!item) {
-    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">Загрузка...</div>;
+    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">{t("test.loading")}</div>;
   }
 
   return (
@@ -233,15 +235,15 @@ export default function TestEditorPage() {
           className="flex items-center gap-1.5 text-sm font-medium text-text-secondary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Назад
+          {t("test.back")}
         </button>
         <div className="flex items-center gap-2 text-xs text-text-tertiary">
           {saveState === "saving" && (
             <span className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Сохранение…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("test.save")}…
             </span>
           )}
-          {saveState === "saved" && <span>Сохранено</span>}
+          {saveState === "saved" && <span>{t("test.saved")}</span>}
         </div>
       </div>
 
@@ -249,7 +251,7 @@ export default function TestEditorPage() {
       <div className="mb-4 space-y-3 rounded-2xl border border-border-light bg-surface p-4">
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-            Название теста
+            {t("test.titleLabel")}
           </label>
           <input
             value={title}
@@ -262,16 +264,16 @@ export default function TestEditorPage() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-            Тема
+            {t("test.topicLabel")}
           </label>
           <input
             value={(content.description as string | undefined) ?? ""}
             onChange={(e) => persist({ ...content, description: e.target.value })}
-            placeholder="О чём этот тест"
+            placeholder={t("test.topicPlaceholder")}
             className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-primary/50"
           />
           <p className="mt-1 text-xs text-text-tertiary">
-            {item.subject} • {item.grade} • {questions.length} вопр.
+            {item.subject} • {item.grade} • {questions.length} {t("test.questionsShort")}
           </p>
         </div>
       </div>
@@ -291,7 +293,7 @@ export default function TestEditorPage() {
                     {i + 1}
                   </span>
                   <span className="min-w-0 break-words text-sm text-text-primary">
-                    {q.question || <span className="text-text-tertiary">Без текста</span>}
+                    {q.question || <span className="text-text-tertiary">{t("test.noText")}</span>}
                   </span>
                 </button>
                 {}
@@ -299,7 +301,7 @@ export default function TestEditorPage() {
                   <button
                     onClick={() => moveQuestion(i, -1)}
                     disabled={i === 0}
-                    title="Выше"
+                    title={t("test.moveUp")}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-surface-muted hover:text-text-primary disabled:opacity-30"
                   >
                     <ChevronUp className="h-4 w-4" />
@@ -307,21 +309,21 @@ export default function TestEditorPage() {
                   <button
                     onClick={() => moveQuestion(i, 1)}
                     disabled={i === questions.length - 1}
-                    title="Ниже"
+                    title={t("test.moveDown")}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-surface-muted hover:text-text-primary disabled:opacity-30"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => duplicateQuestion(i)}
-                    title="Дублировать"
+                    title={t("test.duplicate")}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-surface-muted hover:text-text-primary"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => removeQuestion(i)}
-                    title="Удалить"
+                    title={t("test.delete")}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-primary-50 hover:text-primary-dark"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -335,14 +337,14 @@ export default function TestEditorPage() {
                     value={q.question}
                     onChange={(e) => updateQuestion(i, { question: e.target.value })}
                     rows={2}
-                    placeholder="Текст вопроса"
+                    placeholder={t("test.questionPlaceholder")}
                     className="w-full resize-y rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-primary/50"
                   />
 
                   <div className="flex flex-wrap gap-2">
                     <label className="min-w-0 flex-1">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                        Тип
+                        {t("test.type")}
                       </span>
                       <select
                         value={type}
@@ -358,7 +360,7 @@ export default function TestEditorPage() {
                     </label>
                     <label className="min-w-0 flex-1">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                        Сложность
+                        {t("test.difficulty")}
                       </span>
                       <select
                         value={q.difficulty ?? "medium"}
@@ -377,7 +379,7 @@ export default function TestEditorPage() {
                   {type === "open_ended" ? (
                     <div>
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                        Образец ответа
+                      {t("test.modelAnswer")}
                       </span>
                       <textarea
                         value={q.model_answer ?? ""}
@@ -389,7 +391,7 @@ export default function TestEditorPage() {
                   ) : (
                     <div>
                       <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                        Варианты — отметьте правильный
+                      {t("test.options")}
                       </span>
                       <div className="space-y-1.5">
                         {(q.options ?? []).map((opt, j) => {
@@ -430,7 +432,7 @@ export default function TestEditorPage() {
                               {type !== "true_false" && (q.options?.length ?? 0) > 2 && (
                                 <button
                                   onClick={() => removeOption(i, j)}
-                                  title="Удалить вариант"
+                                  title={t("test.deleteOption")}
                                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:text-primary-dark"
                                 >
                                   <X className="h-4 w-4" />
@@ -447,7 +449,7 @@ export default function TestEditorPage() {
                           }
                           className="mt-2 flex items-center gap-1 text-xs font-medium text-text-tertiary hover:text-primary"
                         >
-                          <Plus className="h-3 w-3" /> Добавить вариант
+                          <Plus className="h-3 w-3" /> {t("test.addOption")}
                         </button>
                       )}
                     </div>
@@ -455,13 +457,13 @@ export default function TestEditorPage() {
 
                   <div>
                     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                      Пояснение
+                      {t("test.explanation")}
                     </span>
                     <textarea
                       value={q.explanation ?? ""}
                       onChange={(e) => updateQuestion(i, { explanation: e.target.value })}
                       rows={2}
-                      placeholder="Почему этот ответ правильный"
+                      placeholder={t("test.explanationPlaceholder")}
                       className="w-full resize-y rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-secondary outline-none focus:border-primary/50"
                     />
                   </div>
@@ -477,7 +479,7 @@ export default function TestEditorPage() {
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-text-secondary transition hover:border-primary hover:text-primary"
       >
         <Plus className="h-4 w-4" />
-        Добавить вопрос
+        {t("test.addQuestion")}
       </button>
     </div>
   );

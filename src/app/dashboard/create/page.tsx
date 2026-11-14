@@ -173,7 +173,7 @@ export default function CreatePage() {
         <p className="mt-1 max-w-full truncate text-sm text-text-tertiary">{topic}</p>
         <p className="mt-5 max-w-md text-xs leading-relaxed text-text-tertiary">{t("create.generatingHint")}</p>
         <p className="mt-7 max-w-xl text-sm font-semibold leading-relaxed text-red-600">
-          Внимание! Данный материал создан с помощью ИИ. После генерации обязательно проверьте его — в нём могут быть ошибки
+          {t("create.aiWarning")}
         </p>
       </div>
     );
@@ -290,18 +290,18 @@ export default function CreatePage() {
         <div className="mb-4 rounded-xl bg-primary-50 px-4 py-3 text-sm text-primary-dark">{error}</div>
       )}
 
-      <label className="mb-1.5 block text-sm font-semibold text-text-primary">Тема урока</label>
+      <label className="mb-1.5 block text-sm font-semibold text-text-primary">{t("create.topicLabel")}</label>
       <input
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
-        placeholder="Например: Фотосинтез"
+        placeholder={t("create.topicPlaceholder")}
         className={`${FIELD} mb-5 text-base`}
         autoFocus
       />
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">Класс</label>
+          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">{t("create.gradeLabel")}</label>
           <select value={grade} onChange={(e) => setGrade(e.target.value)} className={SELECT}>
             {CLASSES.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -309,7 +309,7 @@ export default function CreatePage() {
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">Предмет</label>
+          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">{t("create.subjectLabel")}</label>
           <select value={subject} onChange={(e) => setSubject(e.target.value)} className={SELECT}>
             {SUBJECTS.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -317,7 +317,7 @@ export default function CreatePage() {
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">Язык материала</label>
+          <label className="mb-1.5 block text-xs font-semibold text-text-secondary">{t("create.languageLabel")}</label>
           <select value={language} onChange={(e) => setLanguage(e.target.value)} className={SELECT}>
             {LANGUAGES.map((l) => (
               <option key={l} value={l}>{l}</option>
@@ -328,7 +328,7 @@ export default function CreatePage() {
 
       <div className="mb-6 grid gap-1.5">
         <label htmlFor="include-examples" className="text-sm font-semibold text-text-primary">
-          Приводить примеры по теме?
+          {t("create.examplesLabel")}
         </label>
         <select
           id="include-examples"
@@ -336,21 +336,21 @@ export default function CreatePage() {
           onChange={(e) => setIncludeExamples(e.target.value === "yes")}
           className={SELECT}
         >
-          <option value="yes">Да — с примерами</option>
-          <option value="no">Нет — без примеров</option>
+          <option value="yes">{t("create.examplesYes")}</option>
+          <option value="no">{t("create.examplesNo")}</option>
         </select>
       </div>
 
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <label className="text-sm font-semibold text-text-primary">Что создать</label>
+          <label className="text-sm font-semibold text-text-primary">{t("create.whatToCreate")}</label>
         </div>
         <button
           type="button"
           onClick={() => setSelected(allChosen ? [] : [...TYPES])}
           className="text-xs font-semibold text-primary hover:text-primary-dark"
         >
-          {allChosen ? "Снять всё" : "Выбрать всё"}
+          {allChosen ? t("create.deselectAll") : t("create.selectAll")}
         </button>
       </div>
 
@@ -390,7 +390,7 @@ export default function CreatePage() {
       {}
       {selected.includes("prezentatsiya") && (
         <CountPicker
-          label="Слайдов в презентации"
+          label={t("create.slideCount")}
           value={slideCount}
           onChange={setSlideCount}
         />
@@ -398,13 +398,13 @@ export default function CreatePage() {
       {selected.includes("test") && (
         <>
           <CountPicker
-            label="Вопросов в тесте"
+            label={t("create.questionCount")}
             value={questionCount}
             onChange={setQuestionCount}
           />
           <div className="mb-5">
             <label className="mb-2 block text-sm font-semibold text-text-primary">
-              Тип вопросов
+              {t("create.questionType")}
             </label>
             <div className="flex flex-wrap gap-2">
               {TEST_TYPES.map((tt) => (
@@ -449,6 +449,7 @@ function CountPicker({
   value: number;
   onChange: (n: number) => void;
 }) {
+  const t = useT();
   const custom = !COUNT_PRESETS.includes(value);
   return (
     <div className="mb-5">
@@ -480,7 +481,7 @@ function CountPicker({
             
             if (Number.isFinite(n) && n > 0) onChange(Math.min(60, Math.round(n)));
           }}
-          placeholder="Своё"
+          placeholder={t("create.custom")}
           className={`w-24 rounded-xl border px-3 py-2 text-sm outline-none transition ${
             custom ? "border-primary bg-primary-50 text-text-primary" : "border-border bg-white"
           }`}

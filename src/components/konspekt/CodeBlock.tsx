@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 
 export default function CodeBlock({
@@ -13,6 +14,7 @@ export default function CodeBlock({
   language?: string;
   explanation?: string;
 }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -35,7 +37,7 @@ export default function CodeBlock({
           className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-white/90 hover:bg-white/10"
         >
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Скопировано" : "Копировать"}
+          {copied ? t("common.copied") : t("common.copy")}
         </button>
       </div>
       <pre className="overflow-x-auto bg-[#1e293b] px-4 py-3">

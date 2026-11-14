@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { materialsApi, downloadMaterial, ApiError, API_ORIGIN } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { KONSPEKT_TEMPLATES, PRESENTATION_TEMPLATES, getSubjectAccent } from "@/lib/material-types";
 import { deckTemplateName, templateById, subjectTemplateFor } from "@/lib/subject-templates";
 import SubjectTemplatePreview from "@/components/SubjectTemplatePreview";
@@ -41,6 +42,7 @@ interface Slide {
 
 
 export default function PresentationEditorPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -67,7 +69,7 @@ export default function PresentationEditorPage() {
           setContent({});
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить презентацию"));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("material.loadFailed")));
   }, [id]);
 
   const slides = (content.slides as Slide[] | undefined) ?? [];
@@ -150,7 +152,7 @@ export default function PresentationEditorPage() {
 
   function deleteSlide(index: number) {
     if (slides.length <= 1) return;
-    if (!confirm("Удалить этот слайд?")) return;
+    if (!confirm(`${t("material.deleteConfirm")} этот слайд?`)) return;
     const next = slides.filter((_, i) => i !== index);
     updateSlides(next);
     setSelected((s) => Math.min(s, next.length - 1));
@@ -215,7 +217,7 @@ export default function PresentationEditorPage() {
     return <div className="px-4 pt-10 text-center text-sm text-primary-dark">{error}</div>;
   }
   if (!item) {
-    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">Загрузка...</div>;
+    return <div className="px-4 pt-10 text-center text-sm text-text-secondary">{t("material.loading")}</div>;
   }
 
   const s = slides[selected];
@@ -230,17 +232,17 @@ export default function PresentationEditorPage() {
             className="flex items-center gap-1.5 text-sm font-medium text-text-secondary shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            Назад
+            {t("material.back")}
           </button>
           <h1 className="truncate text-sm font-semibold text-text-primary">{item.title}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-xs text-text-tertiary">
           {saveState === "saving" && (
             <span className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Сохранение…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("material.save")}…
             </span>
           )}
-          {saveState === "saved" && <span>Сохранено</span>}
+          {saveState === "saved" && <span>{t("material.saved")}</span>}
         </div>
       </div>
 
@@ -265,14 +267,14 @@ export default function PresentationEditorPage() {
                     className="line-clamp-2 text-[7px] font-bold leading-tight"
                     style={{ color: tmpl.deck.header === "band" ? "#fff" : tmpl.deck.ink }}
                   >
-                    {i + 1}. {slide.title || "Без названия"}
+                    {i + 1}. {slide.title || t("material.noTitle")}
                   </p>
                 </div>
               </div>
               {}
               <div className="absolute -top-1.5 -right-1.5 flex gap-0.5 [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:flex">
                 <button
-                  title="Вверх"
+                    title={t("common.back")}
                   onClick={(e) => {
                     e.stopPropagation();
                     moveSlide(i, -1);
@@ -283,7 +285,7 @@ export default function PresentationEditorPage() {
                   <ChevronUp className="h-3.5 w-3.5 [@media(hover:hover)]:h-3 [@media(hover:hover)]:w-3" />
                 </button>
                 <button
-                  title="Вниз"
+                    title={t("common.back")}
                   onClick={(e) => {
                     e.stopPropagation();
                     moveSlide(i, 1);
@@ -298,7 +300,7 @@ export default function PresentationEditorPage() {
                 <span className="text-[10px] text-text-tertiary">{i + 1}</span>
                 <div className="flex gap-1">
                   <button
-                    title="Дублировать"
+                    title={t("material.addPoint")}
                     onClick={(e) => {
                       e.stopPropagation();
                       duplicateSlide(i);
@@ -308,7 +310,7 @@ export default function PresentationEditorPage() {
                     <Copy className="h-3 w-3" />
                   </button>
                   <button
-                    title="Удалить"
+                    title={t("material.deleteConfirm")}
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteSlide(i);
@@ -329,7 +331,7 @@ export default function PresentationEditorPage() {
             style={{ minWidth: 110 }}
           >
             {addingSlide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Слайд
+            {t("material.slide")}
           </button>
         </div>
 
@@ -348,7 +350,7 @@ export default function PresentationEditorPage() {
                   <input
                     value={s.title}
                     onChange={(e) => updateSlide(selected, { title: e.target.value })}
-                    placeholder="Заголовок слайда"
+                    placeholder={t("material.slideTitlePlaceholder")}
                     className="w-full rounded-lg border border-transparent bg-white/60 px-2 py-1 text-sm font-semibold text-text-primary outline-none focus:border-primary/40 focus:bg-white"
                   />
 
@@ -381,7 +383,7 @@ export default function PresentationEditorPage() {
                       onClick={() => updateSlide(selected, { bullet_points: [...(s.bullet_points ?? []), ""] })}
                       className="flex items-center gap-1 text-xs font-medium text-text-tertiary hover:text-primary"
                     >
-                      <Plus className="h-3 w-3" /> Добавить пункт
+                      <Plus className="h-3 w-3" /> {t("material.addPoint")}
                     </button>
                   </div>
 
@@ -397,7 +399,7 @@ export default function PresentationEditorPage() {
                           updateSlides(slides.map((sl, i) => (i === selected ? (rest as Slide) : sl)));
                         }}
                         className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                        title="Удалить изображение"
+                        title={t("material.deleteConfirm")}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -408,14 +410,14 @@ export default function PresentationEditorPage() {
                   <textarea
                     value={s.body ?? ""}
                     onChange={(e) => updateSlide(selected, { body: e.target.value })}
-                    placeholder="Краткое пояснение (необязательно)"
+                    placeholder={t("material.slideCaptionPlaceholder")}
                     rows={2}
                     className="w-full resize-none rounded-lg border border-transparent bg-white/50 px-2 py-1.5 text-xs text-text-secondary outline-none focus:border-primary/40 focus:bg-white"
                   />
 
                   {}
                   <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Заметки для учителя</p>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">{t("material.notes")}</p>
                     <textarea
                       value={s.speaker_notes ?? ""}
                       onChange={(e) => updateSlide(selected, { speaker_notes: e.target.value })}
@@ -428,7 +430,7 @@ export default function PresentationEditorPage() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-sm text-text-secondary">Нет слайдов</p>
+            <p className="text-center text-sm text-text-secondary">{t("material.noSlides")}</p>
           )}
         </div>
 
@@ -440,7 +442,7 @@ export default function PresentationEditorPage() {
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm shadow-primary/25 transition hover:bg-primary-dark disabled:opacity-60"
           >
             {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Пересоздать слайд
+            {t("material.regenSlide")}
           </button>
 
           <button
@@ -449,13 +451,13 @@ export default function PresentationEditorPage() {
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface-muted py-2.5 text-sm font-semibold text-text-primary transition hover:bg-surface disabled:opacity-60"
           >
             <Maximize2 className="h-4 w-4" />
-            На весь экран
+            {t("material.openFull")}
           </button>
 
           {}
           <div className="rounded-xl border border-border bg-surface p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-              Оформление
+              {t("material.design")}
             </p>
             {deckDesign && <SubjectTemplatePreview template={deckDesign} className="mb-2" />}
             <p className="text-sm font-medium text-text-primary">{deckDesignName}</p>
@@ -465,7 +467,7 @@ export default function PresentationEditorPage() {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">Скачать</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">{t("material.downloadSection")}</p>
             <div className="flex gap-2">
               {(["pptx", "pdf"] as const).map((f) => (
                 <button
