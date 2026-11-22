@@ -8,13 +8,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, literal, union_all
 from app.database import get_db, async_session, released
-from app.models import User, Konspekt, Presentation, Test, Lecture, PracticalTask, Game, GameAttempt
+from app.models import User, Konspekt, Presentation, Test, Lecture, PracticalTask, Game, GameAttempt, Varaq
 from app.schemas import (
     KonspektCreate, KonspektUpdate, KonspektOut,
     PresentationCreate, PresentationUpdate, PresentationOut,
     TestCreate, TestUpdate, TestOut,
     LectureCreate, LectureUpdate, LectureOut,
     PracticalTaskCreate, PracticalTaskUpdate, PracticalTaskOut,
+    VaraqCreate, VaraqUpdate, VaraqOut,
     GameCreate, GameUpdate, GameOut, GameAttemptCreate, GameAttemptOut,
     DashboardStats,
     GenerateRequest, GenerateResponse,
@@ -26,25 +27,26 @@ from app.schemas import (
     RegenerateGameRequest,
     QuizSetRequest, QuizSetResponse, QuizSetQuestion,
     ChatEditRequest,
+    ClarifyTopicRequest, ClarifyTopicResponse,
 )
 from app.auth import get_current_user
 from app.ai_service import (
     generate_material, generate_all_materials, regenerate_item, generate_konspekt_stream,
     retry_lesson_image,
     chat_edit_material, summarize_previous_konspekt, summarize_previous_presentation,
-    retry_visual_assets, generate_quiz_set,
+    retry_visual_assets, generate_quiz_set, clarify_topic,
 )
 from app.diagnostics import memory_report
 from app.document_extract import extract_source_text
 from app.docx_builder import (
     build_konspekt_docx, build_lecture_docx, build_test_docx, build_presentation_docx,
-    build_practical_docx,
+    build_practical_docx, build_varaq_docx,
 )
 from app.export_builder import (
     build_presentation_pptx, build_konspekt_pdf, build_lecture_pdf, build_test_pdf, build_presentation_pdf,
-    build_practical_pdf, _PRACTICAL_UI,
+    build_practical_pdf, build_varaq_pdf, _PRACTICAL_UI,
 )
-from app import limits, pptx_pdf, book_sources
+from app import limits, pptx_pdf, book_sources, book_library, book_topics
 from app.security import enforce_user_quota
 from app.logger import get_logger
 from app.i18n import get_message
@@ -63,6 +65,7 @@ _MATERIAL_MODELS = {
     "lektsiya": Lecture,
     "amaliy": PracticalTask,
     "igra": Game,
+    "varaq": Varaq,
 }
 
 GENERATION_PRICE_DIRAMS = limits.GENERATION_PRICE_DIRAMS
@@ -75,6 +78,7 @@ _FREE_USED_ATTR = {
     "prezentatsiya": "free_prezentatsiya_used",
     "amaliy": "free_amaliy_used",
     "igra": "free_igra_used",
+    "varaq": "free_varaq_used",
 }
 
 
@@ -122,6 +126,7 @@ async def get_stats(user: User = Depends(get_current_user), db: AsyncSession = D
                 (Konspekt, "konspekt_count"), (Test, "test_count"),
                 (Presentation, "presentation_count"), (Lecture, "lecture_count"),
                 (PracticalTask, "practical_count"), (Game, "game_count"),
+                (Varaq, "varaq_count"),
             )
         )))
         stats = DashboardStats(**counts.mappings().one())
@@ -826,6 +831,89 @@ async def delete_practical_task(
 
 
 
+@router.post("/varaqs", response_model=VaraqOut, status_code=201)
+async def create_varaq(
+    data: VaraqCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    item = Varaq(**data.model_dump(), owner_id=user.id)
+    db.add(item)
+    await db.flush()
+    return VaraqOut.model_validate(item)
+
+
+@router.get("/varaqs", response_model=list[VaraqOut])
+async def list_varaqs(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    q: str | None = None,
+    subject: str | None = None,
+    grade: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+):
+    query = select(Varaq).where(Varaq.owner_id == user.id)
+    if q:
+        query = query.where(Varaq.title.ilike(f"%{q}%"))
+    if subject:
+        query = query.where(Varaq.subject == subject)
+    if grade:
+        query = query.where(Varaq.grade == grade)
+    query = query.order_by(Varaq.is_favorite.desc(),
+                           Varaq.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    return [VaraqOut.model_validate(i) for i in result.scalars().all()]
+
+
+@router.get("/varaqs/{item_id}", response_model=VaraqOut)
+async def get_varaq(
+    item_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(_readable(Varaq, item_id, user))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    return VaraqOut.model_validate(item)
+
+
+@router.put("/varaqs/{item_id}", response_model=VaraqOut)
+async def update_varaq(
+    item_id: str,
+    data: VaraqUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Varaq).where(Varaq.id == item_id, Varaq.owner_id == user.id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    for k, v in data.model_dump(exclude_unset=True).items():
+        setattr(item, k, v)
+    await db.flush()
+    return VaraqOut.model_validate(item)
+
+
+@router.delete("/varaqs/{item_id}", status_code=204)
+async def delete_varaq(
+    item_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Varaq).where(Varaq.id == item_id, Varaq.owner_id == user.id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(item)
+
+
+
 @router.post("/games", response_model=GameOut, status_code=201)
 async def create_game(
     data: GameCreate,
@@ -1051,7 +1139,29 @@ _CONTENT_FIELD = {
     "prezentatsiya": "slides_json",
     "amaliy": "tasks_json",
     "igra": "game_json",
+    "varaq": "blocks_json",
 }
+
+@router.post("/clarify-topic", response_model=ClarifyTopicResponse)
+async def clarify_topic_endpoint(
+    data: ClarifyTopicRequest,
+    user: User = Depends(get_current_user),
+):
+    # Free — this is a pre-generation sanity check, not a material. No
+    # quota/credit reservation on purpose, same reasoning as why asking a
+    # human assistant a clarifying question doesn't cost anything until
+    # they actually deliver the work.
+    if data.material_type not in _MATERIAL_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
+    result = await clarify_topic(
+        material_type=data.material_type,
+        topic=data.topic,
+        subject=data.subject,
+        language=data.language,
+        grade=data.grade,
+    )
+    return ClarifyTopicResponse(**result)
+
 
 @router.post("/generate")
 async def generate(
@@ -1240,8 +1350,8 @@ async def regenerate_item_endpoint(
     data: RegenerateItemRequest,
     user: User = Depends(get_current_user),
 ):
-    if data.material_type not in ("test", "prezentatsiya", "konspekt", "lektsiya", "amaliy"):
-        raise HTTPException(status_code=400, detail="Regenerating a single item is only supported for tests, presentations, konspekts, lectures, and practical tasks")
+    if data.material_type not in ("test", "prezentatsiya", "konspekt", "lektsiya", "amaliy", "varaq"):
+        raise HTTPException(status_code=400, detail="Regenerating a single item is only supported for tests, presentations, konspekts, lectures, practical tasks, and worksheets")
     if data.material_type in ("konspekt", "lektsiya") and not data.section:
         raise HTTPException(status_code=400, detail="'section' is required to regenerate a konspekt/lektsiya item")
     if data.material_type == "amaliy" and data.section not in ("individual_tasks", "group_tasks"):
@@ -1278,6 +1388,7 @@ async def regenerate_item_endpoint(
 async def chat_edit_endpoint(
     data: ChatEditRequest,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     if data.material_type not in _MATERIAL_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
@@ -1310,6 +1421,78 @@ def _book_error(exc: book_sources.BookError) -> HTTPException:
     code = str(exc)
     status = 404 if code == "not_found" else 413 if code == "file_too_large" else 422
     return HTTPException(status_code=status, detail=code)
+
+
+@router.get("/book-library")
+async def list_book_library(
+    subject: str | None = Query(default=None),
+    grade: str | None = Query(default=None),
+    user: User = Depends(get_current_user),
+):
+    """List the local school-book catalog, filtered by subject and grade."""
+    del user
+    return book_library.list_books(
+        subject.strip() if subject else None,
+        grade.strip() if grade else None,
+    )
+
+
+_BOOK_LIBRARY_PUBLIC_KEYS = ("id", "title", "subject", "extension", "size_bytes", "grade_hint")
+
+
+@router.get("/book-library/auto")
+async def auto_select_book_library(
+    subject: str = Query(...),
+    grade: str | None = Query(default=None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Find the single best-matching textbook for a subject + grade and load it.
+
+    Lets the teacher skip browsing the catalog by hand: the subject and grade
+    they already picked are enough to resolve a book. Returns 404 with a
+    plain "book_not_found" code (not a stack trace) when nothing matches.
+    """
+    best = await asyncio.to_thread(book_library.find_best, subject.strip(), grade.strip() if grade else None)
+    if best is None:
+        raise HTTPException(status_code=404, detail="book_not_found")
+    try:
+        extracted = await asyncio.to_thread(book_library.extract, best["id"])
+        source = book_sources.save(user.id, extracted)
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    topics = await book_topics.ensure_topics(db, best["id"], best["title"], extracted["pages"])
+    book = {key: best[key] for key in _BOOK_LIBRARY_PUBLIC_KEYS}
+    return {"book": book, "source": source, "topics": topics}
+
+
+@router.post("/book-library/{book_id}")
+async def select_book_library(
+    book_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Load a catalog book into the same private temporary store as uploads."""
+    try:
+        extracted = await asyncio.to_thread(book_library.extract, book_id)
+        source = book_sources.save(user.id, extracted)
+    except book_sources.BookError as exc:
+        raise _book_error(exc) from exc
+    topics = await book_topics.ensure_topics(db, book_id, extracted["title"], extracted["pages"])
+    return {**source, "topics": topics}
+
+
+@router.get("/book-library/{book_id}/topics")
+async def get_book_library_topics(
+    book_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Poll for the topic list of a book already selected via the endpoints
+    above. Topics are computed once and cached by book_id -- this is a plain
+    database read, never a fresh extraction."""
+    del user
+    return await book_topics.get_topics(db, book_id)
 
 
 @router.post("/book-sources")
@@ -1401,7 +1584,7 @@ async def generate_from_book_stream(data: BookGenerateRequest, request: Request,
     return StreamingResponse(event_stream(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
 
-_GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy"]
+_GENERATE_ALL_TYPES = ["konspekt", "test", "prezentatsiya", "lektsiya", "amaliy", "varaq"]
 
 
 async def _generate_all_impl(
@@ -1442,7 +1625,8 @@ async def _generate_all_impl(
                 test_type=data.test_type,
                 include_examples=data.include_examples,
                 types=types_to_generate,
-                source_text=source_context.get("text") if source_context else None,
+                source_text=data.source_text or (source_context.get("text") if source_context else None),
+                teacher_context=data.teacher_context,
             )
         logger.info(f"generate-all memory after: {memory_report()}")
         if result.get("errors"):
@@ -1516,6 +1700,19 @@ async def _generate_all_impl(
             db.add(item)
             await db.flush()
             saved_ids["amaliy"] = item.id
+
+        if result.get("varaq"):
+            result["varaq"]["title"] = data.topic
+            item = Varaq(
+                title=data.topic,
+                subject=data.subject,
+                grade=data.grade,
+                blocks_json=json.dumps(result["varaq"], ensure_ascii=False),
+                owner_id=user.id,
+            )
+            db.add(item)
+            await db.flush()
+            saved_ids["varaq"] = item.id
 
         failed = [t for t in types_to_generate if t not in saved_ids]
         if failed:
@@ -1648,6 +1845,9 @@ async def download_docx(
         elif data.material_type == 'amaliy':
             buf = await asyncio.to_thread(build_practical_docx, _with_language(data))
             raw_name = f"amaliy_{data.content.get('title', 'tasks').replace(' ', '_')[:30]}"
+        elif data.material_type == 'varaq':
+            buf = await asyncio.to_thread(build_varaq_docx, _with_language(data))
+            raw_name = f"varaq_{data.content.get('title', 'worksheet').replace(' ', '_')[:30]}"
         else:
             raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
 
@@ -1737,6 +1937,9 @@ async def download_pdf(
         elif data.material_type == 'amaliy':
             buf = await asyncio.to_thread(build_practical_pdf, _with_language(data))
             raw_name = f"amaliy_{data.content.get('title', 'tasks').replace(' ', '_')[:30]}"
+        elif data.material_type == 'varaq':
+            buf = await asyncio.to_thread(build_varaq_pdf, _with_language(data))
+            raw_name = f"varaq_{data.content.get('title', 'worksheet').replace(' ', '_')[:30]}"
         else:
             raise HTTPException(status_code=400, detail=f"Unknown material type: {data.material_type}")
 
@@ -1843,6 +2046,28 @@ async def download_txt(
                     for step in task.get('steps') or []:
                         lines.append(f'  - {step}')
 
+        elif data.material_type == 'varaq':
+            desc = content.get('description', '')
+            if desc:
+                lines.append(desc)
+            for i, block in enumerate(content.get('blocks', []), 1):
+                lines.append('')
+                lines.append(f'{i}. {block.get("instructions", "")}')
+                btype = block.get('type')
+                if btype == 'word_bank':
+                    lines.append('  ' + ', '.join(block.get('word_bank') or []))
+                elif btype == 'cloze':
+                    lines.append(f'  {block.get("text", "")}')
+                elif btype == 'matching':
+                    for j, item in enumerate(block.get('left') or [], 1):
+                        lines.append(f'  {j}. {item}')
+                    for j, item in enumerate(block.get('right') or []):
+                        lines.append(f'  {chr(65 + j)}) {item}')
+                elif btype == 'table_fill':
+                    lines.append('  ' + ' | '.join(block.get('headers') or []))
+                    for row in block.get('rows') or []:
+                        lines.append('  ' + ' | '.join(str(c) for c in row))
+
         text = '\n'.join(lines)
         buf = io.BytesIO(text.encode('utf-8'))
 
@@ -1877,6 +2102,7 @@ class DownloadZipRequest(BaseModel):
     prezentatsiya: dict | None = None
     lektsiya: dict | None = None
     amaliy: dict | None = None
+    varaq: dict | None = None
 
 
 def _build_materials_zip(data: "DownloadZipRequest") -> io.BytesIO:
@@ -1892,6 +2118,8 @@ def _build_materials_zip(data: "DownloadZipRequest") -> io.BytesIO:
             zf.writestr("lektsiya.docx", build_lecture_docx(data.lektsiya, data.language).getvalue())
         if data.amaliy:
             zf.writestr("amaliy.docx", build_practical_docx(data.amaliy).getvalue())
+        if data.varaq:
+            zf.writestr("varaq.docx", build_varaq_docx(data.varaq).getvalue())
     zip_buf.seek(0)
     return zip_buf
 
@@ -1901,7 +2129,7 @@ async def download_zip(
     data: DownloadZipRequest,
     user: User = Depends(get_current_user),
 ):
-    if not any([data.konspekt, data.test, data.prezentatsiya, data.lektsiya, data.amaliy]):
+    if not any([data.konspekt, data.test, data.prezentatsiya, data.lektsiya, data.amaliy, data.varaq]):
         raise HTTPException(status_code=400, detail="Nothing to export")
 
     try:
@@ -1924,7 +2152,7 @@ async def download_zip(
         raise HTTPException(status_code=500, detail="ZIP xatolik: fayl yaratilmadi")
 
 
-_LESSON_TYPES = ["konspekt", "lektsiya", "prezentatsiya", "test", "amaliy"]
+_LESSON_TYPES = ["konspekt", "lektsiya", "prezentatsiya", "test", "amaliy", "varaq"]
 
 lessons_router = APIRouter(prefix="/api/lessons", tags=["lessons"])
 

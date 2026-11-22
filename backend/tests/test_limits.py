@@ -26,10 +26,10 @@ async def make_user(balance_dirams: int, free_used: bool) -> str:
                 "INSERT INTO users (id, full_name, hashed_password, language, role, "
                 " balance_dirams, free_generation_used, phone_verified, is_premium, "
                 " free_konspekt_used, free_lektsiya_used, free_test_used, "
-                " free_prezentatsiya_used, free_amaliy_used, free_igra_used, created_at) "
+                " free_prezentatsiya_used, free_amaliy_used, free_igra_used, free_varaq_used, created_at) "
                 "VALUES (:id, 'race test', 'x', 'Русский', 'user', :bal, :free_flag, "
                 "        false, false, :spent, :spent, :spent, "
-                "        :spent, :spent, :spent, now())"
+                "        :spent, :spent, :spent, :spent, now())"
             ),
             {
                 "id": uid,

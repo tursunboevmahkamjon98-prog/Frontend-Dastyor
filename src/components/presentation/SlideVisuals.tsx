@@ -1,6 +1,7 @@
 "use client";
 
 import { API_ORIGIN } from "@/lib/api";
+import MathText from "@/components/konspekt/MathText";
 
 export interface VisualBlock {
   type: "table" | "comparison" | "process" | "chart" | "figure";
@@ -60,7 +61,7 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
           alt={visual.caption ?? ""}
           className="max-h-[min(45vh,22rem)] w-auto max-w-full object-contain"
         />
-        {visual.caption && <p className="mt-1.5 text-center text-xs text-text-tertiary">{visual.caption}</p>}
+        {visual.caption && <p className="mt-1.5 text-center text-xs text-text-tertiary"><MathText text={visual.caption} /></p>}
       </div>
     );
   }
@@ -150,9 +151,9 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
               {i + 1}.
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-text-primary">{step.title}</p>
+              <p className="text-sm font-semibold text-text-primary"><MathText text={step.title} /></p>
               {step.description && (
-                <p className="mt-0.5 text-xs leading-snug text-text-secondary">{step.description}</p>
+                <p className="mt-0.5 text-xs leading-snug text-text-secondary"><MathText text={step.description} /></p>
               )}
             </div>
           </div>
@@ -173,7 +174,7 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
           <tr style={{ backgroundColor: accent }}>
             {headers.map((h, i) => (
               <th key={i} className="px-2.5 py-1.5 font-semibold text-white">
-                {h}
+                <MathText text={h} />
               </th>
             ))}
           </tr>
@@ -183,7 +184,7 @@ export default function VisualBlockView({ visual, accent }: { visual: VisualBloc
             <tr key={i} style={{ backgroundColor: i % 2 === 0 ? `${accent}14` : undefined }}>
               {row.map((cell, j) => (
                 <td key={j} className={`px-2.5 py-1.5 text-text-primary ${j === 0 && type === "comparison" ? "font-semibold" : ""}`}>
-                  {cell}
+                  <MathText text={cell} />
                 </td>
               ))}
             </tr>
@@ -216,7 +217,7 @@ export function SlideHeader({
         style={{ background: `linear-gradient(100deg, ${accent} 0%, ${accent}cc 100%)` }}
       >
         <p className="break-words text-base font-bold leading-snug text-white">
-          {index + 1}. {title}
+          {index + 1}. <MathText text={title} />
         </p>
       </div>
     );
@@ -227,7 +228,7 @@ export function SlideHeader({
         <p className="text-xs font-bold tracking-widest" style={{ color: accent }}>
           {String(index + 1).padStart(2, "0")}
         </p>
-        <p className="break-words text-base font-bold uppercase leading-snug text-text-primary">{title}</p>
+        <p className="break-words text-base font-bold uppercase leading-snug text-text-primary"><MathText text={title} /></p>
         <div className="mt-2 h-1 w-10 rounded-full" style={{ backgroundColor: accent }} />
       </div>
     );
@@ -238,7 +239,7 @@ export function SlideHeader({
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
           Слайд {String(index + 1).padStart(2, "0")}
         </p>
-        <p className="break-words text-base font-bold leading-snug text-text-primary">{title}</p>
+        <p className="break-words text-base font-bold leading-snug text-text-primary"><MathText text={title} /></p>
         <div className="mt-2 h-px w-full" style={{ backgroundColor: `${accent}33` }} />
       </div>
     );
@@ -258,7 +259,7 @@ export function SlideHeader({
         className="min-w-0 break-words pt-0.5 text-base font-bold leading-snug"
         style={{ color: header === "serif" ? "#334155" : accent }}
       >
-        {title}
+        <MathText text={title} />
       </p>
     </div>
   );

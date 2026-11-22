@@ -51,6 +51,8 @@ _EXTRACTORS = {
     ".pdf": extract_text_from_pdf,
     ".docx": extract_text_from_docx,
     ".txt": extract_text_from_txt,
+    ".md": extract_text_from_txt,
+    ".markdown": extract_text_from_txt,
 }
 
 

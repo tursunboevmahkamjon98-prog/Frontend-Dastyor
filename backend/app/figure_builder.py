@@ -911,6 +911,31 @@ def _folder_tree(c, v):
         folder(bar_x + 50, y, k)
 
 
+def _compass(c, v):
+    """A blank compass rose for a worksheet: circle, tick marks at the 4
+    cardinal points, a needle, and a dashed empty box at each point for the
+    pupil to write the direction letter in. Always blank — the correct
+    letters live in the block's "labels" field and the answer key, not on
+    this image, so one PNG serves both the student and answer-key pages."""
+    cx, cy, r = 310, 230, 130
+    c.ellipse(cx, cy, r, r, width=2, color=INK)
+    for ang in (0, 90, 180, 270):
+        rad = math.radians(ang - 90)
+        x1, y1 = cx + (r - 12) * math.cos(rad), cy + (r - 12) * math.sin(rad)
+        x2, y2 = cx + r * math.cos(rad), cy + r * math.sin(rad)
+        c.line((x1, y1), (x2, y2), width=2.2)
+    c.poly([(cx, cy - r + 22), (cx - 13, cy), (cx + 13, cy)], fill=(200, 48, 48), width=0)
+    c.poly([(cx, cy + r - 22), (cx - 13, cy), (cx + 13, cy)], fill=(90, 90, 90), width=0)
+    c.dot(cx, cy, r=5)
+    box = 36
+    for ang in (0, 90, 180, 270):
+        rad = math.radians(ang - 90)
+        x, y = cx + (r + 34) * math.cos(rad), cy + (r + 34) * math.sin(rad)
+        c.poly([(x - box / 2, y - box / 2), (x + box / 2, y - box / 2),
+               (x + box / 2, y + box / 2), (x - box / 2, y + box / 2)],
+              dashed=True, color=GREY, width=1.6)
+
+
 def _client_server(c, v):
     cy = 220
     _textbox(c, 120, cy, 180, 90, _v(v, 0) or "Муштарӣ (Client)")
@@ -939,6 +964,7 @@ SHAPES = {
     "network_ring": _network_ring, "logic_gate": _logic_gate,
     "binary_table": _binary_table, "array_cells": _array_cells,
     "folder_tree": _folder_tree, "client_server": _client_server,
+    "compass": _compass,
 }
 
 _CANVAS_SIZE = {

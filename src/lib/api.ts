@@ -486,6 +486,13 @@ export const materialsApi = {
   
   listGameAttempts: (gameId: string) => request<GameAttemptOut[]>(`/materials/games/${gameId}/attempts`),
   
+  clarifyTopic: (body: {
+    material_type: MaterialType;
+    topic: string;
+    subject: string;
+    language: string;
+    grade: string;
+  }) => request<{ needs_clarification: boolean; question: string | null; options: string[] }>("/materials/clarify-topic", { method: "POST", body }),
   chatEdit: (body: {
     material_type: MaterialType;
     topic: string;
@@ -526,7 +533,8 @@ export const materialsApi = {
     question_count?: number;
     test_type?: string;
     include_examples?: boolean;
-    
+    source_text?: string;
+    teacher_context?: string;
     types?: MaterialType[];
   }) => streamGenerateAll(body),
   
@@ -660,6 +668,8 @@ export interface GenerateAllBody {
   question_count?: number;
   test_type?: string;
   include_examples?: boolean;
+  source_text?: string;
+  teacher_context?: string;
   types?: MaterialType[];
 }
 

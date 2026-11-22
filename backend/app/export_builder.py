@@ -4063,6 +4063,12 @@ def build_practical_pdf(content: dict) -> io.BytesIO:
     return build_practical(content)
 
 
+def build_varaq_pdf(content: dict) -> io.BytesIO:
+    """Worksheet prints in the formal design shared with the konspekt/test."""
+    from app.assessment_design import build_varaq
+    return build_varaq(content)
+
+
 def _pdf_notebook_page(canvas_obj, doc_obj):
     w, h = A4
     canvas_obj.saveState()

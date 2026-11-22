@@ -42,6 +42,7 @@ class User(Base):
     free_prezentatsiya_used: Mapped[int] = mapped_column(default=0)
     free_amaliy_used: Mapped[int] = mapped_column(default=0)
     free_igra_used: Mapped[int] = mapped_column(default=0)
+    free_varaq_used: Mapped[int] = mapped_column(default=0)
     free_generation_used: Mapped[bool] = mapped_column(default=False)
     short_id: Mapped[str | None] = mapped_column(String(6), unique=True, index=True, default=None)
     balance_dirams: Mapped[int] = mapped_column(default=0)
@@ -53,6 +54,7 @@ class User(Base):
     lectures = relationship("Lecture", back_populates="owner", cascade="all, delete-orphan")
     practical_tasks = relationship("PracticalTask", back_populates="owner", cascade="all, delete-orphan")
     games = relationship("Game", back_populates="owner", cascade="all, delete-orphan")
+    varaqs = relationship("Varaq", back_populates="owner", cascade="all, delete-orphan")
     test_attempts = relationship("TestAttempt", back_populates="user", cascade="all, delete-orphan")
     game_attempts = relationship("GameAttempt", back_populates="user", cascade="all, delete-orphan")
 
@@ -252,6 +254,24 @@ class PracticalTask(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     owner = relationship("User", back_populates="practical_tasks")
+
+
+class Varaq(Base):
+    __tablename__ = "varaqs"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    subject: Mapped[str] = mapped_column(String(120), index=True)
+    grade: Mapped[str] = mapped_column(String(20), index=True)
+    blocks_json: Mapped[str | None] = mapped_column(Text, default=None)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    is_favorite: Mapped[bool] = mapped_column(default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    owner = relationship("User", back_populates="varaqs")
 
 
 class Game(Base):
@@ -686,3 +706,22 @@ class Expense(Base):
         ForeignKey("users.id", ondelete="SET NULL"), default=None
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class BookTopics(Base):
+    """Cached table-of-contents for a local library textbook (app.book_library's
+    book_id). Extracted once by a small/fast model in app.book_topics and reused
+    by every teacher who picks that same book afterwards -- never re-extracted
+    on every page load, and never using the main generation model/queue."""
+
+    __tablename__ = "book_topics"
+
+    book_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | ready | failed
+    topics_json: Mapped[str | None] = mapped_column(Text, default=None)
+    error: Mapped[str | None] = mapped_column(String(200), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )

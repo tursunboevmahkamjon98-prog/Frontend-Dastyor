@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import MathText from "./MathText";
 
 
 export default function CodeBlock({
@@ -45,7 +46,7 @@ export default function CodeBlock({
       </pre>
       {explanation && (
         <p className="border-t border-border-light bg-surface px-4 py-2.5 text-xs italic text-text-secondary">
-          {explanation}
+          <MathText text={explanation} />
         </p>
       )}
     </div>

@@ -89,7 +89,59 @@ export const SUBJECTS = [
   "Таджикская литература",
   "История Таджикистана",
   "Всемирная история",
+  "Забони арабӣ",
+  "Забони фаронсавӣ",
+  "Забони немисӣ",
+  "Санъат",
+  "Суруд ва мусиқӣ",
+  "Технология",
+  "Интихоби касб",
+  "Маърифати оиладорӣ",
+  "Омодагии ибтидоии ҳарбӣ",
+  "Ҳуқуқ",
+  "Табиатшиносӣ",
+  "Тарбияи ҷисмонӣ",
+  "Ҷомеашиносӣ",
+  "Соати тарбиявӣ",
+  "Синфҳои ибтидоӣ",
 ];
+
+// SUBJECTS entries are sent to the backend as-is (it keys subject-specific
+// prompts/logic off these exact strings) and must stay stable. This maps
+// each one to a message key so the *displayed* label still follows the
+// interface's own language — the list used to mix Russian and Tajik names
+// for the same subjects, which read as inconsistent/duplicated.
+export const SUBJECT_LABEL_KEYS: Record<string, MessageKey> = {
+  "Математика": "subject.mathematics",
+  "Алгебра": "subject.algebra",
+  "Геометрия": "subject.geometry",
+  "Информатика": "subject.informatics",
+  "Физика": "subject.physics",
+  "Химия": "subject.chemistry",
+  "Биология": "subject.biology",
+  "География": "subject.geography",
+  "Русский язык": "subject.russianLanguage",
+  "Английский язык": "subject.englishLanguage",
+  "Таджикский язык": "subject.tajikLanguage",
+  "Таджикская литература": "subject.tajikLiterature",
+  "История Таджикистана": "subject.historyTajikistan",
+  "Всемирная история": "subject.worldHistory",
+  "Забони арабӣ": "subject.arabicLanguage",
+  "Забони фаронсавӣ": "subject.frenchLanguage",
+  "Забони немисӣ": "subject.germanLanguage",
+  "Санъат": "subject.art",
+  "Суруд ва мусиқӣ": "subject.music",
+  "Технология": "subject.technology",
+  "Интихоби касб": "subject.careerChoice",
+  "Маърифати оиладорӣ": "subject.familyStudies",
+  "Омодагии ибтидоии ҳарбӣ": "subject.militaryPrep",
+  "Ҳуқуқ": "subject.law",
+  "Табиатшиносӣ": "subject.natureStudy",
+  "Тарбияи ҷисмонӣ": "subject.pe",
+  "Ҷомеашиносӣ": "subject.socialStudies",
+  "Соати тарбиявӣ": "subject.classHour",
+  "Синфҳои ибтидоӣ": "subject.primarySchool",
+};
 
 
 

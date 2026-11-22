@@ -5,22 +5,40 @@ which FastAPI mounts publicly. Files expire after 24 hours and are removed
 opportunistically on upload/read; a deployment can also schedule cleanup().
 """
 
+import difflib
 import io
 import json
 import os
 import re
 import secrets
+import tempfile
 import time
 from pathlib import Path
 
 from pypdf import PdfReader
 
 MAX_BYTES = 15 * 1024 * 1024
+# Books from the private local library are already trusted local files. They
+# may be larger than a browser upload, so library extraction uses a separate
+# ceiling while normal uploads keep the smaller limit above.
+MAX_LIBRARY_BYTES = 400 * 1024 * 1024
 MAX_PAGES = 400
 MAX_OCR_PAGES = 12
+# Library books are curated by an admin and cached forever after the first
+# extraction, so a slower one-time OCR pass (observed ~1s/page) is an
+# acceptable trade-off for actually supporting fully-scanned textbooks,
+# unlike a browser upload that has to come back inside one request.
+MAX_LIBRARY_PAGES = 600
+MAX_LIBRARY_OCR_PAGES = 250
 MAX_CONTEXT_CHARS = 19000
 TTL_SECONDS = 24 * 60 * 60
-STORE_DIR = Path(__file__).resolve().parent.parent / "private_sources"
+def _default_store_dir() -> str:
+    from app.config import get_settings
+    configured = get_settings().DASTYOR_PRIVATE_SOURCES_DIR
+    return configured or str(Path(tempfile.gettempdir()) / "dastyor_private_sources")
+
+
+STORE_DIR = Path(os.getenv("DASTYOR_PRIVATE_SOURCES_DIR", _default_store_dir()))
 _ID = re.compile(r"^[0-9a-f]{32}$")
 _CHAPTER = re.compile(r"^(?:chapter|unit|section|глава|раздел|боб|фасл)\s*[\dIVXА-Яа-я]*[\s.:–-]+.{3,100}$", re.I)
 
@@ -95,10 +113,18 @@ def _ocr_page(raw: bytes, page_index: int) -> str:
         raise BookError("ocr_failed") from exc
 
 
-def extract_pdf(raw: bytes, filename: str, content_type: str | None) -> dict:
+def extract_pdf(
+    raw: bytes,
+    filename: str,
+    content_type: str | None,
+    *,
+    max_bytes: int = MAX_BYTES,
+    max_pages: int = MAX_PAGES,
+    max_ocr_pages: int = MAX_OCR_PAGES,
+) -> dict:
     if not raw:
         raise BookError("empty_file")
-    if len(raw) > MAX_BYTES:
+    if len(raw) > max_bytes:
         raise BookError("file_too_large")
     if not filename.lower().endswith(".pdf") or content_type not in ("application/pdf", "application/octet-stream"):
         raise BookError("unsupported_file")
@@ -109,13 +135,13 @@ def extract_pdf(raw: bytes, filename: str, content_type: str | None) -> dict:
         if reader.is_encrypted:
             raise BookError("encrypted_pdf")
         page_count = len(reader.pages)
-        if not 1 <= page_count <= MAX_PAGES:
+        if not 1 <= page_count <= max_pages:
             raise BookError("page_limit")
         pages = []
         for page in reader.pages:
             pages.append((page.extract_text() or "")[:16000].strip())
         blank = [index for index, text in enumerate(pages) if len(text) < 20]
-        if len(blank) > MAX_OCR_PAGES:
+        if len(blank) > max_ocr_pages:
             raise BookError("too_many_scanned_pages")
         ocr_error: BookError | None = None
         for index in blank:
@@ -183,6 +209,64 @@ def public_metadata(record: dict) -> dict:
     return {key: record[key] for key in ("id", "title", "page_count", "chapters", "ocr_pages", "unreadable_pages", "expires_at")}
 
 
+_WORD_RE = re.compile(r"[^\W_]{3,}", re.UNICODE)
+_DIACRITICS = (("ё", "е"), ("ӣ", "и"), ("ӯ", "у"), ("ғ", "г"), ("ҳ", "х"), ("қ", "к"), ("ҷ", "ч"))
+
+
+def _fold(value: str) -> str:
+    text = (value or "").casefold()
+    for original, replacement in _DIACRITICS:
+        text = text.replace(original, replacement)
+    return text
+
+
+def _topic_words(topic: str | None) -> list[str]:
+    return [_fold(word) for word in _WORD_RE.findall(topic or "")]
+
+
+_STEM_PREFIX_LEN = 5  # Russian/Tajik inflect heavily on endings; the first
+# few characters of a word are usually its stem (фотосинтез/фотосинтезу/
+# фотосинтезом all share "фотос"), so a shared prefix catches a grammatical
+# form of the same word that edit-distance alone might score too low.
+
+
+def _topic_score(words: list[str], page_text: str) -> float:
+    """Reward exact mentions, then fall back to near-miss word matches.
+
+    A teacher rewording a topic -- a typo, a changed word, a different
+    grammatical form, reordered phrasing -- should not make the search come
+    up empty, and should not just barely pass either: the more of the
+    topic's own words a page genuinely relates to, the higher it should
+    rank, so generation gets the most relevant material available rather
+    than whatever technically cleared the bar first.
+
+    Three tiers, exact outranking stem outranking fuzzy:
+    - exact substring hit: the word (or its occurrences) appears verbatim.
+    - shared stem: some token on the page starts with the same ~5 characters
+      (catches declensions/conjugations of the same word).
+    - fuzzy: no shared stem, but a token on the page is a close edit-distance
+      match (catches typos and small rewordings).
+    """
+    if not words:
+        return 0.0
+    folded_page = _fold(page_text)
+    page_tokens = {token for token in _WORD_RE.findall(folded_page) if len(token) >= 3}
+    score = 0.0
+    for word in words:
+        exact = folded_page.count(word)
+        if exact:
+            score += exact * 3
+            continue
+        stem = word[:_STEM_PREFIX_LEN]
+        if len(word) >= _STEM_PREFIX_LEN and any(token.startswith(stem) for token in page_tokens):
+            score += 2
+            continue
+        close = difflib.get_close_matches(word, page_tokens, n=1, cutoff=0.72)
+        if close:
+            score += 1
+    return score
+
+
 def select_context(record: dict, scope: str, topic: str | None,
                    chapter_index: int | None = None,
                    page_start: int | None = None, page_end: int | None = None) -> dict:
@@ -207,14 +291,15 @@ def select_context(record: dict, scope: str, topic: str | None,
 
     candidates = [(number, record["pages"][number - 1]) for number in range(start, end + 1)
                   if len(record["pages"][number - 1].strip()) >= 20]
-    words = {word.casefold() for word in re.findall(r"[^\W_]{4,}", topic or "")}
-    scored = [(sum(text.casefold().count(word) for word in words), number, text)
-              for number, text in candidates]
-    if words and not any(score for score, _, _ in scored):
-        raise BookError("topic_not_found")
+    words = _topic_words(topic)
+    scored = [(_topic_score(words, text), number, text) for number, text in candidates]
     if words and any(score for score, _, _ in scored):
         ordered = sorted(scored, key=lambda entry: (-entry[0], entry[1]))
     else:
+        # No exact or near-miss match anywhere in scope (or no topic given):
+        # never block generation on a topic mismatch. Spread context across
+        # the selected book/section instead of only taking its opening pages
+        # -- the AI still gets grounded material even without a topic hit.
         # Spread context across the selected book/section instead of taking
         # only its opening pages when the teacher did not specify a topic.
         stride = max(1, len(scored) // 8)

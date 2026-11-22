@@ -11,6 +11,7 @@ export default function Faq() {
     <section id="faq" className="mx-auto w-full max-w-4xl px-4 pb-20 sm:px-6 sm:pb-28">
       <Reveal className="mx-auto mb-10 max-w-xl text-center">
         <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">{t("landing.faq.title")}</h2>
+        <p className="mt-3 text-text-secondary">{t("landing.faq.subtitle")}</p>
       </Reveal>
       <Reveal>
         <LandingFaq />

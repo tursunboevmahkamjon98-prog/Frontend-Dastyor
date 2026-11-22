@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { Unbounded } from "next/font/google";
+import "@fontsource/unbounded/cyrillic-800.css";
 import { Users } from "lucide-react";
 import { materialsApi } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -18,7 +18,9 @@ import MagicShuffleGame from "./magicshuffle/MagicShuffleGame";
 
 
 
-const gameFont = Unbounded({ weight: "800", subsets: ["cyrillic"] });
+/* Self-hosted via @fontsource (imported above) instead of next/font/google
+ * — see layout.tsx's comment on the same switch for why. */
+const gameFontClass = "font-[Unbounded] font-extrabold";
 
 
 
@@ -40,7 +42,7 @@ const OUTLINE =
 
 
 
-const WORDMARK = `${gameFont.className} relative inline-block bg-clip-text text-[clamp(1.35rem,7vw,1.875rem)] uppercase leading-none text-transparent ${OUTLINE}`;
+const WORDMARK = `${gameFontClass} relative inline-block bg-clip-text text-[clamp(1.35rem,7vw,1.875rem)] uppercase leading-none text-transparent ${OUTLINE}`;
 
 
 

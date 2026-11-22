@@ -23,9 +23,9 @@ export const FACTS = [
 ] as const;
 
 export const STEPS = [
-  { n: "01", icon: Wand2, title: "landing.step1.title", desc: "landing.step1.desc" },
-  { n: "02", icon: Sparkles, title: "landing.step2.title", desc: "landing.step2.desc" },
-  { n: "03", icon: FileDown, title: "landing.step3.title", desc: "landing.step3.desc" },
+  { n: "01", icon: Wand2, mascot: "/mascot/greeting.webp", title: "landing.step1.title", desc: "landing.step1.desc" },
+  { n: "02", icon: Sparkles, mascot: "/mascot/working.webp", title: "landing.step2.title", desc: "landing.step2.desc" },
+  { n: "03", icon: FileDown, mascot: "/mascot/success.webp", title: "landing.step3.title", desc: "landing.step3.desc" },
 ] as const;
 
 export const ALL_AT_ONCE_POINTS = [

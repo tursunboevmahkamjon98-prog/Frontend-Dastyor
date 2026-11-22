@@ -129,7 +129,7 @@ function LessonCard({
             return (
               <Link
                 key={type}
-                href={`/dashboard/materials/${type}/${ref_.id}`}
+                href={type === "prezentatsiya" ? `/dashboard/presentations/${ref_.id}/edit` : `/dashboard/materials/${type}/${ref_.id}`}
                 className="flex items-center gap-2 rounded-control border border-border-light bg-surface px-3 py-2 text-meta font-medium text-text-primary transition-colors duration-150 hover:bg-surface-muted"
               >
                 <span className={`flex h-6 w-6 items-center justify-center rounded ${bg}`}>

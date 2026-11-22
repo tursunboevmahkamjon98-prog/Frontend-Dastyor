@@ -5,7 +5,12 @@ from functools import lru_cache
 class Settings(BaseSettings):
     DATABASE_URL: str
     DATABASE_URL_SYNC: str
-    SECRET_KEY: str`r`n    CARD_ENCRYPTION_KEY: str = ""`r`n    DASTYOR_BOT_API_TOKEN: str = ""`r`n    DASTYOR_BOT_ROOT_ADMIN_ID: int = 0`r`n    DASTYOR_STANDALONE_BOT_USERNAME: str = ""`r`n    DASTYOR_STANDALONE_TELEGRAM_TOKEN: str = ""
+    SECRET_KEY: str
+    CARD_ENCRYPTION_KEY: str = ""
+    DASTYOR_BOT_API_TOKEN: str = ""
+    DASTYOR_BOT_ROOT_ADMIN_ID: int = 0
+    DASTYOR_STANDALONE_BOT_USERNAME: str = ""
+    DASTYOR_STANDALONE_TELEGRAM_TOKEN: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30

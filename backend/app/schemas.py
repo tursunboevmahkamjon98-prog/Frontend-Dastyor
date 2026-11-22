@@ -330,6 +330,34 @@ class PracticalTaskOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VaraqCreate(BaseModel):
+    title: str
+    subject: str
+    grade: str
+    blocks_json: str | None = None
+
+
+class VaraqUpdate(BaseModel):
+    title: str | None = None
+    subject: str | None = None
+    grade: str | None = None
+    blocks_json: str | None = None
+    is_favorite: bool | None = None
+
+
+class VaraqOut(BaseModel):
+    id: str
+    title: str
+    subject: str
+    grade: str
+    blocks_json: str | None
+    is_favorite: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 
 class GameCreate(BaseModel):
     title: str
@@ -367,6 +395,7 @@ class DashboardStats(BaseModel):
     lecture_count: int = 0
     practical_count: int = 0
     game_count: int = 0
+    varaq_count: int = 0
 
 
 
@@ -386,6 +415,20 @@ class GenerateRequest(BaseModel):
     include_examples: bool = True
     template: str | None = None
     source_text: str | None = None
+
+
+class ClarifyTopicRequest(BaseModel):
+    material_type: str
+    topic: str
+    subject: str
+    language: str
+    grade: str
+
+
+class ClarifyTopicResponse(BaseModel):
+    needs_clarification: bool
+    question: str | None = None
+    options: list[str] = []
 
 
 class GenerateKonspektStreamRequest(BaseModel):
@@ -414,6 +457,8 @@ class GenerateAllRequest(BaseModel):
     test_type: str | None = None
     include_examples: bool = True
     types: list[str] | None = None
+    source_text: str | None = None
+    teacher_context: str | None = None
 
 
 class BookGenerateRequest(GenerateAllRequest):

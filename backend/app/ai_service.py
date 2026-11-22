@@ -87,14 +87,30 @@ _EXERCISE_SUBJECTS = {
 
 _EXERCISE_KIND = {
     "Информатика": (
-        "a concrete task on this exact topic: code to trace by hand and say what it prints, "
-        "a number to convert between number systems, a value to compute from a truth table, "
-        "an algorithm step to write out, a short program to fix"
+        "a concrete task on this exact topic: classify a component or process, trace a data flow, "
+        "interpret a diagram/table, or solve a number-system or logic question — NEVER a program to write, "
+        "trace, or debug, since this topic is not about programming"
+    ),
+    "Информатика_code": (
+        "a concrete programming task on this exact topic: a short program to write, a snippet to trace or "
+        "debug, or a number-system/logic question"
     ),
     "Таджикский язык": (
         "a concrete language exercise on this exact rule: a sentence to analyse, words to sort "
         "into their parts of speech, a word to change form, a sentence to build from given words, "
         "a mistake to correct"
+    ),
+    "Таджикский язык_primary": (
+        "a concrete comprehension task on this exact story/topic: a question about what happened or why, "
+        "a new word to use in the student's own simple sentence, a moral/lesson to state in one sentence, "
+        "or a real-life situation to connect to the topic — NEVER a grammatical-structure task (no subject/"
+        "predicate/parts-of-speech/suffix-root analysis, and never invent a grammatical category that is not "
+        "real Tajik grammar)"
+    ),
+    "Таджикская литература_primary": (
+        "a concrete comprehension task on this exact proverb/tale: what it means in plain words, a real-life "
+        "situation where it applies, or retelling part of the story in the student's own words — NEVER a "
+        "literary-analysis or grammatical-structure task"
     ),
     "Русский язык": (
         "a concrete language exercise on this exact rule: a sentence to analyse, words to sort "
@@ -117,6 +133,262 @@ _WORKED_EXAMPLE_SUBJECTS = {"Математика", "Алгебра", "Геом�
 _CONCEPT_CARD_SUBJECTS = {"Информатика"}
 
 _CODE_SUBJECTS = {"Информатика"}
+
+# Programming is a branch of Informatics, not a default section of every
+# Informatics lesson.  Keep this router deliberately conservative: a code
+# block is allowed only when the requested topic itself names programming,
+# code, an algorithm, or a programming data structure.  Hardware, networking,
+# history, digital literacy, cybersecurity and the social role of technology
+# should stay conceptual unless the teacher explicitly asks for code.
+_CODE_TOPIC_TERMS = (
+    "python", "c++", "c#", "java", "javascript", "программа", "барномасоз",
+    "код", "синтаксис", "тағйирёбанда", "тағирёбанда", "переменн", "function",
+    "функсия", "рекурс", "массив", "array", "list", "рӯйхат", "сикл", "давр",
+    "loop", "алгоритм", "algorithm", "ҷустуҷӯ", "поиск", "sorting", "сортиров",
+    "мураттабсоз", "структураи маълумот", "структура данных", "мураккабии вақт",
+    "сложность алгоритм",
+)
+
+
+def _code_relevance(subject: str, topic: str) -> str:
+    """Return ``needed`` only for a topic that genuinely calls for code.
+
+    This is intentionally local and cheap.  The model still sees the RAG
+    excerpt and is told to make the pedagogical decision, but this guard keeps
+    a bad source excerpt or the old Informatics template from re-introducing
+    Python/C++ into a non-programming lesson.
+    """
+    if subject not in _CODE_SUBJECTS:
+        return "none"
+    haystack = str(topic or "").casefold()
+    return "needed" if any(term in haystack for term in _CODE_TOPIC_TERMS) else "none"
+
+
+def _code_relevance_rule(subject: str, code_policy: str) -> str:
+    """CODE IS/IS NOT RELEVANT guard. Previously wired only into konspekt/lektsiya/
+    prezentatsiya, which is why test/amaliy/igra defaulted to Python/C++ on any
+    Informatics topic regardless of relevance — this makes it available to every
+    material type."""
+    if subject not in _CODE_SUBJECTS:
+        return ""
+    if code_policy == "needed":
+        return (
+            "- CODE IS RELEVANT TO THIS TOPIC. Include a short, valid code example only when it directly "
+            "teaches the requested programming concept, in the language the topic names. Never add Python "
+            "and C++ together just because the subject is Informatics."
+        )
+    return (
+        "- CODE IS NOT RELEVANT TO THIS TOPIC. Do not write Python/C++ examples, compiler/API material, "
+        "or programming exercises. Cover the requested Informatics topic with its own concepts, diagrams, "
+        "processes, devices, standards, or real-life examples instead."
+    )
+
+
+def _exercise_kind(subject: str, code_policy: str, grade: str | None = None) -> str:
+    """Pick the Информатика exercise wording by code relevance — the generic
+    dict entry used to say "or write a short program only when..." which the
+    model treated as permission rather than a condition, leaking code/compiler
+    exercises into non-programming Informatics lessons.
+
+    A primary-grade "Таджикский язык"/"Таджикская литература" reading/moral-
+    story/proverb topic needs comprehension exercises, not the grammar-rule
+    exercises this dict otherwise describes (see _PRIMARY_GRADE_SUBJECT_HINT
+    — without this, exercises kept drifting into grammatical analysis even
+    once the main lesson body stopped)."""
+    if subject == "Информатика" and code_policy == "needed":
+        return _EXERCISE_KIND["Информатика_code"]
+    if _is_primary_grade(subject, grade) and f"{subject}_primary" in _EXERCISE_KIND:
+        return _EXERCISE_KIND[f"{subject}_primary"]
+    return _EXERCISE_KIND.get(subject, "a concrete task on this exact topic")
+
+
+def _is_variable_topic(subject: str, topic: str) -> bool:
+    if subject != "Информатика":
+        return False
+    haystack = str(topic or "").casefold()
+    variable_terms = (
+        "переменн", "тағйирёбанда", "тағирёбанда", "variable", "навъи маълумот",
+        "типы данных", "data type", "int", "float", "str", "bool", "input", "type",
+    )
+    return any(term in haystack for term in variable_terms)
+
+
+def _topic_scope_rule(subject: str, topic: str) -> str:
+    """Keep focused Informatics lessons from drifting into nearby chapters."""
+    if subject != "Информатика":
+        return ""
+
+    if _is_variable_topic(subject, topic):
+        return (
+            f'- EXACT TOPIC LOCK for this Informatics lesson: the topic is only "{topic}". '
+            "Teach variables, assignment, and the named data types/functions using only the smallest examples. "
+            "For a basic variables-and-types lesson, the core types are int, float, str, and bool; use input(), "
+            "type(), and int()/float()/str() only when the topic or teacher request names them. Do NOT add "
+            "discounts, finance, rounding, memory "
+            "internals, swapping two variables, lists/dictionaries, functions/def, imports/modules, APIs, "
+            "algorithms, or programming history unless the topic explicitly names them. Do not turn a simple "
+            "variable example into a real-life business problem. For tools, use only a generic Python "
+            "interpreter/console when necessary; never add IDLE, Jupyter, Colab, VS Code, or other tools by default. "
+            "Every group task, visual block, homework task, and example must test one of the named concepts."
+        )
+    return (
+        f'- EXACT TOPIC LOCK: teach only the concepts explicitly named in "{topic}" and the minimum prerequisite '
+        "needed to understand them. Do not add adjacent chapters, unrelated applications, named software tools, "
+        "or extra programming examples just to make the material look richer."
+    )
+
+
+_MATH_NOTATION_RULE = (
+    "- MATH NOTATION: wrap every mathematical expression — a formula, a single variable, a unit with an "
+    "exponent — in dollar signs: \"$x^{2} + 5x + 6 = 0$\", \"$-100$\", a lone variable \"$x$\". Use "
+    "\\frac{a}{b} for every fraction (never a slash, except in units like м/с), ^{} for powers, _{} for "
+    "indices. The ^{} braces hold ONLY the exponent itself, never a variable multiplied after it "
+    "(\"3a^{2}b\", never \"3a^{2b}\"). When two separately-indexed variables are multiplied, like "
+    "P₁ times V₁, give each its own subscript and never stack a second _{} right after the first: "
+    "\"$P_{1}V_{1}=P_{2}V_{2}$\" is correct, \"$P_{1V}_{1}=P_{2V}_{2}$\" is invalid and will break the "
+    "formula display entirely."
+)
+
+_TEACHER_SIMPLICITY_RULE = (
+    "- STRICT TOPIC BOUNDARY: every sentence, fact, example, task, question, and explanation must directly "
+    "teach the exact topic written by the teacher. Do not expand it into a related chapter, nearby concept, "
+    "general history, broad subject overview, or an unrelated real-life story. If a detail does not help explain "
+    "this exact topic, leave it out. When unsure whether something belongs, omit it.\n"
+    "- VERY SIMPLE LANGUAGE: write for the stated grade using the shortest, clearest everyday words. Do not use "
+    "difficult academic, bureaucratic, poetic, or foreign words when a simple word works. Use a subject-specific "
+    "term only when it is truly necessary, and explain it immediately in plain words the first time. No unexplained "
+    "abbreviations, inflated phrasing, filler, or complicated sentence structure. A teacher and pupil should "
+    "understand every sentence on the first read.\n"
+    "- DIFFICULTY LIMIT FOR EVERY SUBJECT: for a basic topic in any subject, use only concepts, words, formulas, "
+    "tools, code, and examples that are necessary for the exact topic and grade. Do not add advanced concepts from "
+    "another chapter just to make the lesson look richer. Teach one new idea at a time, use the simplest possible "
+    "example, and explain necessary terms immediately. If a method is not named by the topic and is not required to "
+    "solve it, leave it out. For example, in a basic Python lesson do not add def, import, classes, or unrelated "
+    "libraries; in mathematics do not add advanced formulas; in science do not add unrelated terminology. Use "
+    "advanced material only when the exact topic asks for it.\n"
+    "- COMPOUND TOPIC: if the teacher's topic names SEVERAL distinct things separated by periods or semicolons "
+    "(e.g. \"Пешвои миллат. Дӯстӣ. Шарҳи маънои зарбулмасалҳо\" — three unrelated themes, not one idea said "
+    "twice), do NOT blend them into one continuous narrative — that is what produces off-topic tasks and shaky "
+    "examples, because material meant for one part leaks into another. Instead give each part its own clearly "
+    "separated piece of the lesson (its own lesson_stage(s), its own key_concepts entries, its own examples/"
+    "tasks) so every fact and exercise stays inside the ONE part it belongs to. Keep the parts in the order the "
+    "teacher wrote them and size each part's share of the lesson roughly evenly unless one part is obviously "
+    "bigger. A single sentence with commas describing one idea is NOT a compound topic — only split when the "
+    "parts are genuinely different subjects of study."
+)
+
+_LEVEL_MAP_DETAILED = {
+    "Лёгкий": "Beginner. Very simple language, like talking to a friend. Avoid academic/technical jargon "
+              "entirely — if a term is truly unavoidable, define it in plain words the moment it's used.",
+    "Средний": "Intermediate. Clear with real examples. Subject-specific terminology is fine but always "
+               "explained in context, never assumed.",
+    "Сложный": "Advanced. Deeper but still practical and engaging. Technical vocabulary is fine, but still "
+               "explained — this is still the hardest version of what THIS grade can absorb, not "
+               "university-level material (see the grade rule below).",
+}
+
+
+def _level_text(level: str) -> str:
+    return _LEVEL_MAP_DETAILED.get(level, _LEVEL_MAP_DETAILED["Средний"])
+
+
+_PRIMARY_GRADE_SUBJECT_HINT = {
+    "Таджикский язык": (
+        "PRIMARY-GRADE READING LESSON for a young child (not a grammar lesson): this topic is a short story, "
+        "poem, or everyday-life text, not a grammar rule. Do NOT analyse grammatical structure (subject/"
+        "predicate, tense, parts of speech, suffixes) unless the topic itself explicitly names a grammar rule — "
+        "focus instead on understanding the text, 3-5 new words explained in one simple sentence each, the "
+        "moral or lesson it teaches, and warm, concrete real-life connections (family, friends, school, nature, "
+        "animals) a 6-10-year-old recognises. Short sentences, friendly tone, no literary or linguistic "
+        "terminology."
+    ),
+    "Таджикская литература": (
+        "EARLY-GRADE READING LESSON for a young child, not academic literary criticism: this topic is a "
+        "proverb, folk saying, or short tale, not a classical author's biography or literary movement. Do NOT "
+        "discuss literary history, named classical poets, or scholarly debate unless the topic itself names a "
+        "specific author/work. ACCURACY: only use REAL, well-known Tajik/Persian proverbs and sayings you are "
+        "genuinely confident exist — never invent a proverb-sounding sentence and present it as a real one. If "
+        "unsure whether a specific proverb is real, use a different well-known one instead. Use a DIFFERENT real "
+        "proverb/example in each section — never repeat the exact same line across key_concepts, "
+        "real_life_examples, and lesson_stages. Explain its everyday meaning in simple words, give 2-3 real-life situations a "
+        "child would recognise where it applies, and state the moral plainly and warmly."
+    ),
+}
+
+
+_PRIMARY_GRADE_MAX = {
+    "Таджикский язык": 4,   # confirmed via real topics, e.g. "Дӯстӣ" filed at grade 2
+    "Таджикская литература": 5,  # confirmed via "Зарбулмасалу мақолҳо" filed at grade 5
+}
+
+
+def _is_primary_grade(subject: str, grade: str | None) -> bool:
+    max_grade = _PRIMARY_GRADE_MAX.get(subject)
+    if max_grade is None:
+        return False
+    # The frontend always sends grade as "3 класс", never a bare "3" -- a
+    # plain int(str(grade)) silently raised ValueError on that and always
+    # fell back to False, so this primary-grade hint never actually fired
+    # for a real request (only for a bare-number grade nothing ever sends).
+    match = re.search(r"\d+", str(grade or ""))
+    if not match:
+        return False
+    return int(match.group()) <= max_grade
+
+
+def _subject_hint(
+    subject: str,
+    language: str = "English",
+    grade: str | None = None,
+    topic: str | None = None,
+) -> str:
+    """Per-subject tone/style hint, plus the Tajik Informatics/Physics term fixes
+    that used to live only inside _konspekt_prompt — every material type gets
+    them now, not just konspekt.
+
+    Grades 1-4 file reading/moral-story and proverb topics under the SAME
+    subject keys ("Таджикский язык", "Таджикская литература") as grammar and
+    literary-history lessons for older grades — confirmed against real topics
+    like "Дӯстӣ" (grade 2) and "Зарбулмасалу мақолҳо" (grade 5). Without this,
+    the grammar/literary-history hint below got force-applied to a 7-year-old's
+    friendship story, producing irrelevant grammatical analysis.
+    """
+    if _is_primary_grade(subject, grade) and subject in _PRIMARY_GRADE_SUBJECT_HINT:
+        return _PRIMARY_GRADE_SUBJECT_HINT[subject]
+    if subject == "Информатика" and _is_variable_topic(subject, topic or ""):
+        # Focused Python lessons should not inherit the broad Informatics
+        # hype about games, social media, or "superpowers".
+        hint = (
+            "Use a neutral, textbook-style explanation focused only on Python variables and the named data types. "
+            "Do not use hype, marketing, games, social media, or unrelated real-life framing."
+        )
+    else:
+        hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    if language == "Таджикский" and subject == "Информатика":
+        if _is_variable_topic(subject, topic or ""):
+            hint += (
+                " Use only these school terms for this lesson: тағйирёбанда (variable), навъи маълумот "
+                "(data type), адади бутун (integer), адади ҳақиқӣ (float), сатр (string), қимат (value), "
+                "таъйин кардан (assignment), табдил додан (conversion), ворид кардан (input), нишон додан "
+                "(output). Never use the invented form Интизор for integer and never introduce рӯйхат (list) "
+                "unless the topic explicitly names it."
+            )
+        else:
+            hint += (
+                " For Tajik programming lessons use school-standard terms: тағйирёбанда (variable), "
+                "навъи маълумот (data type), адади бутун (integer), адади ҳақиқӣ (float), сатр (string), "
+                "рӯйхат (list), қимат (value), нигоҳ медорад (stores). Never use the invented form "
+                "Интизор for integer and never translate programming terms word-for-word from Russian or Uzbek."
+            )
+    elif language == "Таджикский" and subject == "Физика":
+        hint += (
+            " For Tajik physics use standard school vocabulary: ҳолат, эҳтимол, ченкунӣ, зарра, фотон, "
+            "электрон, мавҷ, энергия, баробарӣ, таҷриба, назария. For quantum entanglement, prefer the "
+            "plain phrase 'алоқаи квантӣ байни ду зарра' if a shorter technical term is uncertain. Never use "
+            "Uzbek syntax or words such as системасининг, имконияти, бир нечта, бўлиш, шаклида, қўшилган, "
+            "or запутанлик; rewrite them in natural literary Tajik."
+        )
+    return hint
 
 _SUBJECT_VISUAL_PREFERENCE: dict[str, list[str]] = {
     "Информатика": ["process", "flowchart", "comparison"],
@@ -357,20 +629,12 @@ def _konspekt_prompt(
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
     variant_out: dict | None = None,
+    code_policy: str | None = None,
 ) -> str:
-    level_map = {
-        "Лёгкий": "Beginner. Very simple language, like talking to a friend. Avoid academic/technical jargon "
-                  "entirely — if a term is truly unavoidable, define it in plain words the moment it's used.",
-        "Средний": "Intermediate. Clear with real examples. Subject-specific terminology is fine but always "
-                   "explained in context, never assumed.",
-        "Сложный": "Advanced. Deeper but still practical and engaging. Technical vocabulary is fine, but still "
-                   "explained — this is still the hardest version of what THIS grade can absorb, not "
-                   "university-level material (see the grade rule below).",
-    }
-    level_text = level_map.get(level, level_map["Средний"])
-
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    level_text = _level_text(level)
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
 
     optional_fields = []
     if subject in _FORMULA_SUBJECTS:
@@ -389,12 +653,18 @@ def _konspekt_prompt(
             'final answer"}],'
         )
     if subject in _EXERCISE_SUBJECTS:
-        optional_fields.append(
-            '  "worked_examples": [{"problem": "one concrete exercise a pupil can actually be marked on, '
-            'directly on this topic — with the actual sentence/words/code/values written out in it, never a '
-            'vague instruction", "solution": "the full worked answer, showing the reasoning, ending in the '
-            'answer itself"}],'
-        )
+        if subject == "Информатика" and code_policy == "needed":
+            optional_fields.append(
+                '  "worked_examples": [{"problem": "one short plain-language task on this exact topic, with no code inside the sentence", '
+                '"code": "the short code only, on separate lines", "solution": "one or two short simple sentences explaining the result"}],'
+            )
+        else:
+            optional_fields.append(
+                '  "worked_examples": [{"problem": "one concrete exercise a pupil can actually be marked on, '
+                'directly on this topic — with the actual sentence/words/values written out in it, never a '
+                'vague instruction", "solution": "the full worked answer, showing the reasoning, ending in the '
+                'answer itself"}],'
+            )
     if subject in _WORKED_EXAMPLE_SUBJECTS or subject in _EXERCISE_SUBJECTS:
         optional_fields.append(
             '  "practice_problems": [{"problem": "an UNSOLVED problem for the pupil to work out themselves, same '
@@ -404,7 +674,7 @@ def _konspekt_prompt(
         )
     if subject in _CONCEPT_CARD_SUBJECTS:
         optional_fields.append(
-            '  "concept_cards": [{"title": "Short name of one operation/term/rule", "tag": "notation, e.g. a symbol or the Python keyword (optional, empty string if none)", '
+            '  "concept_cards": [{"title": "Short name of one operation/term/rule", "tag": "notation or symbol (optional, empty string if none)", '
             '"table": [["col header 1", "col header 2"], ["row1val1", "row1val2"], ["row2val1", "row2val2"]], '
             '"note": "1 short sentence explaining it"}],'
         )
@@ -419,10 +689,10 @@ def _konspekt_prompt(
             '  "map_locations": ["Specific, real, geocodable place name — a city, country, region, '
             'mountain range, river, or sea, written in English so it geocodes reliably regardless of the lesson language"],'
         )
-    if subject in _CODE_SUBJECTS:
+    if subject in _CODE_SUBJECTS and code_policy == "needed":
         optional_fields.append(
             '  "code_blocks": [{"language": "python", "code": "...", "explanation": "..."}, '
-            '{"language": "cpp", "code": "the SAME algorithm, only for a language-agnostic topic", "explanation": "..."}],'
+            '{"language": "cpp", "code": "only when the topic genuinely needs a second language", "explanation": "..."}],'
         )
     if include_homework:
         optional_fields.append('  "homework": ["Task 1 written out in full", "Task 2"],')
@@ -433,6 +703,18 @@ def _konspekt_prompt(
         optional_json = optional_json.rstrip(",")
 
     extra_rules = []
+    extra_rules.append(_TEACHER_SIMPLICITY_RULE)
+    scope_rule = _topic_scope_rule(subject, topic)
+    if scope_rule:
+        extra_rules.append(scope_rule)
+    if _is_variable_topic(subject, topic):
+        extra_rules.append(
+            "- PYTHON VARIABLE FACTS: Python variables are not declared with a fixed type. Assignment binds a "
+            "name to a value, and the same name may later refer to a value of another type. Do not claim that "
+            "assigning 12.5 to an integer variable automatically raises a type-mismatch error. Explain type "
+            "conversion only when the topic names it. Keep the title and subtitle neutral; never use phrases such "
+            "as superpower, game, mobile game, social-media post, or marketing language."
+        )
     extra_rules.append(
         f"- Be SPECIFIC to \"{topic}\": every sentence names a real number, name, formula, mechanism or example. "
         "Cut generic filler (\"this plays an important role\"). \"main_content\" explains HOW and WHY in flowing "
@@ -450,11 +732,23 @@ def _konspekt_prompt(
         extra_rules.append(
             '- Set "real_life_examples" to an empty list and do not create a separate examples section.'
         )
-    if subject in _CODE_SUBJECTS:
+    if subject in _CODE_SUBJECTS and code_policy == "needed":
         extra_rules.append(
-            "- \"code_blocks\": topic tied to one language's syntax → 1 entry in that language. Language-agnostic "
-            "algorithm/concept → 2 entries, the SAME algorithm in 2 different languages (python, cpp, java, "
-            "javascript, csharp). No code to show → []. Only real, valid code."
+            "- CODE IS RELEVANT TO THIS TOPIC. Add code_blocks only if it directly teaches the requested concept. "
+            "Use one short, valid example in the language named by the topic; add a second language only when the "
+            "topic explicitly compares languages. Never add Python and C++ just because the subject is Informatics."
+        )
+    elif subject in _CODE_SUBJECTS:
+        extra_rules.append(
+            "- CODE IS NOT RELEVANT TO THIS TOPIC. Do not create code_blocks, Python/C++ examples, compiler/API "
+            "sections, or programming exercises, and do not list a code editor, IDE, or compiler (e.g. VS Code) "
+            "under \"tools\" either. Explain the requested Informatics topic with its own concepts, diagrams, "
+            "processes, devices, standards, or real-life examples."
+        )
+    if subject == "Информатика":
+        extra_rules.append(
+            "- INFORMATICS FORMAT: identifiers, assignments and code must be shown as plain code in backticks or "
+            "a code block, never as LaTeX math between $ signs. Use $ signs only for a genuine mathematical formula."
         )
     if subject in _FORMULA_SUBJECTS:
         extra_rules.append(
@@ -477,12 +771,20 @@ def _konspekt_prompt(
             "force a clean answer — pick other numbers instead."
         )
     if subject in _EXERCISE_SUBJECTS:
+        exercise_item = "sentence/words" if (subject == "Информатика" and code_policy == "needed") else ("sentence/words/code" if subject != "Информатика" else "sentence/table/data")
         extra_rules.append(
             "- \"worked_examples\": 5-6 exercises, each "
-            + _EXERCISE_KIND.get(subject, "a concrete task on this exact topic")
-            + ", with the actual sentence/words/code written inside it; full worked answer with reasoning. Easiest "
+            + _exercise_kind(subject, code_policy, grade)
+            + f", with the actual {exercise_item} written inside it; full worked answer with reasoning. Easiest "
             f"first, grade {grade} level, varied form, every answer correct."
         )
+        if subject == "Информатика" and code_policy == "needed":
+            extra_rules.append(
+                "- FORMAT FOR INFORMATICS EXAMPLES: keep each problem as one short plain sentence. Put code only "
+                "in the separate 'code' field, one statement per line. Keep 'solution' to 1-2 simple sentences. "
+                "Never join prose and code with an em dash, never add labels such as 'Example:' or 'Result:', "
+                "never add decorative # comments, Markdown fences, or repeated explanations."
+            )
     if subject in _WORKED_EXAMPLE_SUBJECTS or subject in _EXERCISE_SUBJECTS:
         extra_rules.append(
             "- \"practice_problems\": 4-5 problems for pupils, different numbers/wording from every worked example; "
@@ -528,7 +830,11 @@ def _konspekt_prompt(
         extra_rules.append(
             "- \"homework\": 2-3 tasks written out in full; never invent textbook page or exercise numbers."
         )
-    angle, shape = _pick_variant(previous_digests or [])
+    if _is_variable_topic(subject, topic):
+        angle = "Direct textbook explanation of the named Python concepts with short, neutral examples."
+        shape = "FOCUSED CONCEPT LESSON: define each named concept, show one minimal example, then check understanding."
+    else:
+        angle, shape = _pick_variant(previous_digests or [])
     if variant_out is not None:
         variant_out["angle"] = angle[:80]
         variant_out["shape"] = shape[:80]
@@ -559,7 +865,8 @@ SOURCE MATERIAL (primary source — build every section from it, not from genera
 \"\"\"
 {source_text}
 \"\"\"
-Use its own definitions, terminology, examples and order, condensed into the sections below. Don't contradict it;
+Use its own definitions, terminology, examples and order, organized into the sections below. Preserve every distinct
+source fact that is relevant to the topic; condense only repeated filler. Don't contradict it;
 supplement from general knowledge only where it has nothing for a section. If it is about a different topic than
 "{topic}", ignore it completely."""
 
@@ -604,19 +911,12 @@ def _lecture_prompt(
     grade: str,
     language: str = "English",
     source_text: str | None = None,
+    code_policy: str | None = None,
 ) -> str:
-    level_map = {
-        "Лёгкий": "Beginner. Very simple language, like talking to a friend. Avoid academic/technical jargon "
-                  "entirely — if a term is truly unavoidable, define it in plain words the moment it's used.",
-        "Средний": "Intermediate. Clear with real examples. Subject-specific terminology is fine but always "
-                   "explained in context, never assumed.",
-        "Сложный": "Advanced. Deeper but still practical and engaging. Technical vocabulary is fine, but still "
-                   "explained — this is still the hardest version of what THIS grade can absorb, not "
-                   "university-level material (see the grade rule below).",
-    }
-    level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    level_text = _level_text(level)
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
 
     optional_fields = []
     if subject in _FORMULA_SUBJECTS:
@@ -627,7 +927,7 @@ def _lecture_prompt(
         )
     if subject in _CONCEPT_CARD_SUBJECTS:
         optional_fields.append(
-            '  "concept_cards": [{"title": "Short name of one operation/term/rule", "tag": "notation, e.g. a symbol or the Python keyword (optional, empty string if none)", '
+            '  "concept_cards": [{"title": "Short name of one operation/term/rule", "tag": "notation or symbol (optional, empty string if none)", '
             '"table": [["col header 1", "col header 2"], ["row1val1", "row1val2"], ["row2val1", "row2val2"]], '
             '"note": "1 short sentence explaining it"}],'
         )
@@ -636,31 +936,27 @@ def _lecture_prompt(
             '  "map_locations": ["Specific, real, geocodable place name — a city, country, region, '
             'mountain range, river, or sea, written in English so it geocodes reliably regardless of the lesson language"],'
         )
-    if subject in _CODE_SUBJECTS:
+    if subject in _CODE_SUBJECTS and code_policy == "needed":
         optional_fields.append(
             '  "code_blocks": [{"language": "python", "code": "...", "explanation": "..."}, '
-            '{"language": "cpp", "code": "the SAME algorithm as above, in this different language", "explanation": "..."}, '
-            '{"language": "java", "code": "the SAME algorithm again, in this different language", "explanation": "..."}] '
+            '{"language": "cpp", "code": "only when the topic explicitly compares languages", "explanation": "..."}] '
             '— see the code_blocks rule below,'
         )
     optional_json = "\n" + "\n".join(optional_fields) if optional_fields else ""
 
     extra_rules = []
-    if subject in _CODE_SUBJECTS:
+    extra_rules.append(_TEACHER_SIMPLICITY_RULE)
+    if subject in _CODE_SUBJECTS and code_policy == "needed":
         extra_rules.append(
-            "- \"code_blocks\" LANGUAGE COUNT — read this carefully, it is a hard requirement, not a suggestion:\n"
-            "  STEP 1: is this topic tied to ONE specific language's own syntax (e.g. \"Python lists\", \"pointers in "
-            "C++\", \"Java interfaces\")? If yes: write ONLY that 1 language, 1 code_blocks entry. Stop here.\n"
-            "  STEP 2: otherwise, is this topic an ALGORITHM or a general programming concept that isn't tied to one "
-            "language (sorting, searching, recursion, loops, data structures, complexity, etc.)? If yes: you MUST "
-            "return EXACTLY 3 code_blocks entries — the literal SAME algorithm, implemented natively/idiomatically in "
-            "3 DIFFERENT languages (choose 3 different ones each time from: python, cpp, java, javascript, csharp — "
-            "do not always pick the same 3). Returning only 1 language here is WRONG even if that 1 example is "
-            "correct — a single-language answer fails this requirement. Do not skip this or default back to Python "
-            "alone out of habit.\n"
-            "  STEP 3: topic has no code to show at all (hardware, networking, abstract theory)? Return an empty list.\n"
-            "  Every snippet must be real, syntactically valid code a compiler for that language would accept — "
-            "never a fabricated API/library."
+            "- CODE IS RELEVANT TO THIS TOPIC. Add at most one short, valid code block only when it directly "
+            "explains the requested programming concept. Add another language only if the topic explicitly asks "
+            "for a language comparison. Never default to Python/C++ out of habit."
+        )
+    elif subject in _CODE_SUBJECTS:
+        extra_rules.append(
+            "- CODE IS NOT RELEVANT TO THIS TOPIC. Do not create code_blocks, Python/C++ examples, compiler/API "
+            "sections, or programming exercises. Explain the requested Informatics topic as a conceptual lecture "
+            "using only its own terms, mechanisms, diagrams, standards, and examples."
         )
     if subject in _FORMULA_SUBJECTS:
         extra_rules.append(
@@ -810,7 +1106,7 @@ SOURCE MATERIAL (primary source — this lecture must be built from this text, n
 \"\"\"
 Use this source as the primary basis for every section: preserve its terms, facts, definitions, and examples as
 faithfully as possible while still restructuring them into the requested sections below (don't just copy paragraphs
-verbatim — condense and organize them). Do NOT invent facts that contradict or aren't supported by the source. Only
+verbatim — organize them clearly and remove only repeated filler). Do NOT invent facts that contradict or aren't supported by the source. Only
 if the source genuinely lacks enough material for a required section may you carefully supplement it from your own
 general knowledge — when you do, keep that supplemented content clearly factual and uncontroversial (no
 speculation), since it isn't source-verified.
@@ -917,6 +1213,7 @@ def _test_prompt(
     question_count: int = 10,
     test_type: str = "mixed",
     source_text: str | None = None,
+    code_policy: str | None = None,
 ) -> str:
     level_map = {
         "Лёгкий": "Beginner. Simple, straightforward questions.",
@@ -924,8 +1221,10 @@ def _test_prompt(
         "Сложный": "Advanced. Challenging questions requiring deeper understanding.",
     }
     level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
+    code_rule = _code_relevance_rule(subject, code_policy)
 
     source_block = ""
     if source_text:
@@ -959,6 +1258,8 @@ RULES:
 4. Questions should vary in difficulty: some easy, some medium, some hard
 5. Use real-life examples and practical scenarios when possible
 6. Any mathematical/scientific expression — a formula, an equation, a single variable, a unit with an exponent — must be written in LaTeX inside dollar signs: "$a^{{2}} + b^{{2}} = c^{{2}}$", "$\\frac{{1}}{{2}}$", "$\\sqrt{{x}}$". This applies in the question text, the options, and the explanation alike. Use \\frac for every fraction, ^{{}} for powers, _{{}} for indices — and the ^{{}} braces hold ONLY the exponent itself, never a variable multiplied after it ("3a^{{2}}b", never "3a^{{2b}}").
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 Subject style: {subject_hint}
 Difficulty: {level_text}
@@ -995,6 +1296,8 @@ RULES:
 8. Questions should vary in difficulty: some easy, some medium, some hard
 9. Use real-life examples and practical scenarios when possible
 10. Any mathematical/scientific expression — a formula, an equation, a single variable, a unit with an exponent — must be written in LaTeX inside dollar signs: "$a^{{2}} + b^{{2}} = c^{{2}}$", "$\\frac{{1}}{{2}}$", "$\\sqrt{{x}}$". This applies in the question text, the options, and the explanation alike. Use \\frac for every fraction, ^{{}} for powers, _{{}} for indices — and the ^{{}} braces hold ONLY the exponent itself, never a variable multiplied after it ("3a^{{2}}b", never "3a^{{2b}}").
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 Subject style: {subject_hint}
 Difficulty: {level_text}
@@ -1078,6 +1381,15 @@ def _validate_practical_quality(content: dict, topic: str) -> None:
             "(no individual or group tasks survived)")
 
 
+def _validate_game_quality(content: dict, topic: str) -> None:
+    rounds = content.get("rounds")
+    has_round = isinstance(rounds, list) and any(
+        isinstance(r, dict) and (r.get("question") or r.get("statement") or r.get("instructions")) for r in rounds)
+    if not has_round:
+        raise ValueError(
+            f"AI returned an empty game for topic={topic[:50]!r} (no rounds survived)")
+
+
 def _practical_prompt(
     topic: str,
     subject: str,
@@ -1085,6 +1397,7 @@ def _practical_prompt(
     grade: str,
     language: str = "English",
     source_text: str | None = None,
+    code_policy: str | None = None,
 ) -> str:
     level_map = {
         "Лёгкий": "Beginner. Short, closely-guided tasks with one clear step at a time.",
@@ -1092,8 +1405,11 @@ def _practical_prompt(
         "Сложный": "Advanced. Open-ended tasks requiring the pupil to plan their own approach.",
     }
     level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
+    code_rule = _code_relevance_rule(subject, code_policy)
+    math_rule = _MATH_NOTATION_RULE if subject in _FORMULA_SUBJECTS else ""
 
     source_block = ""
     if source_text:
@@ -1124,6 +1440,9 @@ RULES:
    {lang_name} — no stray English words like "pupils" or "students" left untranslated.
 6. Subject style: {subject_hint}
 7. Difficulty spread: {level_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{(chr(10) + math_rule) if math_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 Return THIS exact JSON (nothing else):
 {{
@@ -1156,6 +1475,7 @@ def _game_prompt(
     grade: str,
     language: str = "English",
     source_text: str | None = None,
+    code_policy: str | None = None,
 ) -> str:
     level_map = {
         "Лёгкий": "Beginner. Simple recall, generous options, no trick questions.",
@@ -1163,8 +1483,11 @@ def _game_prompt(
         "Сложный": "Advanced. Requires applying the concept, not just recalling it.",
     }
     level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
+    code_rule = _code_relevance_rule(subject, code_policy)
+    math_rule = _MATH_NOTATION_RULE if subject in _FORMULA_SUBJECTS else ""
 
     source_block = ""
     if source_text:
@@ -1194,6 +1517,9 @@ RULES:
 5. "speed": a single short-answer fact a pupil should recall within {{"time_limit_seconds": 10-20}}.
 6. Subject style: {subject_hint}
 7. Difficulty: {level_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{(chr(10) + math_rule) if math_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 Return THIS exact JSON (nothing else) — the shapes below show the 5 round types, repeat/mix them to reach
 exactly 12 rounds:
@@ -1217,9 +1543,18 @@ def _presentation_prompt(
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
     variant_out: dict | None = None,
+    code_policy: str | None = None,
 ) -> str:
     lang_name = LANGUAGE_NAMES.get(language, "English")
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
+    code_policy = code_policy or _code_relevance(subject, topic)
+    code_rule = (
+        "CODE RELEVANCE: code is not needed for this topic. Do not add a slide-level `code` field, "
+        "Python/C++ examples, compiler/API material, or programming exercises."
+        if code_policy != "needed" else
+        "CODE RELEVANCE: include slide-level code only when it directly teaches this topic's programming "
+        "concept; never add Python/C++ merely because the subject is Informatics."
+    )
 
     intro_end = max(1, round(slide_count * 0.15))
     body_end = max(intro_end + 1, min(slide_count - 1, round(slide_count * 0.75)))
@@ -1276,6 +1611,8 @@ knowledge of "{topic}" instead. The topic given below always wins over a mismatc
 CRITICAL: Write ALL content in {lang_name} language. Every title, bullet point, speaker note — everything must be in {lang_name}.{source_block}
 
 Subject style: {subject_hint}{variation_block}
+{code_rule}
+{_TEACHER_SIMPLICITY_RULE}
 
 RULES:
 1. ALL slides must be about "{topic}" ONLY
@@ -1324,13 +1661,6 @@ For each slide, include:
   unpacked), "formula" (a slide whose point IS an equation), "example" (a worked example, problem then answer),
   "task" (something the pupils do), "summary" (the closing recap). Use them in a natural teaching order and do
   NOT make every slide "explanation".
-- "image_query": REQUIRED on EVERY slide — direct feedback was that a deck with only some slides carrying a
-  picture reads as unfinished, so every single slide (formula slides included — search for what the formula is
-  ABOUT, not the equation itself) needs one. A short (2-4 word) ENGLISH search phrase for a real Wikimedia
-  Commons photo/diagram/figure that illustrates THIS slide's own content: "right triangle labeled", "water cycle
-  diagram", "plant cell structure", "Samanid mausoleum", "linear equation graph". Make it as concrete and
-  specific to this exact slide as the topic allows — a generic query ("mathematics", "history") returns a
-  generic/unrelated picture, a specific one returns a real illustration. Never leave this key out.
 - "code": OPTIONAL — ONLY for a subject where the slide's actual point is a piece of REAL, RUNNABLE code (Informatics/
   programming topics — a language construct, an algorithm walked through in a specific language, a worked coding
   example). Never invent one for a subject that merely mentions computers in passing. {{"language": "python",
@@ -1358,13 +1688,6 @@ Return THIS exact JSON:
       "bullet_points": ["Short punchy fragment", "Another short fragment", "One more, still brief"],
       "body": "Two to three sentences that actually explain this slide's point using this topic's own terms, numbers and relationships — what it is, when it holds, what follows from it.",
       "speaker_notes": "Extensive teaching notes with the actual facts/dates/names, discussion questions, and tips for the teacher. At least 3-4 sentences — this is where the detail lives, not on the slide."
-    }},
-    {{
-      "title": "A slide the picture actually teaches, e.g.",
-      "kind": "explanation",
-      "image_query": "right triangle labeled",
-      "bullet_points": ["Short fragment naming what to look at"],
-      "speaker_notes": "Extensive teaching notes. At least 3-4 sentences."
     }},
     {{
       "title": "A slide whose point IS the equation, e.g.",
@@ -1473,6 +1796,206 @@ Return THIS exact JSON — exactly {day_count} entries in "topics", "day_index" 
 }}"""
 
 
+_VARAQ_BLOCK_SHAPES = """  {"type": "word_bank", "instructions": "Circle every word from the bank that belongs to the requested group", "word_bank": ["correct term 1", "correct term 2", "a distractor that does NOT belong", "another distractor"], "correct": ["correct term 1", "correct term 2"]},
+  {"type": "cloze", "instructions": "Fill in each blank", "text": "A sentence or short passage with each blank written as ___(1)___, ___(2)___ in order", "blanks": ["answer for blank 1", "answer for blank 2"]},
+  {"type": "matching", "instructions": "Match each item on the left to its pair on the right", "left": ["term/question 1", "term/question 2", "term/question 3"], "right": ["matching answer A", "matching answer B", "matching answer C"], "correct_pairs": [[0, 1], [1, 2], [2, 0]]},
+  {"type": "table_fill", "instructions": "Complete the table", "headers": ["col1", "col2", "col3"], "rows": [["given value", "", ""], ["", "given value", ""]], "answer_rows": [["given value", "computed value", "computed value"], ["computed value", "given value", "computed value"]]},
+  {"type": "picture_order", "instructions": "Write the correct order number in each circle", "items": [{"image_query": "precise 2-4 word ENGLISH Wikimedia Commons search phrase for item 1"}, {"image_query": "..."}, {"image_query": "..."}, {"image_query": "..."}], "correct_order": [3, 1, 4, 2]}"""
+
+# "diagram_label" only ever uses shape "compass" — the only diagram this
+# renderer can draw. Offered unconditionally but the rule text below makes
+# clear it is a rare fit, not a default choice.
+_VARAQ_DIAGRAM_BLOCK_SHAPE = """,
+  {"type": "diagram_label", "instructions": "Label the diagram", "shape": "compass", "labels": ["label for the N position", "label for the E position", "label for the S position", "label for the W position"]}"""
+
+# Only offered when code_policy=="needed" — a programming topic (e.g. "Python
+# lists") cannot be taught through word banks/matching/tables alone, which
+# forced the model toward Python-trivia (release dates, who invented it)
+# instead of actual coding practice. This gives it a real code exercise shape.
+_VARAQ_CODE_BLOCK_SHAPE = """,
+  {"type": "code_trace", "instructions": "Read the code and answer the question", "language": "python", "code": "a short, real, runnable snippet (<=8 lines) directly on this topic", "question": "What does this code print / what is the value of X after it runs?", "answer": "the exact correct answer"}"""
+
+
+def _varaq_prompt(
+    topic: str,
+    subject: str,
+    level: str,
+    grade: str,
+    language: str = "English",
+    source_text: str | None = None,
+    code_policy: str | None = None,
+) -> str:
+    level_map = {
+        "Лёгкий": "Beginner. Very short, generous word banks, obvious distractors.",
+        "Средний": "Intermediate. Mix of recall and light reasoning.",
+        "Сложный": "Advanced. Requires applying the concept, not just recalling it.",
+    }
+    level_text = level_map.get(level, level_map["Средний"])
+    subject_hint = _subject_hint(subject, language, grade, topic)
+    lang_name = LANGUAGE_NAMES.get(language, "English")
+    code_policy = code_policy or _code_relevance(subject, topic)
+    code_rule = _code_relevance_rule(subject, code_policy)
+    math_rule = _MATH_NOTATION_RULE if subject in _FORMULA_SUBJECTS else ""
+
+    source_block = ""
+    if source_text:
+        source_block = f"""
+
+SOURCE MATERIAL (base every block on facts/terms actually in this text):
+\"\"\"
+{source_text}
+\"\"\"
+If this text turns out to be about a DIFFERENT topic than "{topic}" entirely — not just thin on detail, but a
+genuinely different subject — IGNORE this source completely and write the worksheet purely from your own
+knowledge of "{topic}" instead. The topic given below always wins over a mismatched source."""
+
+    code_type_available = subject in _CODE_SUBJECTS and code_policy == "needed"
+    block_shapes = _VARAQ_BLOCK_SHAPES + _VARAQ_DIAGRAM_BLOCK_SHAPE + (_VARAQ_CODE_BLOCK_SHAPE if code_type_available else "")
+    type_count = "6" if code_type_available else "5"
+    code_type_rule = (
+        "9. This topic genuinely requires code — use \"code_trace\" for the blocks where reading/tracing code is "
+        "the actual point (never force the other types to describe code in prose instead of showing it)."
+        if code_type_available else ""
+    )
+
+    return f"""Create a printable A4 worksheet ("рабочий лист") with 4-8 short exercises about "{topic}" for grade {grade}, subject "{subject}".
+
+CRITICAL: Write ALL content in {lang_name} language.{source_block}
+
+RULES:
+1. Pick 4-8 blocks from the {type_count} types below, MIXING at least 2 different types — never make every block
+   the same type. Choose only the types that genuinely fit this topic (e.g. "matching" for term/definition pairs,
+   "table_fill" for data with a pattern to compute, "cloze" for a short descriptive passage, "word_bank" for
+   sorting/classifying terms).
+2. "word_bank": the bank includes 1-2 distractors that do NOT belong, so circling is a real decision, not just
+   copying the whole list. "correct" lists only the ones that truly belong.
+3. "cloze": write a genuine short passage/sentence (not a single word) with each blank marked in order; "blanks"
+   gives the exact correct word/phrase for each blank, same order.
+4. "matching": 3-5 pairs; "correct_pairs" are 0-based [left_index, right_index] pairs — every left item has
+   exactly one correct right item.
+5. "table_fill": "rows" is what the PUPIL sees — some cells already filled in as given information, the rest
+   empty strings ""; "answer_rows" is the SAME table with every cell correctly filled in, same shape. Never leave
+   "rows" with every cell empty — there must be enough given information to solve it.
+6. "picture_order": exactly 4 items, each a precise real-world photo search phrase (seasons, life-cycle stages,
+   historical events in sequence, process steps) — never use this for topics with no real sequence to order.
+   "correct_order" says what number belongs under each item AS LISTED (items are shown in a scrambled order on
+   purpose); e.g. correct_order [3,1,4,2] means the 1st listed item is actually 3rd in the true sequence.
+7. "diagram_label": ONLY use "shape": "compass", and ONLY for a topic genuinely about cardinal directions/map
+   orientation — never for any other topic, there is no other diagram available. "labels" are the 4 correct
+   answers in this fixed order: North, East, South, West.
+8. Every block needs "instructions" — one short, specific sentence (not generic "fill in the blanks").
+9. Subject style: {subject_hint}
+10. Difficulty: {level_text}
+{code_type_rule}
+{(chr(10) + code_rule) if code_rule else ""}
+{(chr(10) + math_rule) if math_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
+
+Return THIS exact JSON (nothing else) — the shapes below show the {type_count} block types, pick and repeat/mix 4-8 of them:
+{{
+  "title": "A short worksheet title in {lang_name} mentioning {topic}",
+  "description": "One sentence on what this worksheet practices",
+  "blocks": [
+{block_shapes}
+  ]
+}}"""
+
+
+def _validate_varaq_quality(content: dict, topic: str) -> None:
+    blocks = content.get("blocks")
+    has_block = isinstance(blocks, list) and any(
+        isinstance(b, dict) and b.get("instructions") for b in blocks)
+    if not has_block:
+        raise ValueError(
+            f"AI returned an empty worksheet for topic={topic[:50]!r} (no blocks survived)")
+
+
+def _render_varaq_diagrams(content: dict, topic: str) -> None:
+    from app.figure_builder import save_figure
+    for block in (content.get("blocks") or []):
+        if not isinstance(block, dict) or block.get("type") != "diagram_label":
+            continue
+        shape = str(block.get("shape") or "compass")
+        try:
+            path = save_figure(shape, [])
+        except Exception as e:
+            logger.warning(f"Varaq diagram render failed for topic={topic[:50]}: {e}")
+            path = None
+        if path:
+            block["image"] = path
+        else:
+            logger.info(f"Varaq diagram_label dropped (unknown shape {shape!r}) topic={topic[:50]}")
+
+
+async def _render_varaq_images(content: dict, topic: str) -> None:
+    blocks = [b for b in (content.get("blocks") or [])
+             if isinstance(b, dict) and b.get("type") == "picture_order"]
+    if not blocks:
+        return
+    from app.image_builder import fetch_lesson_images
+    for block in blocks:
+        items = [it for it in (block.get("items") or []) if isinstance(it, dict)]
+        for item in items:
+            query = str(item.get("image_query") or "").strip()
+            if not query:
+                continue
+            try:
+                found = await fetch_lesson_images([query], count=1, grade=content.get("grade"),
+                                                  language=content.get("language"),
+                                                  subject=content.get("subject"))
+                if found:
+                    path = found[0]["path"]
+                    _shrink_image_file(path, max_dim=360)
+                    item["image"] = {"path": path, "credit": found[0].get("credit", "")}
+            except Exception as e:
+                logger.warning(f"Varaq picture_order image fetch failed for topic={topic[:50]} query={query[:50]}: {e}")
+
+
+def _shrink_image_file(path: str, max_dim: int = 360) -> None:
+    """picture_order shows these at ~110pt wide; the fetched source can be
+    several megapixels, which bloated a 4-picture worksheet PDF past 10MB.
+    Downsize the saved file in place so it embeds at a sane size."""
+    try:
+        from PIL import Image as PILImage
+        full = os.path.join(os.path.dirname(__file__), "..", path.lstrip("/"))
+        with PILImage.open(full) as im:
+            if max(im.size) <= max_dim:
+                return
+            fmt = im.format or "PNG"
+            im.thumbnail((max_dim, max_dim), PILImage.LANCZOS)
+            im.save(full, fmt)
+    except Exception as e:
+        logger.warning(f"Image shrink failed for {path}: {e}")
+
+
+def _regenerate_varaq_block_prompt(topic: str, subject: str, level: str, grade: str, language: str,
+                                   existing_instructions: list[str]) -> str:
+    lang_name = LANGUAGE_NAMES.get(language, "English")
+    subject_hint = _subject_hint(subject, language, grade, topic)
+    existing_text = "\n".join(f"- {t}" for t in existing_instructions) or "(none)"
+    code_policy = _code_relevance(subject, topic)
+    code_rule = _code_relevance_rule(subject, code_policy)
+    code_type_available = subject in _CODE_SUBJECTS and code_policy == "needed"
+    block_shapes = _VARAQ_BLOCK_SHAPES + _VARAQ_DIAGRAM_BLOCK_SHAPE + (_VARAQ_CODE_BLOCK_SHAPE if code_type_available else "")
+    type_count = "6" if code_type_available else "5"
+
+    return f"""Create exactly ONE new worksheet block about "{topic}" for grade {grade}, subject "{subject}".
+
+CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, nothing else.
+
+Pick whichever of the {type_count} types below best fits this topic.
+
+Subject style: {subject_hint}
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
+
+This block MUST be different in focus from these existing blocks on the same worksheet:
+{existing_text}
+
+Return THIS exact JSON (nothing else) — pick ONE shape from these {type_count}:
+{block_shapes}"""
+
+
 PROMPTS = {
     "konspekt": _konspekt_prompt,
     "lektsiya": _lecture_prompt,
@@ -1480,6 +2003,7 @@ PROMPTS = {
     "prezentatsiya": _presentation_prompt,
     "amaliy": _practical_prompt,
     "igra": _game_prompt,
+    "varaq": _varaq_prompt,
 }
 
 
@@ -1683,7 +2207,11 @@ _MISSING_GLYPH_HYPHENS = str.maketrans({"\u2010": "-", "\u2011": "-"})
 
 def _normalize_missing_glyphs(obj):
     if isinstance(obj, str):
-        return obj.translate(_MISSING_GLYPH_HYPHENS)
+        # Some model responses double-escape ordinary quotes inside prose and
+        # code (for example: score = \"10\"). They are JSON artifacts, not
+        # intended backslashes in the rendered school material.
+        normalized = obj.translate(_MISSING_GLYPH_HYPHENS).replace('\\"', '"')
+        return re.sub(r'\\n(?=\s*#)', "\n", normalized)
     if isinstance(obj, dict):
         return {k: _normalize_missing_glyphs(v) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -1929,8 +2457,20 @@ ADDITIONAL TAJIK LANGUAGE RULES:
 - Write in correct literary Tajik (тоҷикӣ), not Russian transliteration
 - Use Tajik vocabulary: шеър not стихотворение, байт not куплет, ғазал not газель, қасида not касыда, адабиёт not литература, муаллиф not автор, асар not произведение, достон not поэма, ҳикоя not рассказ, китоб not книга, дарс not урок, мактаб not школа, синф not класс, хонанда not ученик, омӯзгор not учитель, донишҷӯй not студент, вазифа not задача, таҳлил not анализ, муқоиса not сравнение, хулоса not вывод, намуна not пример, савол not вопрос, ҷавоб not ответ, ҳақиқат not правда, муҳаббат not любовь, озодӣ not свобода, адолат not справедливость, меҳнат not труд, дониш not знание, шуҷоат not храбрость, некӣ not доброта, зебоӣ not красота, донишгоҳ not университет, тағйирот not изменение, раванд not процесс, нақш not роль, таъсир not влияние, мавзӯъ not тема, мақсад not цель, саволҳо not вопросы
 - For literature specifically: шеър (poem), байт (couplet), ғазал (ghazal), қасида (qasida), достон (epic), маснавӣ (masnavi), таҳлил (analysis), муқоиса (comparison), тасвир (image), рамз (symbol), ғоя (idea), панд (moral), қаҳрамон (hero), маҷрои воқеа (plot)
+- Prefer ordinary, school-textbook Tajik over literal word-for-word translation. In particular, use
+  "тағйирёбанда" for a programming variable, "шарт" for a condition, "давр/давра" for a loop,
+  "функсия" for a function, and "синтаксис" for syntax. Never leave Russian words such as
+  "условие", "луп", "переменная", "пример", "вопрос" or "ответ" in Tajik prose.
+- Check agreement, case endings, verb forms, spelling of ҳ/қ/ғ/ҷ/ӣ, and natural Tajik word order.
+  If a specialist term is uncertain, explain it in simple Tajik instead of inventing a term.
 - NEVER mix Russian words into Tajik text
-- Every single word must be Tajik, zero exceptions"""
+- NEVER mix Uzbek words or Uzbek-style grammar into Tajik text, even though the scripts look similar. A real,
+  confirmed mistake: "кайси" (Uzbek for "which") used instead of the correct Tajik "кадом". Other Uzbek words
+  that have leaked in before and must never appear in Tajik prose: "системасининг", "имконияти", "бир нечта",
+  "бўлиш", "шаклида", "қўшилган", "запутанлик". If a sentence reads naturally in Uzbek but not in Tajik, it is
+  wrong — rewrite it in plain literary Tajik instead.
+- Every prose field must be natural, readable Tajik suitable for a school teacher; code, formulas,
+  proper names, and internationally accepted technical names may remain unchanged."""
     return ""
 
 
@@ -1939,6 +2479,7 @@ def _konspekt_system_prompt(language: str) -> str:
     tajik_rules = _language_rules(language)
     return f"""You are a school teacher writing a formal, concise lesson plan (konspekt). Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 RULES:
 1. Write ONLY about the topic given.
@@ -1954,6 +2495,7 @@ def _lecture_system_prompt(language: str) -> str:
     return f"""You are a subject-matter expert writing an in-depth lecture (лекция) that explains a topic thoroughly \
 — NOT a lesson plan. Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL RULES:
 1. Write ONLY about the topic given.
@@ -2022,6 +2564,53 @@ def _validate_code_blocks(content: dict, topic: str) -> None:
             continue
         kept.append(block)
     content["code_blocks"] = kept
+
+
+def _enforce_code_relevance(content: dict, policy: str, topic: str) -> None:
+    """Prevent the legacy Informatics template from leaking irrelevant code."""
+    if not isinstance(content, dict):
+        return
+    if policy != "needed":
+        if content.get("code_blocks"):
+            logger.info(
+                f"Dropped irrelevant code_blocks for non-programming topic={topic[:80]}"
+            )
+        # Keep a stable empty field for exporters and downstream editors.
+        content["code_blocks"] = []
+        slides = content.get("slides")
+        if isinstance(slides, list):
+            for slide in slides:
+                if isinstance(slide, dict) and slide.pop("code", None):
+                    logger.info(
+                        f"Dropped irrelevant slide code for non-programming topic={topic[:80]}"
+                    )
+
+
+def _has_programming_content(content: dict) -> bool:
+    """Detect code leaking into prose/exercises, not only code_blocks."""
+    if not isinstance(content, dict):
+        return False
+    if content.get("code_blocks"):
+        return True
+    parts: list[str] = []
+
+    def collect(value):
+        if isinstance(value, str):
+            parts.append(value.casefold())
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if key not in {"code", "language", "latex", "formula"}:
+                    collect(item)
+
+    collect(content)
+    text = "\n".join(parts)
+    return any(term in text for term in (
+        "python", "c++", "javascript", "java", "компилятор", "compiler", "api",
+        "код", "code", "барномасозӣ", "барномасозии",
+    ))
 
 
 _NO_MATH_KEYS = {"code", "language", "image", "images", "image_url", "url",
@@ -2282,67 +2871,6 @@ async def _caption_and_verify_images(content: dict, topic: str, images: list[dic
     except Exception as e:
         logger.warning(f"Image relevance check failed for topic={topic[:50]}: {e}")
         return images
-
-
-async def _render_slide_images(content: dict, topic: str) -> None:
-    slides = content.get("slides") or []
-    wanted = [s for s in slides
-              if isinstance(s, dict) and str(s.get("image_query") or "").strip()][:8]
-    if not wanted:
-        return
-    try:
-        from app.image_builder import fetch_lesson_images
-
-        from app.image_query import build_queries
-
-        async def _one(slide: dict) -> tuple[dict, dict] | None:
-            queries = build_queries(slide, topic, content.get("subject"),
-                                    content.get("grade"))[:2]
-            found = await fetch_lesson_images(queries, count=1, grade=content.get("grade"),
-                                              language=content.get("language"),
-                                              subject=content.get("subject"))
-            return (slide, found[0]) if found else None
-
-        results = await asyncio.wait_for(
-            asyncio.gather(*(_one(slide) for slide in wanted), return_exceptions=True),
-            timeout=35.0,
-        )
-        fetched: list[tuple[dict, dict]] = [
-            r for r in results if isinstance(r, tuple)
-        ]
-        _seen_paths: set[str] = set()
-        _unique: list[tuple[dict, dict]] = []
-        for _slide, _image in fetched:
-            _key = str(_image.get("path") or _image.get("title") or "")
-            if _key and _key in _seen_paths:
-                logger.info(f"Slide image dropped as duplicate: {_key}")
-                continue
-            if _key:
-                _seen_paths.add(_key)
-            _unique.append((_slide, _image))
-        fetched = _unique
-        if not fetched:
-            return
-        slide_of = {id(image): slide for slide, image in fetched}
-        context_of = lambda im: (
-            f'{slide_of[id(im)].get("title", "")} — {str(slide_of[id(im)].get("body") or "")[:200]}'
-        )
-        images = await _caption_and_verify_images(
-            content, topic, [image for _, image in fetched], context_of=context_of)
-        kept_ids = {id(im) for im in images}
-        for slide, image in fetched:
-            if id(image) not in kept_ids:
-                continue
-            slide["image"] = {
-                "path": image["path"],
-                "caption": image.get("caption", ""),
-                "credit": image.get("credit", ""),
-                "source": image.get("source", ""),
-            }
-            if image.get("explanation"):
-                slide["image"]["explanation"] = image["explanation"]
-    except Exception as e:
-        logger.warning(f"Slide image fetch failed for topic={topic[:50]}: {e}")
 
 
 def _render_slide_figures(content: dict, topic: str) -> None:
@@ -2680,73 +3208,241 @@ async def retry_lesson_image(content: dict, topic: str, index: int) -> bool:
         return False
 
 
-_SOURCE_EXCERPT_CHARS = 20000
+# Keep enough context for a lesson while avoiding sending an entire textbook
+# excerpt on every request. The source is split into small chunks and the
+# chunks most relevant to the requested topic are selected before prompting.
+# This keeps retrieval useful for long uploaded books without changing the
+# Dastyor output schema or lesson architecture.
+_SOURCE_EXCERPT_CHARS = 12000
+_SOURCE_CHUNK_CHARS = 2400
+
+_SOURCE_STOPWORDS = {
+    # Tajik / Uzbek / Russian / English words which commonly occur in a
+    # request but carry little retrieval signal on their own.
+    "ва", "дар", "барои", "ба", "аз", "бо", "доир", "оид", "дарс",
+    "мавзӯъ", "мавзуъ", "сохтани", "дар", "учебник", "тема", "урок",
+    "про", "для", "по", "из", "с", "и", "the", "and", "for", "with",
+    "lesson", "topic", "about", "class", "grade",
+}
+
+
+def _source_terms(text: str) -> list[str]:
+    """Return meaningful words for lightweight lexical source retrieval."""
+    if not text:
+        return []
+    words = re.findall(r"[^\W\d_]{3,}|[A-Za-z_]\w*", text.lower(), flags=re.UNICODE)
+    terms: list[str] = []
+    seen: set[str] = set()
+    for word in words:
+        if word in _SOURCE_STOPWORDS or len(word) < 4 or word in seen:
+            continue
+        seen.add(word)
+        terms.append(word)
+    return terms
+
+
+def _source_chunks(source_text: str) -> list[tuple[int, str]]:
+    """Split source into overlapping chunks while retaining original offsets."""
+    chunks: list[tuple[int, str]] = []
+    step = _SOURCE_CHUNK_CHARS - 300
+    start = 0
+    while start < len(source_text):
+        end = min(len(source_text), start + _SOURCE_CHUNK_CHARS)
+        if end < len(source_text):
+            # Prefer a paragraph or line boundary so selected excerpts remain
+            # readable, but do not make a huge source chunk if no boundary is
+            # nearby (PDF extraction often has very few newlines).
+            boundary = max(source_text.rfind("\n\n", start + 900, end), source_text.rfind("\n", start + 900, end))
+            if boundary > start + 900:
+                end = boundary
+        chunk = source_text[start:end].strip()
+        if chunk:
+            chunks.append((start, chunk))
+        if end >= len(source_text):
+            break
+        start = max(start + step, end - 300)
+    return chunks
 
 
 def _find_topic_offset(source_text: str, topic: str) -> int:
     haystack = source_text.lower()
     needle = topic.lower().strip()
-    idx = haystack.rfind(needle) if needle else -1
+    idx = -1
+    if needle:
+        # The first hit in a school book is often the table of contents and
+        # the last hit can be an index. Prefer the first meaningful hit after
+        # the opening pages, where the actual lesson normally begins.
+        start = 0
+        hits = []
+        while True:
+            found = haystack.find(needle, start)
+            if found == -1:
+                break
+            hits.append(found)
+            start = found + max(1, len(needle))
+        if hits:
+            body_start = max(0, int(len(haystack) * 0.08))
+            idx = next((hit for hit in hits if hit >= body_start), hits[0])
     if idx == -1 and needle:
         for word in sorted(set(needle.split()), key=len, reverse=True):
             if len(word) > 3:
-                idx = haystack.rfind(word)
+                idx = haystack.find(word)
                 if idx != -1:
                     break
     return idx
 
 
-def _select_relevant_excerpt(source_text: str, topic: str, max_chars: int = _SOURCE_EXCERPT_CHARS) -> str:
+def _select_relevant_excerpt(
+    source_text: str,
+    topic: str,
+    max_chars: int = _SOURCE_EXCERPT_CHARS,
+    query_text: str | None = None,
+) -> str:
+    """Select topic-relevant source chunks while preserving source order.
+
+    This is intentionally a small, dependency-free RAG layer. It is not a
+    replacement for Dastyor's generation schema: it only controls which part
+    of a book is placed in the prompt. Explicitly uploaded source remains the
+    primary source, and no source content is returned to logs.
+    """
     if len(source_text) <= max_chars:
         return source_text
 
-    idx = _find_topic_offset(source_text, topic)
-
-    if idx == -1:
+    chunks = _source_chunks(source_text)
+    if not chunks:
         return source_text[:max_chars]
 
-    half = max_chars // 2
-    start = max(0, idx - half)
-    end = min(len(source_text), start + max_chars)
-    start = max(0, end - max_chars)
-    excerpt = source_text[start:end]
-    if start > 0:
-        excerpt = "…" + excerpt
-    if end < len(source_text):
-        excerpt = excerpt + "…"
-    return excerpt
+    terms = _source_terms(query_text or topic)
+    topic_phrase = re.sub(r"\s+", " ", (topic or "").strip().lower())
+    ranked: list[tuple[float, int, str]] = []
+    for index, (offset, chunk) in enumerate(chunks):
+        lowered = chunk.lower()
+        score = 0.0
+        if topic_phrase and topic_phrase in lowered:
+            score += 12.0
+        for term in terms:
+            occurrences = lowered.count(term)
+            if occurrences:
+                score += min(occurrences, 4) * (2.5 if len(term) >= 6 else 1.0)
+        # The opening chunk usually contains the source title, objectives, or
+        # definitions. Keep it as a low-priority anchor, not as the only data.
+        if index == 0:
+            score += 1.5
+        ranked.append((score, offset, chunk))
+
+    # Select the best chunks under a strict budget, then restore their source
+    # order. A no-match source still gets a small opening excerpt so the model
+    # can detect a mismatched document and follow the topic guard in prompts.
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    body_limit = max(1000, max_chars - 180)
+    selected: list[tuple[int, str]] = []
+    used = 0
+    for score, offset, chunk in ranked:
+        if score <= 0 and selected:
+            continue
+        extra = len(chunk) + (2 if selected else 0)
+        if used + extra > body_limit:
+            continue
+        selected.append((offset, chunk))
+        used += extra
+        if used >= body_limit * 0.9:
+            break
+
+    if not selected:
+        selected = [(chunks[0][0], chunks[0][1][:body_limit])]
+
+    selected.sort(key=lambda item: item[0])
+    body = "\n\n".join(chunk for _, chunk in selected)
+    excerpt = (
+        "[SELECTED SOURCE EXCERPTS — relevant passages from the provided source; keep the requested topic as the source of truth]\n"
+        f"{body}\n"
+        "[END SELECTED SOURCE EXCERPTS]"
+    )
+    logger.info(
+        "Source retrieval selected %s of %s characters across %s chunks for topic=%s",
+        len(body), len(source_text), len(selected), (topic or "")[:80],
+    )
+    return excerpt[:max_chars]
 
 
 _TEXTBOOK_CACHE_DIR = os.path.join(os.path.dirname(__file__), "textbooks_cache")
 _textbook_manifest_cache: dict | None = None
+_textbook_manifest_mtime: float | None = None
 
 
 def _textbook_manifest() -> dict:
-    global _textbook_manifest_cache
-    if _textbook_manifest_cache is None:
-        manifest_path = os.path.join(_TEXTBOOK_CACHE_DIR, "_manifest.json")
+    global _textbook_manifest_cache, _textbook_manifest_mtime
+    manifest_path = os.path.join(_TEXTBOOK_CACHE_DIR, "_manifest.json")
+    try:
+        mtime = os.path.getmtime(manifest_path)
+    except OSError:
+        mtime = None
+    if _textbook_manifest_cache is None or mtime != _textbook_manifest_mtime:
         try:
             with open(manifest_path, encoding="utf-8") as f:
                 _textbook_manifest_cache = json.load(f)
+            _textbook_manifest_mtime = mtime
         except (FileNotFoundError, json.JSONDecodeError):
             _textbook_manifest_cache = {}
+            _textbook_manifest_mtime = mtime
     return _textbook_manifest_cache
 
 
 def _textbook_entry(subject: str, grade: str) -> dict | None:
     grade_num = (grade or "").strip().split()[0] if grade else ""
-    return _textbook_manifest().get(subject, {}).get(grade_num)
+    manifest = _textbook_manifest()
+    # New local index format: many sources per subject/grade, ordered by
+    # textbook > curriculum > reference > lesson plan.
+    if "by_subject_grade" in manifest:
+        grade_map = manifest.get("by_subject_grade", {}).get(subject, {})
+        source_ids = list(grade_map.get(grade_num, []))
+        if grade_num != "all":
+            source_ids += [sid for sid in grade_map.get("all", []) if sid not in source_ids]
+        records = {item.get("id"): item for item in manifest.get("sources", [])}
+        source_records = [records[sid] for sid in source_ids if sid in records]
+        if not source_records:
+            return None
+        return {
+            "name": source_records[0]["id"],
+            "sources": source_records,
+            "images_ok": False,
+        }
+    # Backward compatibility with the original one-file manifest.
+    return manifest.get(subject, {}).get(grade_num)
 
 
-def _load_cached_textbook(subject: str, grade: str) -> str | None:
+def _load_cached_textbook(subject: str, grade: str, topic: str | None = None) -> str | None:
     entry = _textbook_entry(subject, grade)
     if not entry:
         return None
-    try:
-        with open(os.path.join(_TEXTBOOK_CACHE_DIR, f"{entry['name']}.txt"), encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
+
+    records = entry.get("sources") or [{"id": entry.get("name")}]
+    terms = [word.lower() for word in re.findall(r"[\w\u0400-\u04ff]+", topic or "") if len(word) >= 4]
+    ranked: list[tuple[int, dict, str]] = []
+    for record in records:
+        source_id = record.get("id")
+        if not source_id:
+            continue
+        try:
+            with open(os.path.join(_TEXTBOOK_CACHE_DIR, f"{source_id}.txt"), encoding="utf-8") as f:
+                text = f.read()
+        except FileNotFoundError:
+            continue
+        lowered = text.lower()
+        score = sum(lowered.count(term) for term in terms)
+        ranked.append((score, record, text))
+    if not ranked:
         return None
+
+    # Prefer sources that actually mention the topic. If the topic was typed
+    # in another language, fall back to the ordered official sources.
+    matched = [item for item in ranked if item[0] > 0]
+    chosen = sorted(matched or ranked, key=lambda item: (-item[0], item[1].get("kind", "")))[:2]
+    parts = []
+    for _, record, text in chosen:
+        excerpt = _select_relevant_excerpt(text, topic or "", max_chars=3000)
+        parts.append(f"SOURCE: {record.get('title', '')}\n{excerpt}")
+    return "\n\n".join(parts)[:_SOURCE_EXCERPT_CHARS]
 
 
 def _find_textbook_image(subject: str, grade: str, topic: str) -> dict | None:
@@ -2802,27 +3498,77 @@ async def generate_material(
     template: str | None = None,
     source_text: str | None = None,
     previous_digests: list[dict] | None = None,
+    teacher_context: str | None = None,
 ) -> dict:
     prompt_fn = PROMPTS.get(material_type)
     if not prompt_fn:
         logger.error(f"Unknown material type: {material_type}")
         raise ValueError(f"Unknown material type: {material_type}")
 
-    source_text = source_text or _load_cached_textbook(subject, grade)
-    source_excerpt = _select_relevant_excerpt(source_text, topic) if source_text else None
+    # Focused beginner Python lessons should not inherit a broad cached
+    # textbook excerpt (often containing lists, games, or later chapters).
+    # An explicitly uploaded/book-selected source still remains authoritative.
+    if not source_text and not _is_variable_topic(subject, topic):
+        source_text = _load_cached_textbook(subject, grade, topic)
+    # Retrieve by the requested lesson identity. Teacher preferences are used
+    # later to shape the writing, but should not pull unrelated book chapters
+    # into the source excerpt just because a preference word happens to recur.
+    retrieval_query = " ".join(value for value in (topic, subject, grade) if value)
+    source_excerpt = (
+        _select_relevant_excerpt(source_text, topic, query_text=retrieval_query)
+        if source_text else None
+    )
+    code_policy = _code_relevance(subject, topic)
 
     variant: dict = {}
     test_type = test_type or "mixed"
     if material_type == "prezentatsiya":
         user_prompt = prompt_fn(topic, subject, level, grade, language, slide_count or 10,
-                                source_excerpt, previous_digests, variant)
+                                source_excerpt, previous_digests, variant, code_policy)
     elif material_type == "test":
-        user_prompt = prompt_fn(topic, subject, level, grade, language, question_count or 10, test_type, source_excerpt)
+        user_prompt = prompt_fn(topic, subject, level, grade, language, question_count or 10, test_type,
+                                source_excerpt, code_policy=code_policy)
     elif material_type == "konspekt":
         user_prompt = prompt_fn(topic, subject, level, grade, language, include_homework, include_fun_facts,
-                                include_assessment, include_examples, source_excerpt, previous_digests, variant)
+                                include_assessment, include_examples, source_excerpt, previous_digests, variant,
+                                code_policy)
+    elif material_type == "lektsiya":
+        user_prompt = prompt_fn(topic, subject, level, grade, language,
+                                source_text=source_excerpt, code_policy=code_policy)
     else:
-        user_prompt = prompt_fn(topic, subject, level, grade, language, source_text=source_excerpt)
+        user_prompt = prompt_fn(topic, subject, level, grade, language, source_text=source_excerpt,
+                                code_policy=code_policy)
+
+    # Apply the exact-topic guard to every material type. Previously the
+    # focused variables/data-types rules lived mainly in the konspekt prompt,
+    # so tests, presentations and lectures could still inherit the broad
+    # Informatics template or an unrelated cached excerpt.
+    scope_rule = _topic_scope_rule(subject, topic)
+    if scope_rule:
+        user_prompt += f"\n\n{scope_rule}"
+    if _is_variable_topic(subject, topic):
+        user_prompt += """
+
+PYTHON VARIABLE FACTS FOR THIS EXACT TOPIC:
+- Python assignment does not declare a fixed type for a variable name.
+- The same name may later refer to a value of another type.
+- Assigning 12.5 to a name that previously held 10 does not automatically cause a type-mismatch error.
+- Do not add lists, dictionaries, functions/def, imports/modules, games, social-media posts, or superpower framing
+  unless the teacher explicitly names them in the topic.
+"""
+
+    if language == "Таджикский" and subject == "Информатика" and code_policy == "needed":
+        user_prompt += """
+
+TAJIK CODE LANGUAGE RULE:
+- Write every human-readable code string, comment, label, and explanation in natural Tajik.
+- Variable names should use simple Tajik transliteration in Latin letters, for example nom, sinf, sin, qad,
+  shogird, matn, raqam, natija. Do not use English variable names such as name, age, score, value, or student.
+- Keep only Python built-ins and literals in their required form: input, print, int, float, str, bool, True, False.
+- Text inside input() and print() must be Tajik Cyrillic, not Russian, Uzbek, or English.
+- Keep code short and limited to the exact lesson topic; do not add def, import, classes, or unrelated libraries
+  unless the topic explicitly asks for them.
+"""
 
     if not include_examples:
         user_prompt += (
@@ -2830,6 +3576,14 @@ async def generate_material(
             'For any real_life_examples field, return an empty list. Keep only necessary exercises or solutions '
             'that are intrinsic to the requested material type.'
         )
+
+    if teacher_context:
+        user_prompt += f"""
+
+TEACHER PREFERENCES (use these answers to tailor the difficulty, explanation style, timing and tasks; do not mention this block in the output):
+{teacher_context[:2000]}
+If a lesson design framework is included above, use its stages to organize the existing Dastyor lesson_stages and lesson_program fields. Keep Dastyor's JSON schema and all material-specific sections unchanged; do not output a separate generic lesson-plan schema.
+"""
 
     lang_name = LANGUAGE_NAMES.get(language, "English")
     tajik_rules = _language_rules(language)
@@ -2846,6 +3600,7 @@ async def generate_material(
 
         "test": f"""You are a school teacher creating a test. Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL RULES:
 1. Write ONLY about the topic given.
@@ -2854,6 +3609,7 @@ CRITICAL RULES:
 
         "prezentatsiya": f"""You are a school teacher creating a presentation with slides. Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL RULES:
 1. Write ONLY about the topic given.
@@ -2864,6 +3620,7 @@ CRITICAL RULES:
 
         "amaliy": f"""You are a school teacher writing hands-on practical tasks. Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL RULES:
 1. Write ONLY about the topic given.
@@ -2872,27 +3629,46 @@ CRITICAL RULES:
 
         "igra": f"""You are a school teacher building an interactive in-class game. Return ONLY valid JSON.
 Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL RULES:
 1. Write ONLY about the topic given.
 2. Every round must be answerable from the lesson itself, never unrelated general trivia.
+3. NEVER mix languages - write ONLY in {lang_name}.""",
+
+        "varaq": f"""You are a school teacher building a printable A4 worksheet. Return ONLY valid JSON.
+Write ALL content in {lang_name} language.{tajik_rules}
+{_TEACHER_SIMPLICITY_RULE}
+
+CRITICAL RULES:
+1. Write ONLY about the topic given.
+2. Mix at least 2 different block types; every block must be solvable from the lesson itself.
 3. NEVER mix languages - write ONLY in {lang_name}.""",
     }
 
     system_prompt = system_prompts.get(material_type, system_prompts["konspekt"])
 
     content = await _call_ai(system_prompt, user_prompt, language, log_label=f"{material_type} topic={topic[:50]}",
-                             max_tokens=KONSPEKT_MAX_TOKENS if material_type == "konspekt" else 24000)
+                             max_tokens=_MAX_TOKENS_BY_TYPE.get(material_type, 10000))
 
     if not include_examples and material_type in ("konspekt", "lektsiya"):
         content["real_life_examples"] = []
 
-    # The konspekt skips the verify pass: it re-sent the whole document and
-    # roughly doubled the tokens per konspekt.
-    if material_type in ("lektsiya", "prezentatsiya"):
-        content = await _verify_and_fix(material_type, content, language, topic)
+    if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy", "igra", "varaq"):
+        _enforce_code_relevance(content, code_policy, topic)
 
-    if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy"):
+    # Tajik output gets a final subject + language review. The model can produce
+    # structurally valid JSON while still leaving Russian loanwords, literal
+    # translations, or generic text unrelated to the requested topic.
+    if language == "Таджикский" and _needs_tajik_review(material_type, content, topic, code_policy):
+        content = await _verify_and_fix(
+            material_type, content, language, topic, subject, grade, code_policy
+        )
+
+    if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy", "igra", "varaq"):
+        _enforce_code_relevance(content, code_policy, topic)
+
+    if material_type in ("konspekt", "lektsiya", "prezentatsiya", "test", "amaliy", "igra", "varaq"):
         content["subject"] = subject
         content["grade"] = grade
         content["language"] = language
@@ -2922,7 +3698,9 @@ CRITICAL RULES:
         _drop_bullets_duplicating_visual(content, topic)
         _typeset_math_content(content, topic)
         _render_slide_figures(content, topic)
-        await _render_slide_images(content, topic)
+        # No fetched photos in presentations (see the prompt below, which no
+        # longer asks for "image_query" either) -- only the data-driven
+        # "visual" figures above (charts/diagrams) appear on slides.
 
     if material_type == "test":
         _validate_test_quality(content, topic, question_count or 10)
@@ -2932,6 +3710,16 @@ CRITICAL RULES:
     if material_type == "amaliy":
         _validate_practical_quality(content, topic)
 
+    if material_type == "igra":
+        _validate_game_quality(content, topic)
+        _typeset_math_content(content, topic)
+
+    if material_type == "varaq":
+        _validate_varaq_quality(content, topic)
+        _typeset_math_content(content, topic)
+        _render_varaq_diagrams(content, topic)
+        await _render_varaq_images(content, topic)
+
 
     return content
 
@@ -2940,15 +3728,15 @@ _exhausted_keys: set[str] = set()
 
 
 async def _call_ai(system_prompt: str, user_prompt: str, language: str, log_label: str,
-                   max_tokens: int = 24000) -> dict:
+                   max_tokens: int = 24000, temperature: float | None = None) -> dict:
     global _api_call_count, _daily_reset_time
 
     async with ai_slot(log_label):
-        return await _call_ai_inner(system_prompt, user_prompt, language, log_label, max_tokens)
+        return await _call_ai_inner(system_prompt, user_prompt, language, log_label, max_tokens, temperature)
 
 
 async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, log_label: str,
-                         max_tokens: int = 24000) -> dict:
+                         max_tokens: int = 24000, temperature: float | None = None) -> dict:
     global _api_call_count, _daily_reset_time
 
     today = datetime.now(timezone.utc).date()
@@ -2975,7 +3763,9 @@ async def _call_ai_inner(system_prompt: str, user_prompt: str, language: str, lo
                 import asyncio
                 await asyncio.sleep(2)
             try:
-                temp = 0.5 if attempt > 0 else 0.7
+                # Lower temperature keeps school facts, terminology, and the
+                # requested topic stable instead of encouraging decoration.
+                temp = temperature if temperature is not None else (0.25 if attempt > 0 else 0.4)
                 logger.info(f"AI request: {log_label} attempt={attempt+1} key_idx={key_idx}")
 
                 async with httpx.AsyncClient(timeout=180.0, verify=SSL_CONTEXT) as client:
@@ -3086,7 +3876,7 @@ async def _call_ai_stream_inner(system_prompt: str, user_prompt: str, log_label:
                 await asyncio.sleep(2)
             got_any_content = False
             try:
-                temp = 0.5 if attempt > 0 else 0.7
+                temp = 0.25 if attempt > 0 else 0.4
                 logger.info(f"AI stream request: {log_label} attempt={attempt+1} key_idx={key_idx}")
 
                 async with httpx.AsyncClient(timeout=180.0, verify=SSL_CONTEXT) as client:
@@ -3219,11 +4009,92 @@ def _apply_fixes(content: dict, fixes: list) -> tuple[dict, int]:
     return patched, applied
 
 
-async def _verify_and_fix(material_type: str, content: dict, language: str, topic: str) -> dict:
+def _needs_tajik_review(
+    material_type: str,
+    content: dict,
+    topic: str,
+    code_policy: str | None = None,
+) -> bool:
+    """Cheap gate so a second AI call happens only when it is justified."""
+    if not isinstance(content, dict):
+        return True
+
+    text_parts: list[str] = []
+
+    def collect(value, key: str = ""):
+        if isinstance(value, str):
+            if key not in {"latex", "formula", "language"} and (key != "code" or code_policy == "needed"):
+                text_parts.append(value.lower())
+        elif isinstance(value, list):
+            for item in value:
+                collect(item, key)
+        elif isinstance(value, dict):
+            for child_key, child_value in value.items():
+                collect(child_value, str(child_key))
+
+    collect(content)
+    text = "\n".join(text_parts)
+    if not text.strip():
+        return True
+
+    # These are high-signal failures seen in real Tajik generations. The list
+    # stays small on purpose; the expensive reviewer is the fallback, not the
+    # normal path for every document.
+    bad_words = (
+        "условие", "условия", "переменная", "переменные", "луп", "лупа",
+        "пример", "вопрос", "ответ", "уроков", "ученик", "учитель",
+        "интизор", "сонлари", "қиммат", "типни", "сақлайдиган",
+        "системасининг", "имконияти", "бир нечта", "бўлиш", "шаклида",
+        "қўшилган", "запутанлик", "неравенствос", "кайси",
+    )
+    if any(word in text for word in bad_words):
+        return True
+
+    if code_policy == "none" and _has_programming_content(content):
+        return True
+
+    if code_policy == "needed" and _is_variable_topic("Информатика", topic):
+        # Focused Tajik Python lessons also need a code-language and factual
+        # review: the model can otherwise keep English identifiers or claim
+        # that Python variables have a fixed declared type.
+        return True
+
+    main_content = content.get("main_content")
+    if isinstance(main_content, str) and len(main_content.strip()) < 180:
+        return True
+    if material_type == "konspekt" and isinstance(main_content, str):
+        paragraphs = [p for p in re.split(r"\n\s*\n", main_content.strip()) if p.strip()]
+        if len(paragraphs) < 2:
+            return True
+    concepts = content.get("key_concepts")
+    if isinstance(concepts, list) and len(concepts) < 3:
+        return True
+
+    # If none of the meaningful topic terms appears in the generated prose,
+    # the model probably answered a generic subject instead of this topic.
+    topic_terms = [
+        token.lower() for token in re.findall(r"[\w\u0400-\u04ff]+", topic or "")
+        if len(token) >= 4 and token.lower() not in {"мавзӯъ", "тема", "topic"}
+    ]
+    if topic_terms and not any(token in text for token in topic_terms):
+        return True
+
+    return False
+
+
+async def _verify_and_fix(
+    material_type: str,
+    content: dict,
+    language: str,
+    topic: str,
+    subject: str | None = None,
+    grade: str | None = None,
+    code_policy: str | None = None,
+) -> dict:
     lang_name = LANGUAGE_NAMES.get(language, "English")
     system_prompt = (
-        "You are a meticulous fact-checking editor reviewing educational content for a school "
-        f"teacher. Return ONLY valid JSON, with every field still written in {lang_name}."
+        "You are a meticulous subject-matter and language editor reviewing educational content for a school "
+        f"teacher. Return ONLY valid JSON, with every prose field still written in {lang_name}."
     )
     language_check = (
         "\n- Any word from a different language that has no business being in {lang} text — a foreign "
@@ -3241,12 +4112,40 @@ async def _verify_and_fix(material_type: str, content: dict, language: str, topi
             "tense is 'ҳозира'), and the Russian conjunction 'и' used in place of Tajik 'ва' (and)."
         )
 
-    user_prompt = f"""Review the following {material_type} JSON about "{topic}" for factual accuracy, internal consistency, and language correctness.
+    code_check = ""
+    if code_policy == "none":
+        code_check = (
+            "\n- This topic is not a programming topic. Remove or rewrite every irrelevant Python, C++, "
+            "compiler, API, code example, and programming exercise from prose fields, objectives, lesson stages, "
+            "homework, examples, and assessment. Replace it with a concrete example or task about the requested "
+            "topic itself. Do not leave a code task merely because the subject is Informatics."
+        )
+    elif subject == "Информатика" and _is_variable_topic(subject, topic):
+        code_check = (
+            "\n- This is a focused Python variables/data-types lesson. Correct the Python facts: assignment does "
+            "not declare a fixed variable type, and assigning a float to a name that previously held an integer "
+            "does not by itself cause a type-mismatch error. Remove lists, inventory, swapping variables, and any "
+            "other data type not explicitly named in the topic. In code fields, keep Python built-ins/literals "
+            "input, print, int, float, str, bool, True, False unchanged, but use Tajik transliterated variable "
+            "names such as nom, sinf, sin, qad, shogird, matn, raqam, natija instead of name, age, score, value, "
+            "player, or student. Text inside input() and print() must be Tajik Cyrillic. Remove game, social-media, "
+            "and \"superpower\" framing."
+        )
+
+    subject_context = f', subject "{subject}"' if subject else ""
+    grade_context = f', grade "{grade}"' if grade else ""
+    user_prompt = f"""Review the following {material_type} JSON about "{topic}"{subject_context}{grade_context} for factual accuracy, topic relevance, completeness, and language correctness.
 
 Fix ONLY real problems:
 - Invented, incorrect, or unverifiable facts, dates, statistics, or named people/events
 - Claims that contradict each other within the document
-- Anything nonsensical or unrelated to "{topic}"{language_check}
+- Anything generic, nonsensical, or unrelated to "{topic}"; replace it with a concrete explanation, fact,
+  mechanism, example, exercise, or step that is genuinely about the requested topic
+- Missing or empty required prose in a field that the document's schema already provides
+- For a konspekt, keep the existing schema but ensure main_content has 2-3 substantive paragraphs and
+  the key_concepts, objectives, quick_check, and exercises contain concrete topic-specific content.
+- For Tajik: grammar, spelling, unnatural literal translations, Russian words, and invented or wrong
+  school terminology. Rewrite the whole string when a word-by-word patch would leave the sentence unnatural.{language_check}{code_check}
 
 Do NOT report anything that is already correct. Most documents have no errors at all — an empty list is the expected, normal answer.
 
@@ -3256,13 +4155,20 @@ Return ONLY a JSON object listing the corrections, in this exact shape:
 - "path" is an RFC 6901 JSON Pointer to the exact value that is wrong, in the document below. Array items are addressed by index, e.g. "/key_concepts/0/definition".
 - "new" is the corrected value, a string or number only. Rewrite as little as possible: keep the original wording, tone and length, changing only the part that is actually wrong.
 - Never invent a path that is not in the document, never add fields, and never remove or reorder array items.
+- Fix every affected string in a list with its own path. Preserve code, formulas, JSON shape, and proper names unless they are actually wrong.
 - If the document is fine, return exactly: {{"fixes": []}}
 
 The document to review:
 {json.dumps(content, ensure_ascii=False)}"""
 
     try:
-        result = await _call_ai(system_prompt, user_prompt, language, log_label=f"verify {material_type} topic={topic[:50]}")
+        result = await _call_ai(
+            system_prompt,
+            user_prompt,
+            language,
+            log_label=f"verify {material_type} topic={topic[:50]}",
+            max_tokens=5000,
+        )
         if isinstance(result, dict) and isinstance(result.get("fixes"), list):
             fixes = result["fixes"]
             if not fixes:
@@ -3278,9 +4184,19 @@ The document to review:
     return content
 
 
-# Output cap for one konspekt (reasoning + JSON). The lean prompt's answer
-# is ~5-7k tokens; this leaves room for the model's reasoning.
-KONSPEKT_MAX_TOKENS = 14000
+# Output caps are deliberately close to the requested document size. A large
+# cap does not improve the lesson; it only lets the model spend tokens on
+# repetition and reasoning.
+_MAX_TOKENS_BY_TYPE = {
+    "konspekt": 7500,
+    "test": 5000,
+    "prezentatsiya": 8000,
+    "lektsiya": 9000,
+    "amaliy": 6000,
+    "igra": 6000,
+    "varaq": 6000,
+}
+KONSPEKT_MAX_TOKENS = _MAX_TOKENS_BY_TYPE["konspekt"]
 
 _KONSPEKT_STREAM_FIELDS = [
     "title", "subtitle", "duration", "competencies", "objectives", "key_concepts",
@@ -3307,8 +4223,14 @@ async def generate_konspekt_stream(
     previous_digests: list[dict] | None = None,
 ):
     try:
-        source_text = source_text or _load_cached_textbook(subject, grade)
-        source_excerpt = _select_relevant_excerpt(source_text, topic) if source_text else None
+        if not source_text and not _is_variable_topic(subject, topic):
+            source_text = _load_cached_textbook(subject, grade, topic)
+        retrieval_query = " ".join(value for value in (topic, subject, grade) if value)
+        source_excerpt = (
+            _select_relevant_excerpt(source_text, topic, query_text=retrieval_query)
+            if source_text else None
+        )
+        code_policy = _code_relevance(subject, topic)
 
         yield {"stage": "source_analysis", "status": "start"}
         yield {"stage": "source_analysis", "status": "done", "used_source": bool(source_excerpt)}
@@ -3322,7 +4244,7 @@ async def generate_konspekt_stream(
         user_prompt = _konspekt_prompt(
             topic, subject, level, grade, language,
             include_homework, include_fun_facts, include_assessment, include_examples,
-            source_excerpt, previous_digests, variant,
+            source_excerpt, previous_digests, variant, code_policy,
         )
         yield {"stage": "extract_info", "status": "done"}
 
@@ -3372,7 +4294,16 @@ async def generate_konspekt_stream(
             yield {"type": "error", "message": "AI javobini qayta ishlab bo'lmadi. Qayta urinib ko'ring.", "code": "parse_error"}
             return
         content = _translate_json(parsed, language)
+        _enforce_code_relevance(content, code_policy, topic)
         yield {"stage": "format", "status": "done"}
+
+        if language == "Таджикский" and _needs_tajik_review("konspekt", content, topic, code_policy):
+            yield {"stage": "language_review", "status": "start"}
+            content = await _verify_and_fix(
+                "konspekt", content, language, topic, subject, grade, code_policy
+            )
+            _enforce_code_relevance(content, code_policy, topic)
+            yield {"stage": "language_review", "status": "done"}
 
         yield {"stage": "visual_elements", "status": "start"}
         content["subject"] = subject
@@ -3415,9 +4346,10 @@ def _regenerate_question_prompt(topic: str, subject: str, level: str, grade: str
         "Сложный": "Advanced. Challenging, requires deeper understanding.",
     }
     level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
     existing_text = "\n".join(f"- {q}" for q in existing_questions) or "(none)"
+    code_rule = _code_relevance_rule(subject, _code_relevance(subject, topic))
 
     info = _QUESTION_TYPE_INFO.get(question_type) or _QUESTION_TYPE_INFO["multiple_choice"]
     question_type = question_type if question_type in _QUESTION_TYPE_INFO else "multiple_choice"
@@ -3430,6 +4362,8 @@ CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, not
 
 Subject style: {subject_hint}
 Difficulty: {level_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 {type_instructions}
 
@@ -3448,9 +4382,10 @@ def _regenerate_practical_task_prompt(kind: str, topic: str, subject: str, level
         "Сложный": "Advanced. Open-ended, the pupil plans their own approach.",
     }
     level_text = level_map.get(level, level_map["Средний"])
-    subject_hint = _SUBJECT_KONSPEKT_PROMPTS.get(subject, "")
+    subject_hint = _subject_hint(subject, language, grade, topic)
     lang_name = LANGUAGE_NAMES.get(language, "English")
     existing_text = "\n".join(f"- {t}" for t in existing_titles) or "(none)"
+    code_rule = _code_relevance_rule(subject, _code_relevance(subject, topic))
 
     if kind == "group_tasks":
         shape = ('{"title": "Short task name", "group_size": "group size in ' + lang_name +
@@ -3480,6 +4415,8 @@ that a teacher can grade it without guessing.
 
 Subject style: {subject_hint}
 Difficulty: {level_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 The task MUST be different in focus from these existing tasks on the same worksheet:
 {existing_text}
@@ -3491,6 +4428,7 @@ Return THIS exact JSON (nothing else):
 def _regenerate_slide_prompt(topic: str, subject: str, level: str, grade: str, language: str, slide_index: int, total_slides: int, existing_titles: list[str]) -> str:
     lang_name = LANGUAGE_NAMES.get(language, "English")
     existing_text = "\n".join(f"- {t}" for t in existing_titles) or "(none)"
+    code_rule = _code_relevance_rule(subject, _code_relevance(subject, topic))
 
     return f"""Create exactly ONE new presentation slide (slide {slide_index + 1} of {total_slides}) about "{topic}" for grade {grade}, subject "{subject}".
 
@@ -3498,6 +4436,8 @@ CRITICAL: Write ALL content in {lang_name} language. Return ONLY valid JSON, not
 
 The slide MUST cover different ground than these other slides already in the presentation:
 {existing_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 RULES (this slide must fit in seamlessly with the rest of an existing deck built to these same rules):
 - Bullet points are for reading off a screen, not a script: each one a SHORT, clear phrase (4-8 words), never a full sentence.
@@ -3552,6 +4492,7 @@ def _regenerate_konspekt_section_prompt(
     }
     level_text = level_map.get(level, level_map["Средний"])
     shape_hint = _KONSPEKT_SECTION_SPECS.get(section, "content matching the existing field's type (array or string)")
+    code_rule = _code_relevance_rule(subject, _code_relevance(subject, topic))
 
     other_context = {
         k: v for k, v in existing_content.items()
@@ -3564,6 +4505,8 @@ def _regenerate_konspekt_section_prompt(
     return f"""Rewrite ONLY the "{section}" section of an existing {doc_word} about "{topic}" for grade {grade}, subject "{subject}".
 
 Subject style/difficulty: {level_text}
+{(chr(10) + code_rule) if code_rule else ""}
+{_TEACHER_SIMPLICITY_RULE}
 
 CRITICAL: Write in {lang_name} language. Return ONLY valid JSON with exactly one key: "{section}".
 
@@ -3639,8 +4582,15 @@ async def regenerate_item(
             "You are a school teacher writing a single hands-on practical task. Return ONLY valid JSON.\n"
             f"Write ALL content in {lang_name} language.{tajik_rules}"
         )
+    elif material_type == "varaq":
+        existing_instructions = [item.get("instructions", "") for item in existing_items if item.get("instructions")]
+        user_prompt = _regenerate_varaq_block_prompt(topic, subject, level, grade, language, existing_instructions)
+        system_prompt = (
+            "You are a school teacher writing a single worksheet block. Return ONLY valid JSON.\n"
+            f"Write ALL content in {lang_name} language.{tajik_rules}"
+        )
     else:
-        raise ValueError(f"Regenerating a single item is only supported for 'test', 'prezentatsiya', and 'amaliy', got {material_type!r}")
+        raise ValueError(f"Regenerating a single item is only supported for 'test', 'prezentatsiya', 'amaliy', and 'varaq', got {material_type!r}")
 
     return await _call_ai(system_prompt, user_prompt, language, log_label=f"regenerate-item {material_type} topic={topic[:50]} idx={item_index}")
 
@@ -3695,6 +4645,105 @@ async def chat_edit_material(
     return result
 
 
+_MATERIAL_WORD = {
+    "konspekt": "lesson notes (konspekt)",
+    "lektsiya": "lecture",
+    "test": "test",
+    "prezentatsiya": "presentation",
+    "amaliy": "practical worksheet",
+    "varaq": "worksheet",
+}
+
+_CLARIFY_LANGUAGE_NAMES = {
+    "русский": "Russian",
+    "russian": "Russian",
+    "ru": "Russian",
+    "таджикский": "Tajik (Cyrillic Tajik, тоҷикӣ)",
+    "tajik": "Tajik (Cyrillic Tajik, тоҷикӣ)",
+    "tg": "Tajik (Cyrillic Tajik, тоҷикӣ)",
+    "английский": "English",
+    "english": "English",
+    "en": "English",
+}
+
+
+async def clarify_topic(
+    material_type: str,
+    topic: str,
+    subject: str,
+    language: str,
+    grade: str,
+) -> dict:
+    """Cheap pre-generation check: is `topic` specific enough to write one
+    focused lesson from, or does it span several unrelated subtopics (e.g.
+    "Python" for a whole course vs. "Python: variables and data types" for
+    one lesson)? If too broad, ask ONE short clarifying question in the
+    teacher's own language instead of letting the real generation prompt
+    guess and produce an unfocused or misdirected material — this mirrors
+    how a teacher assistant would actually behave, and is the single
+    cheapest, highest-leverage quality improvement available before the
+    expensive full-generation call runs. The teacher picks one of the
+    returned `options` by tapping it — they never type a free-text answer
+    — so each option must stand alone as a complete, specific sub-topic,
+    not a fragment that needs the question's wording to make sense.
+    Returns {"needs_clarification": bool, "question": str | None,
+    "options": list[str]}.
+    """
+    lang_name = _CLARIFY_LANGUAGE_NAMES.get(str(language or "").strip().casefold(), "Russian")
+    doc_word = _MATERIAL_WORD.get(material_type, material_type)
+    tajik_rules = _language_rules(language)
+    system_prompt = (
+        f"A school teacher wants a single focused {doc_word} for ONE lesson, on subject "
+        f"\"{subject}\", grade {grade}. Judge whether their topic is specific enough to write "
+        "one focused lesson from, or whether it actually spans multiple unrelated lessons/subtopics "
+        "(e.g. a whole course name, a whole chapter, a whole programming language, a whole historical "
+        "era, or a whole book) where picking the wrong sub-focus would produce an unfocused or "
+        "misdirected material.\n"
+        "Examples of TOO BROAD (needs_clarification=true): \"Python\", \"World War II\", \"Fractions\", "
+        "\"Shakespeare\", \"Grammar\". Each of these could mean many different single lessons.\n"
+        "Examples of SPECIFIC ENOUGH (needs_clarification=false): \"Python: variables and data types\", "
+        "\"The Battle of Stalingrad\", \"Adding fractions with different denominators\", \"Romeo and "
+        "Juliet: Act 1 themes\", \"Subject-verb agreement\". Treat a short but concrete sub-topic as "
+        "specific enough — do NOT ask just because the topic is brief.\n"
+        f"If (and only if) the topic is TOO BROAD like the first example set, write ONE short question "
+        f"in {lang_name}, and you MUST also fill \"options\" with exactly 3-4 concrete, non-empty answer "
+        "options the teacher can tap instead of typing. Each option is a short, complete, specific "
+        f"sub-topic phrase in {lang_name} (2-6 simple words) that stands on its own as a lesson topic — never a "
+        "fragment, never yes/no, never numbered. Use only everyday words suitable for the stated grade; do not "
+        "use difficult academic words. needs_clarification=true is only ever valid together "
+        "with a non-empty \"options\" list — never return true with an empty or missing options list.\n"
+        f"ABSOLUTE LANGUAGE RULE: write the question and every option ONLY in {lang_name}. NEVER use "
+        "Uzbek, even if the topic or the model's default language is Uzbek. Never mix in Russian or "
+        f"any other language, even a single word. If the target is Tajik, use literary Tajik Cyrillic "
+        "(тоҷикӣ), not Uzbek vocabulary or Uzbek sentence structure. This rule is more important than "
+        f"the language of the topic.{tajik_rules}\n"
+        "Return ONLY this JSON, no markdown fences, no commentary:\n"
+        '{"needs_clarification": true|false, "question": "..." or null, "options": ["...", "...", "..."] or []}'
+    )
+    user_prompt = f'Target output language: {lang_name}. Topic: "{topic}"'
+    try:
+        result = await _call_ai(
+            system_prompt, user_prompt, language,
+            log_label=f"clarify-topic {material_type} topic={topic[:50]}",
+            max_tokens=500,
+            temperature=0.1,
+        )
+    except Exception:
+        # Never let this optional pre-check block material generation — if
+        # it fails for any reason, just skip straight to generating.
+        return {"needs_clarification": False, "question": None, "options": []}
+    options = result.get("options")
+    options = [o for o in options if isinstance(o, str) and o.strip()] if isinstance(options, list) else []
+    needs_clarification = bool(result.get("needs_clarification"))
+    if needs_clarification and not options:
+        logger.warning(f"clarify-topic topic={topic[:50]!r}: model said needs_clarification but sent no options, skipping")
+    return {
+        "needs_clarification": needs_clarification and bool(options),
+        "question": result.get("question") or None,
+        "options": options,
+    }
+
+
 _ALL_DEFAULT_TEMPLATES = {
     "konspekt": "nakscha",
     "prezentatsiya": "playful",
@@ -3722,6 +4771,7 @@ async def generate_all_materials(
     include_examples: bool = True,
     types: list[str] | None = None,
     source_text: str | None = None,
+    teacher_context: str | None = None,
 ) -> dict:
     import asyncio
 
@@ -3749,6 +4799,7 @@ async def generate_all_materials(
                     include_examples=include_examples,
                     template=_default_template_for(mt, subject, grade),
                     source_text=source_text,
+                    teacher_context=teacher_context,
                 )
             except Exception as e:
                 logger.warning(f"generate_all: {mt} FAILED: {e}")

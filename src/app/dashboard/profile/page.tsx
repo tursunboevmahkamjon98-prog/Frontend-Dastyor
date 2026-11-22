@@ -6,7 +6,7 @@ import Link from "next/link";
 import { LogOut, Lock, Languages, ChevronRight, X, Loader2, Camera, Trash2, ShieldCheck, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi, ApiError, API_ORIGIN } from "@/lib/api";
-import { LANGUAGES } from "@/lib/material-types";
+import { LANGUAGES, LANGUAGE_LABEL_KEYS } from "@/lib/material-types";
 import { useT, useLocale } from "@/lib/i18n";
 import { localeFromAccountLanguage } from "@/lib/messages";
 import BillingLink from "@/components/BillingLink";
@@ -336,7 +336,7 @@ function LanguageModal({
                 : "border-border bg-white text-text-primary hover:-translate-y-0.5"
             }`}
           >
-            {lang}
+            {LANGUAGE_LABEL_KEYS[lang] ? t(LANGUAGE_LABEL_KEYS[lang]) : lang}
             {saving === lang && <Loader2 className="h-4 w-4 animate-spin" />}
           </button>
         ))}

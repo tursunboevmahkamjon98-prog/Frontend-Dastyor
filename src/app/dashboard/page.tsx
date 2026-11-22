@@ -69,13 +69,26 @@ export default function DashboardHome() {
   return (
     <div className="mx-auto max-w-3xl px-4 pt-1 sm:px-6 lg:max-w-6xl lg:px-8 lg:pt-8">
       {}
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0 lg:mb-6 lg:grid lg:grid-cols-[1fr_320px] lg:gap-8 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-[#fafafa] lg:p-6">
-        <div className="min-w-0">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0 lg:mb-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:gap-8 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-gradient-to-br lg:from-white lg:to-slate-50 lg:p-6">
+        <div className="min-w-0 lg:pr-4">
           <div className="mb-5 hidden h-1 w-8 rounded-full bg-red-600 lg:block" aria-hidden="true" />
           <h1 className="break-words text-xs font-medium leading-tight tracking-tight text-slate-900 lg:text-3xl lg:font-semibold">
             {t(greetingKey())}, {user?.full_name?.split(" ")[0]}!
           </h1>
           <p className="mt-3 hidden max-w-sm text-sm leading-relaxed text-slate-500 lg:block">{t("home.prompt")}</p>
+          <div className="mt-5 hidden flex-wrap items-center gap-3 lg:flex">
+            <Link
+              href="/dashboard/create?type=all"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_3px_0_0_#020617] transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              <Sparkles className="h-4 w-4 text-red-300" />
+              {t("home.allInOne")}
+            </Link>
+            <span className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-medium text-slate-500">
+              <span className="font-bold tabular-nums text-slate-800">{barValues ? barValues.reduce((sum, value) => sum + value, 0) : "—"}</span>{" "}
+              {t("home.totalShort")}
+            </span>
+          </div>
         </div>
         <p className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[11px] text-slate-400 lg:hidden">
           <span className="font-semibold tabular-nums text-slate-600">{barValues ? barValues.reduce((sum, value) => sum + value, 0) : "—"}</span>
@@ -177,7 +190,7 @@ export default function DashboardHome() {
                 return (
                   <Link
                     key={`${item.type}-${item.id}`}
-                    href={`/dashboard/materials/${item.type}/${item.id}`}
+                    href={item.type === "prezentatsiya" ? `/dashboard/presentations/${item.id}/edit` : `/dashboard/materials/${item.type}/${item.id}`}
                     className="flex items-center gap-3 rounded-2xl border border-border-light bg-white p-3 shadow-[0_2px_0_0_var(--color-border-light)] transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_3px_0_0_var(--color-primary-50),0_10px_20px_-8px_rgba(220,38,38,0.15)]"
                   >
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]`}>

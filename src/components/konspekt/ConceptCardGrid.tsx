@@ -50,8 +50,8 @@ export function ConceptCardGrid({ cards }: { cards: ConceptCard[] }) {
       {cards.map((card, i) => (
         <div key={i} className={`overflow-hidden rounded-xl border border-border-light ${isOddLast(i) ? "sm:col-span-2" : ""}`}>
           <div className="bg-primary px-3 py-2 text-center">
-            <p className="text-sm font-bold text-white">{card.title}</p>
-            {card.tag && <p className="text-xs italic text-white/80">{card.tag}</p>}
+            <p className="text-sm font-bold text-white"><MathText text={card.title} /></p>
+            {card.tag && <p className="text-xs italic text-white/80"><MathText text={card.tag} /></p>}
           </div>
           <div className="bg-surface-muted p-3">
             {card.table && card.table.length > 0 && (

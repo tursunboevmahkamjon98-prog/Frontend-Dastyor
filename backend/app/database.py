@@ -93,7 +93,7 @@ async def init_db():
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users (google_id)"
         ))
         for _col in ("free_konspekt_used", "free_lektsiya_used", "free_test_used", "free_prezentatsiya_used",
-                    "free_amaliy_used", "free_igra_used"):
+                    "free_amaliy_used", "free_igra_used", "free_varaq_used"):
             await conn.execute(text(
                 f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {_col} INTEGER NOT NULL DEFAULT 0"
             ))

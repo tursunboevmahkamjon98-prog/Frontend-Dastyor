@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     AI_API_KEY_5: str = ""
     AI_MODEL: str = "gpt-oss-120b"
     AI_BASE_URL: str = "https://api.cerebras.ai/v1"
+    # Separate, smaller/faster model for cheap background chores (currently:
+    # cleaning up a textbook's table of contents in app/book_topics.py) that
+    # must never compete with the main generation model's queue/concurrency.
+    AI_MODEL_SMALL: str = "qwen-3.8-27b"
 
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
@@ -97,7 +101,10 @@ class Settings(BaseSettings):
     ALLOWED_AVATAR_EXT: str = ".jpg,.jpeg,.png,.webp"
 
     MAX_SOURCE_FILE_SIZE: int = 15 * 1024 * 1024
-    ALLOWED_SOURCE_EXT: str = ".pdf,.docx,.txt"
+    ALLOWED_SOURCE_EXT: str = ".pdf,.docx,.txt,.md,.markdown"
+    BOOK_LIBRARY_DIR: str = r"C:\Users\user\Desktop\pdf"
+    # Empty means book_sources.py falls back to the OS temp dir.
+    DASTYOR_PRIVATE_SOURCES_DIR: str = ""
 
     MAX_MATERIALS_PER_DAY: int = 100
 

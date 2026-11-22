@@ -11,7 +11,7 @@ import { BILLING_ENABLED } from "./src/lib/features";
 
 
 const BACKEND_ORIGIN =
-  process.env.BACKEND_ORIGIN?.replace(/\/+$/, "") ?? "http://localhost:8009";
+  process.env.BACKEND_ORIGIN?.replace(/\/+$/, "") ?? "http://localhost:8010";
 
 const nextConfig: NextConfig = {
   
@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   
   
   output: "standalone",
+  // Keep development/build artifacts separate from the stale .next output.
+  // This prevents Turbopack from reprocessing a concurrent standalone build.
+  distDir: ".next-dev",
   async redirects() {
     return BILLING_ENABLED ? [] : [{
       source: "/dashboard/billing/:path*",

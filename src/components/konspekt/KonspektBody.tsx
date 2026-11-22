@@ -102,7 +102,7 @@ export default function KonspektBody({
 
   return (
     <div>
-      {subtitle && <p className="mb-6 text-sm italic text-text-secondary">{subtitle}</p>}
+      {subtitle && <p className="mb-6 text-sm italic text-text-secondary"><MathText text={subtitle} /></p>}
       {KONSPEKT_SECTION_ORDER.map(([key, label]) => {
         const value = content[key];
         const blocksHere = blocksByAnchor.get(key) ?? [];
@@ -153,7 +153,7 @@ export default function KonspektBody({
                   className="max-h-64 w-auto max-w-full object-contain"
                 />
                 {realImage.caption && (
-                  <p className="mt-2 text-center text-xs text-text-tertiary">{realImage.caption} · Wikipedia</p>
+                  <p className="mt-2 text-center text-xs text-text-tertiary"><MathText text={realImage.caption} /> · Wikipedia</p>
                 )}
               </div>
             )}
@@ -175,7 +175,7 @@ export default function KonspektBody({
                 <img src={`${API_ORIGIN}${image.path}`} alt={image.caption ?? ""} className="w-full" />
                 {(image.explanation || image.caption || image.credit) && (
                   <div className="px-4 py-2 text-center text-xs text-text-tertiary">
-                    {image.explanation || image.caption}
+                    <MathText text={image.explanation || image.caption || ""} />
                     {image.credit ? ` · ${image.credit}` : ""}
                   </div>
                 )}

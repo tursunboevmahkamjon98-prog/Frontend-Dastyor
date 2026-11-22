@@ -1915,6 +1915,12 @@ def build_practical_docx(content: dict) -> io.BytesIO:
     return build_practical(content)
 
 
+def build_varaq_docx(content: dict) -> io.BytesIO:
+    """Worksheet prints in the formal design shared with the konspekt/test."""
+    from app.assessment_design_docx import build_varaq
+    return build_varaq(content)
+
+
 def build_presentation_docx(content: dict) -> io.BytesIO:
     doc = Document()
 

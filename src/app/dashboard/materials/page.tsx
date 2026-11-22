@@ -98,7 +98,7 @@ export default function MaterialsPage() {
         type: tab === "all" ? undefined : tab,
         q: query || undefined,
       }, signal);
-      if (!signal?.aborted) setItems(summaries);
+      if (!signal?.aborted) setItems(summaries.filter((i) => i.type in MATERIAL_TYPE_CONFIG));
     } catch {
       if (!signal?.aborted) setItems([]);
     } finally {
@@ -346,7 +346,7 @@ export default function MaterialsPage() {
                   </button>
                 ) : (
                   <>
-                    <Link href={`/dashboard/materials/${item.type}/${item.id}`} className="flex flex-1 items-center gap-3 min-w-0">
+                    <Link href={item.type === "prezentatsiya" ? `/dashboard/presentations/${item.id}/edit` : `/dashboard/materials/${item.type}/${item.id}`} className="flex flex-1 items-center gap-3 min-w-0">
                       {body}
                     </Link>
                     <button onClick={() => toggleFavorite(item)} className="shrink-0 p-1.5">
