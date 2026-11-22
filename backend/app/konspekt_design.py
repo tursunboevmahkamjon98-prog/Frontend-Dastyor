@@ -286,7 +286,11 @@ def build(content: dict, words: dict, language: str, family: str) -> io.BytesIO:
     buf = io.BytesIO()
     width = WIDTH
     subject = str(content.get('subject') or '')
+    # The stored grade is the Russian "8 класс"; print it in the document's
+    # own language, same as new_doc's footer below.
     grade = str(content.get('grade') or '')
+    if grade:
+        grade = _format_grade(grade, _GRADE_SUFFIX.get(language, 'класс'))
     doc = new_doc(buf, content, s, language)
     helper = _Design(get_lecture_template('planspekt'), s.accent, words)
 

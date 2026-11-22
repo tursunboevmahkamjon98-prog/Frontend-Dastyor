@@ -55,6 +55,7 @@ async def main():
                         "konspekt": "content", "lektsiya": "content",
                         "test": "questions_json", "prezentatsiya": "slides_json",
                         "amaliy": "tasks_json", "igra": "game_json",
+                        "varaq": "blocks_json",
                     }
                     first_note = None
                     for kind, model in materials._MATERIAL_MODELS.items():
@@ -96,25 +97,25 @@ async def main():
                             return response
 
                         stats = (await fetch("/stats")).json()
-                        assert len(stats) == 6 and set(stats.values()) == {25}, stats
-                        print("PASS: six correct, owner-scoped statistics in one database query")
+                        assert len(stats) == 7 and set(stats.values()) == {25}, stats
+                        print("PASS: seven correct, owner-scoped statistics in one database query")
 
                         library_response = await fetch("/library")
                         rows = library_response.json()
-                        assert len(rows) == 125 and all(row["type"] != "igra" for row in rows)
-                        assert all(row["is_favorite"] for row in rows[:5])
-                        assert not any(row["is_favorite"] for row in rows[5:])
+                        assert len(rows) == 150 and all(row["type"] != "igra" for row in rows)
+                        assert all(row["is_favorite"] for row in rows[:6])
+                        assert not any(row["is_favorite"] for row in rows[6:])
                         assert len(library_response.content) < 50000
                         assert all(not (set(fields.values()) & row.keys()) for row in rows)
-                        print("PASS: library returns 125 metadata rows under 50 KB, favorites first")
+                        print("PASS: library returns 150 metadata rows under 50 KB, favorites first")
 
                         rows = (await fetch("/search")).json()
-                        assert len(rows) == 120
+                        assert len(rows) == 140
                         assert [row["created_at"] for row in rows] == sorted((row["created_at"] for row in rows), reverse=True)
                         assert (await fetch("/search?q=private")).json() == []
                         assert (await fetch("/library?q=private")).json() == []
                         rows = (await fetch("/search?q=Special&subject=Math&grade=8")).json()
-                        assert len(rows) == 6
+                        assert len(rows) == 7
                         print("PASS: search limits, date order, filters and cross-account isolation")
 
                         rows = (await fetch("/library?material_type=test&page_size=3")).json()

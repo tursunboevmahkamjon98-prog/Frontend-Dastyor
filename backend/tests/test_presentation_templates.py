@@ -267,7 +267,7 @@ check("история просит исторический материал",
 print("\n7. Фронтенд повторяет бэкенд один в один")
 MIRROR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "frontend", "src", "lib", "subject-templates.ts")
+    "src", "lib", "subject-templates.ts")
 
 if not os.path.exists(MIRROR):
     check("frontend/src/lib/subject-templates.ts на месте", False, MIRROR)

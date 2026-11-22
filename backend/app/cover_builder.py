@@ -326,7 +326,7 @@ def _build_cover_minimal(subject: str, title: str, grade: str, language: str) ->
         fy += 66
 
     if grade:
-        gtext = f"{grade}"
+        gtext = _grade_number(grade)
         grade_font = _font(_FONT_SERIF_BOLD, 30)
         gw = draw.textlength(gtext, font=grade_font)
         gy = H - 160
@@ -414,7 +414,7 @@ def _build_cover_rasmiy(subject: str, title: str, grade: str, language: str) -> 
         fy += 66
 
     if grade:
-        gtext = f"{L['class']}: {grade}"
+        gtext = f"{L['class']}: {_grade_number(grade)}"
         grade_font = _font(_FONT_SERIF_BOLD, 24)
         gw = draw.textlength(gtext, font=grade_font)
         draw.text(((W - gw) / 2, H - 200), gtext, font=grade_font, fill=_FORMAL_ACCENT)

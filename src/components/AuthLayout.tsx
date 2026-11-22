@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import AuthTabletPreview from "./AuthTabletPreview";
-import { Sparkles } from "lucide-react";
-import { useT } from "@/lib/i18n";
 import LocaleSwitcher from "./LocaleSwitcher";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const t = useT();
   return (
     <main className="flex min-h-screen bg-background">
       {}
@@ -37,19 +34,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             />
             <AuthTabletPreview />
           </div>
-        </div>
-
-        <div className="relative z-10">
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3.5 py-1.5 text-xs font-semibold text-primary-dark">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("auth.badge")}
-          </div>
-          <h2 className="mb-1 max-w-sm text-2xl font-extrabold leading-tight text-text-primary">
-            {t("auth.headline")}
-          </h2>
-          <p className="max-w-sm text-sm text-text-secondary">
-            {t("auth.tagline")}
-          </p>
         </div>
       </div>
 

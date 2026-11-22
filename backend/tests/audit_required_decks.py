@@ -13,7 +13,6 @@ except Exception:
 from pptx import Presentation
 from pptx.util import Emu
 
-from app.ai_service import _render_slide_images
 from app.export_builder import build_presentation_pptx
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_decks")
@@ -170,15 +169,8 @@ def audit_pptx(data: bytes) -> list[str]:
 
 async def run_one(deck_id, deck):
     t0 = time.perf_counter()
-    await _render_slide_images(deck, deck["title"])
-    img_time = time.perf_counter() - t0
-
-    slides = deck["slides"]
-    images = [s["image"]["path"] for s in slides if isinstance(s.get("image"), dict) and s["image"].get("path")]
-    unique = len(set(images))
-    dup = len(images) - unique
-
     data = build_presentation_pptx(deck).getvalue()
+    build_time = time.perf_counter() - t0
     with open(os.path.join(OUT, f"required_{deck_id}.pptx"), "wb") as fh:
         fh.write(data)
 
@@ -187,8 +179,7 @@ async def run_one(deck_id, deck):
     problems = audit_pptx(data)
 
     print(f"\n=== {deck_id} — «{deck['title']}» ({deck['subject']}, {deck['grade']}) ===")
-    print(f"  время подбора картинок: {img_time:.1f}с")
-    print(f"  слайдов с картинкой: {len(images)}/{len(slides)}   уникальных: {unique}   дублей: {dup}")
+    print(f"  время сборки: {build_time:.1f}с")
     print(f"  layouts: {' -> '.join(layouts)}")
     print(f"  разных layouts: {len(set(layouts))} из {len(layouts)}")
     print(f"  размер файла: {len(data) // 1024} КБ")
@@ -199,7 +190,7 @@ async def run_one(deck_id, deck):
     else:
         print("  вёрстка: без проблем")
     return {
-        "deck": deck_id, "images": len(images), "unique": unique, "dup": dup,
+        "deck": deck_id,
         "layouts": len(set(layouts)), "total_slides": len(layouts), "problems": len(problems),
     }
 
@@ -212,16 +203,11 @@ async def main():
     print("\n" + "=" * 60)
     print("ИТОГО")
     print("=" * 60)
-    total_images = sum(r["images"] for r in results)
-    total_unique = sum(r["unique"] for r in results)
-    total_dup = sum(r["dup"] for r in results)
     total_problems = sum(r["problems"] for r in results)
     for r in results:
-        print(f"  {r['deck']:<12} картинок={r['images']}  уникальных={r['unique']}  "
-              f"дублей={r['dup']}  layouts={r['layouts']}/{r['total_slides']}  "
+        print(f"  {r['deck']:<12} layouts={r['layouts']}/{r['total_slides']}  "
               f"проблем={r['problems']}")
-    print(f"\n  всего картинок: {total_images}, уникальных: {total_unique}, дублей: {total_dup}")
-    print(f"  всего проблем вёрстки: {total_problems}")
+    print(f"\n  всего проблем вёрстки: {total_problems}")
     print(f"\nФайлы: {OUT}/required_*.pptx")
 
 
