@@ -384,6 +384,11 @@ export default function MaterialViewerPage() {
         onDownload={() => void handleDownload("pdf")}
         onDelete={() => void handleDelete()}
         downloading={downloading === "pdf"}
+        chatInstruction={chatInstruction}
+        setChatInstruction={setChatInstruction}
+        chatSubmitting={chatSubmitting}
+        chatError={chatError}
+        onChatEdit={handleChatEdit}
       />
     );
   }
@@ -548,6 +553,11 @@ function PracticalWorkspace({
   onDownload,
   onDelete,
   downloading,
+  chatInstruction,
+  setChatInstruction,
+  chatSubmitting,
+  chatError,
+  onChatEdit,
 }: {
   item: MaterialOut;
   content: Record<string, unknown>;
@@ -559,7 +569,13 @@ function PracticalWorkspace({
   onDownload: () => void;
   onDelete: () => void;
   downloading: boolean;
+  chatInstruction: string;
+  setChatInstruction: (value: string) => void;
+  chatSubmitting: boolean;
+  chatError: string | null;
+  onChatEdit: (instruction: string) => void;
 }) {
+  const t = useT();
   const individualTasks = Array.isArray(content.individual_tasks) ? (content.individual_tasks as PracticalTask[]) : [];
   const groupTasks = Array.isArray(content.group_tasks) ? (content.group_tasks as PracticalTask[]) : [];
   const language = typeof content.language === "string" ? content.language.toLowerCase() : "";
@@ -628,25 +644,6 @@ function PracticalWorkspace({
         </div>
       </header>
 
-      <div className="test-workspace__toolbar" aria-label="Document toolbar">
-        <ToolbarIcon icon={<Undo2 className="h-4 w-4" />} label="Undo" />
-        <ToolbarIcon icon={<Redo2 className="h-4 w-4" />} label="Redo" />
-        <span className="test-workspace__divider" />
-        <span className="test-workspace__select">Paragraph⌄</span>
-        <span className="test-workspace__select">Arial⌄</span>
-        <span className="test-workspace__font-size">11</span>
-        <span className="test-workspace__divider" />
-        <ToolbarIcon icon={<Bold className="h-4 w-4" />} label="Bold" />
-        <ToolbarIcon icon={<Italic className="h-4 w-4" />} label="Italic" />
-        <ToolbarIcon icon={<Underline className="h-4 w-4" />} label="Underline" />
-        <ToolbarIcon icon={<Strikethrough className="h-4 w-4" />} label="Strikethrough" />
-        <ToolbarIcon icon={<MoreHorizontal className="h-4 w-4" />} label="More" />
-        <span className="test-workspace__divider" />
-        <ToolbarIcon icon={<Sigma className="h-4 w-4" />} label="Formula" />
-        <ToolbarIcon icon={<AlignLeft className="h-4 w-4" />} label="Align" />
-        <ToolbarIcon icon={<Table2 className="h-4 w-4" />} label="Table" />
-      </div>
-
       <main className="test-workspace__canvas">
         <div className="test-workspace__pager">
           <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0} aria-label="Previous page">‹</button>
@@ -693,6 +690,52 @@ function PracticalWorkspace({
           </div>
         </article>
       </main>
+
+      <section className="border-t border-border-light bg-white px-4 py-3 shadow-[0_-8px_24px_-20px_rgba(15,23,42,0.35)]">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-text-secondary">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            {isTajik ? "Такмили AI" : isEnglish ? "AI refinement" : "Улучшение с AI"}
+          </div>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {quickEditOptions(typeof content.language === "string" ? content.language : "Русский").map((action) => (
+              <button
+                key={action}
+                type="button"
+                disabled={chatSubmitting}
+                onClick={() => onChatEdit(action)}
+                className="rounded-full border border-border-light bg-surface-muted px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:border-primary/30 hover:bg-primary-50 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+              >
+                {action}
+              </button>
+            ))}
+          </div>
+          {chatError && <p className="mb-2 text-xs text-primary-dark">{chatError}</p>}
+          <form
+            className="flex items-center gap-2 rounded-xl border border-border-light px-3 py-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onChatEdit(chatInstruction);
+            }}
+          >
+            <input
+              value={chatInstruction}
+              onChange={(event) => setChatInstruction(event.target.value)}
+              disabled={chatSubmitting}
+              placeholder={t("material.editHint")}
+              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={chatSubmitting || !chatInstruction.trim()}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-primary-light to-primary text-white shadow-[0_2px_0_0_var(--color-primary-dark)] disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Send"
+            >
+              {chatSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            </button>
+          </form>
+        </div>
+      </section>
     </div>
   );
 }

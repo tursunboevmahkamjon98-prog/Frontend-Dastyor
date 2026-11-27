@@ -58,6 +58,14 @@ class TelegramSettings(BaseSettings):
     # and possibly a clipboard.
     TELEGRAM_LINK_TOKEN_TTL_SECONDS: int = 300
 
+    # A separate bot for the dashboard's "suggest a feature" card, kept
+    # apart from the payment admin bot so feature requests never land in
+    # the same chat as financial review traffic. Empty = the card still
+    # shows, but submitting returns a friendly "not configured yet" error
+    # instead of a silent no-op.
+    TELEGRAM_FEEDBACK_BOT_TOKEN: str = ""
+    TELEGRAM_FEEDBACK_CHAT_ID: str = ""
+
     # Receipt upload limits.
     TELEGRAM_MAX_RECEIPT_BYTES: int = 8 * 1024 * 1024
     TELEGRAM_ALLOWED_RECEIPT_MIME: str = (

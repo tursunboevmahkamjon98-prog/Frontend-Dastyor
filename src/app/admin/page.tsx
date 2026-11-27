@@ -10,6 +10,7 @@ import {
   type AdminDashboardStats,
   type AdminMaterialOut,
   type MaterialType,
+  type PromoBanner,
 } from "@/lib/api";
 
 const PAGE_SIZE = 200;
@@ -48,6 +49,8 @@ export default function AdminConsolePage() {
   const [matType, setMatType] = useState<MaterialType | "">("");
   const [matOwner, setMatOwner] = useState<{ id: string; name: string } | null>(null);
   const [matOffset, setMatOffset] = useState(0);
+  const [banner, setBanner] = useState<PromoBanner>({ enabled: false, title: "", subtitle: "", button_text: "" });
+  const [bannerSaving, setBannerSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,25 @@ export default function AdminConsolePage() {
     }, 0);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    adminApi.promoBanner().then(setBanner).catch(() => {});
+  }, []);
+
+  async function saveBanner() {
+    setBannerSaving(true);
+    setError(null);
+    setNote(null);
+    try {
+      const saved = await adminApi.updatePromoBanner(banner);
+      setBanner(saved);
+      setNote("баннер сохранён");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Ошибка");
+    } finally {
+      setBannerSaving(false);
+    }
+  }
 
   function replace(user: AdminUserOut) {
     setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
@@ -201,6 +223,39 @@ export default function AdminConsolePage() {
           показано {users.length} (лимит {PAGE_SIZE}), выбрано {selected.size}
         </span>
       </div>
+
+      <fieldset style={{ border: "1px solid #999", padding: 8, marginBottom: 12 }}>
+        <legend style={{ fontWeight: 700 }}>Бонус-баннер на главной</legend>
+        <label style={{ display: "block", marginBottom: 6 }}>
+          <input
+            type="checkbox"
+            checked={banner.enabled}
+            onChange={(e) => setBanner((b) => ({ ...b, enabled: e.target.checked }))}
+          />{" "}
+          показывать на дашборде
+        </label>
+        <input
+          value={banner.title}
+          onChange={(e) => setBanner((b) => ({ ...b, title: e.target.value }))}
+          placeholder="заголовок"
+          style={{ border: "1px solid #999", padding: "3px 6px", width: 280, font: "inherit", marginBottom: 6, display: "block" }}
+        />
+        <input
+          value={banner.subtitle}
+          onChange={(e) => setBanner((b) => ({ ...b, subtitle: e.target.value }))}
+          placeholder="подзаголовок"
+          style={{ border: "1px solid #999", padding: "3px 6px", width: 400, font: "inherit", marginBottom: 6, display: "block" }}
+        />
+        <input
+          value={banner.button_text}
+          onChange={(e) => setBanner((b) => ({ ...b, button_text: e.target.value }))}
+          placeholder="текст кнопки (пусто = без кнопки)"
+          style={{ border: "1px solid #999", padding: "3px 6px", width: 280, font: "inherit", marginBottom: 6, display: "block" }}
+        />
+        <button onClick={saveBanner} disabled={bannerSaving} style={{ border: "1px solid #999", padding: "3px 8px", font: "inherit" }}>
+          {bannerSaving ? "..." : "сохранить"}
+        </button>
+      </fieldset>
 
       {error && <p style={{ color: "#b00", marginBottom: 6 }}>{error}</p>}
       {note && <p style={{ color: "#070", marginBottom: 6 }}>{note}</p>}

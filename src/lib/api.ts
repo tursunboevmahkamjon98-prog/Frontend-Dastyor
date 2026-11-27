@@ -1057,7 +1057,17 @@ export const adminApi = {
     request<AdminSmsResult>(`/admin/users/${userId}/sms`, { method: "POST", body: { text } }),
   sendBulkSms: (user_ids: string[], text: string) =>
     request<AdminSmsReport>("/admin/sms", { method: "POST", body: { user_ids, text } }),
+  promoBanner: () => request<PromoBanner>("/admin/promo-banner"),
+  updatePromoBanner: (body: PromoBanner) =>
+    request<PromoBanner>("/admin/promo-banner", { method: "PUT", body }),
 };
+
+export interface PromoBanner {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  button_text: string;
+}
 
 
 
@@ -1067,6 +1077,9 @@ export const adminApi = {
 export const billingApi = {
   balance: () => request<{ balance_somoni: number }>("/billing/balance"),
   payInstructions: () => request<{ text: string }>("/billing/pay-instructions"),
+  promoBanner: () => request<PromoBanner>("/billing/promo-banner"),
+  submitFeatureRequest: (text: string) =>
+    request<{ status: string }>("/billing/feature-request", { method: "POST", body: { text } }),
   topupHistory: () => request<BillingTopupRequest[]>("/billing/topup-requests/mine"),
   submitTopup: async (body: { amount: number; bank: string; wallet: string; receipt: File }) => {
     const token = getToken();

@@ -736,7 +736,13 @@ def build_cover_image(
     image_path: str | None = None, show_subject_icon: bool = False,
     template_id: str | None = None, doc_type_label: str | None = None,
 ) -> bytes:
-    builder = _COVER_BUILDERS.get(template_id, _build_cover_klassik)
+    # Subject-system template ids (biology, chemistry, mathematics, ...) are
+    # not keys in _COVER_BUILDERS — that dict only holds the older named
+    # styles. Falling back to klassik (the plainest, oldest look) for any
+    # unrecognised id silently downgraded every subject-templated deck.
+    # zamonaviy already picks a subject-specific illustration internally
+    # (see _SUBJECT_ILLUSTRATIONS), so it's the right default here.
+    builder = _COVER_BUILDERS.get(template_id, _build_cover_zamonaviy)
     if builder is _build_cover_zamonaviy:
         return builder(subject, title, grade, language, doc_type_label=doc_type_label)
     return builder(subject, title, grade, language)

@@ -4781,38 +4781,37 @@ async def generate_all_materials(
     results = {}
     errors = {}
 
-    sem = asyncio.Semaphore(1)
+    # Each generation burns 10-15k AI tokens. Four of them back-to-back (the
+    # old behavior: Semaphore(1) only forced one-at-a-time, with no pacing)
+    # can exceed the AI provider's tokens-per-minute cap mid-batch, failing
+    # the later types with a 429 that the retry loop can't recover from
+    # (see app/ai_service.py's _call_ai_inner - it retries the same key, it
+    # doesn't wait out a per-minute window). Spacing calls out so the batch
+    # spans more than a minute gives that window time to refill.
+    PACE_SECONDS = 12
 
-    async def _gen(mt: str):
-        async with sem:
-            try:
-                return mt, await generate_material(
-                    material_type=mt,
-                    topic=topic,
-                    subject=subject,
-                    language=language,
-                    level=level,
-                    grade=grade,
-                    slide_count=slide_count if mt == "prezentatsiya" else None,
-                    question_count=question_count if mt == "test" else None,
-                    test_type=test_type if mt == "test" else None,
-                    include_examples=include_examples,
-                    template=_default_template_for(mt, subject, grade),
-                    source_text=source_text,
-                    teacher_context=teacher_context,
-                )
-            except Exception as e:
-                logger.warning(f"generate_all: {mt} FAILED: {e}")
-                return mt, e
-
-    tasks = [_gen(mt) for mt in types]
-    done = await asyncio.gather(*tasks)
-
-    for mt, result in done:
-        if isinstance(result, Exception):
-            errors[mt] = str(result)
-        else:
-            results[mt] = result
+    for i, mt in enumerate(types):
+        if i > 0:
+            await asyncio.sleep(PACE_SECONDS)
+        try:
+            results[mt] = await generate_material(
+                material_type=mt,
+                topic=topic,
+                subject=subject,
+                language=language,
+                level=level,
+                grade=grade,
+                slide_count=slide_count if mt == "prezentatsiya" else None,
+                question_count=question_count if mt == "test" else None,
+                test_type=test_type if mt == "test" else None,
+                include_examples=include_examples,
+                template=_default_template_for(mt, subject, grade),
+                source_text=source_text,
+                teacher_context=teacher_context,
+            )
+        except Exception as e:
+            logger.warning(f"generate_all: {mt} FAILED: {e}")
+            errors[mt] = str(e)
 
     out: dict = {mt: results.get(mt) for mt in types}
     out["errors"] = errors if errors else None

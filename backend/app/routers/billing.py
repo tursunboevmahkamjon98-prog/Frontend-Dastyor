@@ -13,7 +13,7 @@ from app.database import get_db
 from app.models import BalanceTopupRequest, PaymentRequest, User
 from app.schemas import (
     BalanceOut, PayInstructionsOut, TelegramLinkCodeOut, TelegramLinkOut, TelegramLinkStatusOut,
-    TopupRequestOut,
+    TopupRequestOut, PromoBannerOut, FeatureRequestIn,
 )
 from app.auth import get_current_user
 from app.logger import get_logger
@@ -258,3 +258,47 @@ async def list_my_topup_requests(
         created_at=row.created_at,
         resolved_at=row.decided_at,
     ) for row in result.scalars().all()]
+
+
+@router.get("/promo-banner", response_model=PromoBannerOut)
+async def get_promo_banner(user: User = Depends(get_current_user)):
+    """Admin-controlled bonus card shown on the dashboard. Read-only here --
+    editing happens at PUT /api/admin/promo-banner. Same storage key, same
+    generic settings table."""
+    raw = await telegram_service.get_state("promo_banner")
+    if not raw:
+        return PromoBannerOut()
+    return PromoBannerOut(**json.loads(raw))
+
+
+@router.post("/feature-request")
+async def submit_feature_request(
+    data: FeatureRequestIn,
+    user: User = Depends(get_current_user),
+):
+    """A teacher's "what should we build next" note from the dashboard's
+    "Новые функции" card, relayed to a dedicated feedback bot/chat -- kept
+    separate from the payment admin bot so feature ideas never mix with
+    financial review traffic.
+    """
+    settings = get_telegram_settings()
+    if not settings.TELEGRAM_FEEDBACK_BOT_TOKEN or not settings.TELEGRAM_FEEDBACK_CHAT_ID:
+        raise HTTPException(status_code=503, detail="Feature-request channel is not configured yet")
+
+    await enforce_user_quota(user.id, "feature_request", max_attempts=10, window_seconds=3600)
+
+    who = user.full_name or user.phone or user.email or user.id
+    contact = user.phone or user.email or ""
+    message = f"🆕 Таклиф: {who}" + (f" ({contact})" if contact else "") + f"\n\n{data.text}"
+
+    client = TelegramClient(token=settings.TELEGRAM_FEEDBACK_BOT_TOKEN)
+    try:
+        await client.send_message(int(settings.TELEGRAM_FEEDBACK_CHAT_ID), message)
+    except (TelegramApiError, TelegramTransportError) as e:
+        logger.error(f"Feature-request relay failed for user {user.id}: {e}")
+        raise HTTPException(status_code=502, detail="Could not send the suggestion right now")
+    finally:
+        await client.aclose()
+
+    logger.info(f"Feature request from {user.id}: {data.text[:80]!r}")
+    return {"status": "ok"}

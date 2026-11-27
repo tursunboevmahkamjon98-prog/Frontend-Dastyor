@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Layers, ChevronRight, Clock, Sparkles } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
-import { materialsApi, DashboardStats, SearchResultItem } from "@/lib/api";
+import { Layers, ChevronRight, Clock, Sparkles, Gift, ArrowRight } from "lucide-react";
+import { materialsApi, billingApi, DashboardStats, SearchResultItem, PromoBanner } from "@/lib/api";
 import { MATERIAL_TYPE_CONFIG, LIBRARY_TYPES, CREATABLE_TYPES, MATERIAL_TYPE_LABEL_KEY } from "@/lib/material-types";
 import { useT } from "@/lib/i18n";
-import type { MessageKey } from "@/lib/messages";
 import Reveal from "@/components/Reveal";
-import MaterialOverview from "@/components/dashboard/ProgressBars3D";
-
-/* A distinct 3D asset from the landing/auth card stack — standing bars
- * instead of fanned cards, and its heights are driven by the user's own
- * material counts (see `barValues` below) rather than being pure
- * decoration. High-frequency chrome (sidebar, buttons) still stays flat;
- * this is the one dashboard spot where a 3D centerpiece earns its keep. */
 
 const STAT_KEYS: Record<(typeof LIBRARY_TYPES)[number], keyof DashboardStats> = {
   konspekt: "konspekt_count",
@@ -37,19 +28,11 @@ const STAT_BAR_FILL: Record<(typeof LIBRARY_TYPES)[number], string> = {
   amaliy: "bg-amaliy-icon",
 };
 
-function greetingKey(): MessageKey {
-  const h = new Date().getHours();
-  if (h < 5) return "home.greetNight";
-  if (h < 12) return "home.greetMorning";
-  if (h < 18) return "home.greetDay";
-  return "home.greetEvening";
-}
-
 export default function DashboardHome() {
   const t = useT();
-  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recent, setRecent] = useState<SearchResultItem[]>([]);
+  const [banner, setBanner] = useState<PromoBanner | null>(null);
 
   useEffect(() => {
     materialsApi.stats().then(setStats).catch(() => {});
@@ -57,45 +40,65 @@ export default function DashboardHome() {
       .search("")
       .then((items) => setRecent(items.filter((i) => i.type !== "igra").slice(0, 4)))
       .catch(() => {});
+    billingApi.promoBanner().then(setBanner).catch(() => {});
   }, []);
 
-  const barValues = useMemo(
-    () => (stats ? LIBRARY_TYPES.map((type) => stats[STAT_KEYS[type]]) : undefined),
-    [stats]
-  );
   const maxCount = stats ? Math.max(1, ...LIBRARY_TYPES.map((type) => stats[STAT_KEYS[type]])) : 1;
   const { icon: GameIcon, bg: gameBg, color: gameColor } = MATERIAL_TYPE_CONFIG.igra;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-1 sm:px-6 lg:max-w-6xl lg:px-8 lg:pt-8">
       {}
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0 lg:mb-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:gap-8 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-gradient-to-br lg:from-white lg:to-slate-50 lg:p-6">
-        <div className="min-w-0 lg:pr-4">
-          <div className="mb-5 hidden h-1 w-8 rounded-full bg-red-600 lg:block" aria-hidden="true" />
-          <h1 className="break-words text-xs font-medium leading-tight tracking-tight text-slate-900 lg:text-3xl lg:font-semibold">
-            {t(greetingKey())}, {user?.full_name?.split(" ")[0]}!
-          </h1>
-          <p className="mt-3 hidden max-w-sm text-sm leading-relaxed text-slate-500 lg:block">{t("home.prompt")}</p>
-          <div className="mt-5 hidden flex-wrap items-center gap-3 lg:flex">
-            <Link
-              href="/dashboard/create?type=all"
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_3px_0_0_#020617] transition hover:-translate-y-0.5 hover:bg-slate-800"
-            >
-              <Sparkles className="h-4 w-4 text-red-300" />
-              {t("home.allInOne")}
-            </Link>
-            <span className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-medium text-slate-500">
-              <span className="font-bold tabular-nums text-slate-800">{barValues ? barValues.reduce((sum, value) => sum + value, 0) : "—"}</span>{" "}
-              {t("home.totalShort")}
-            </span>
-          </div>
+      <div className="mb-8 pt-4 lg:pt-0">
+        <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <Sparkles className="h-3.5 w-3.5" />
+          {t("home.quickCreate")}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {CREATABLE_TYPES.map((type) => {
+            const { icon: Icon, bg, color } = MATERIAL_TYPE_CONFIG[type];
+            const label = t(MATERIAL_TYPE_LABEL_KEY[type]);
+            return (
+              <Link
+                key={type}
+                href={`/dashboard/create?type=${type}`}
+                className="group rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_4px_0_0_var(--color-primary-50),0_16px_28px_-10px_rgba(220,38,38,0.18)]"
+              >
+                <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110`}>
+                  <Icon className={`h-5 w-5 ${color}`} />
+                </div>
+                <p className="font-semibold text-text-primary">{label}</p>
+              </Link>
+            );
+          })}
+          <a
+            href="https://zehn.rahnamo.tj/"
+            className="group rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_4px_0_0_var(--color-primary-50),0_16px_28px_-10px_rgba(220,38,38,0.18)]"
+          >
+            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${gameBg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110`}>
+              <GameIcon className={`h-5 w-5 ${gameColor}`} />
+            </div>
+            <p className="font-semibold text-text-primary">{t("landing.feature.igra.title")}</p>
+          </a>
         </div>
-        <p className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[11px] text-slate-400 lg:hidden">
-          <span className="font-semibold tabular-nums text-slate-600">{barValues ? barValues.reduce((sum, value) => sum + value, 0) : "—"}</span>
-          {t("home.totalShort")}
-        </p>
-        <MaterialOverview className="hidden w-full lg:block" values={barValues} />
+
+        {}
+        <Link
+          href="/dashboard/create?type=all"
+          className="group relative mt-3 flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-light via-primary to-primary-dark p-5 text-white shadow-[0_4px_0_0_var(--color-primary-dark),0_16px_32px_-10px_rgba(220,38,38,0.4)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_5px_0_0_var(--color-primary-dark),0_20px_36px_-10px_rgba(220,38,38,0.45)]"
+        >
+          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" aria-hidden />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]">
+            <Layers className="h-5 w-5" />
+          </div>
+          <div className="relative flex-1">
+            <h3 className="font-semibold">{t("home.allInOne")}</h3>
+            <p className="text-sm text-white/80">{t("home.allInOneDesc")}</p>
+          </div>
+          <ChevronRight className="relative h-5 w-5 shrink-0 text-white/70 transition group-hover:translate-x-0.5" />
+        </Link>
       </div>
+
       {}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {LIBRARY_TYPES.map((type, i) => {
@@ -124,95 +127,61 @@ export default function DashboardHome() {
       </div>
 
       {}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
-        {}
-        <div>
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("home.quickCreate")}
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {CREATABLE_TYPES.map((type) => {
-              const { icon: Icon, bg, color } = MATERIAL_TYPE_CONFIG[type];
-              const label = t(MATERIAL_TYPE_LABEL_KEY[type]);
+      <div>
+        <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <Clock className="h-3.5 w-3.5" />
+          {t("home.recent")}
+        </h2>
+        {recent.length > 0 ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {recent.map((item) => {
+              const config = MATERIAL_TYPE_CONFIG[item.type];
+              const Icon = config.icon;
               return (
                 <Link
-                  key={type}
-                  href={`/dashboard/create?type=${type}`}
-                  className="group rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_4px_0_0_var(--color-primary-50),0_16px_28px_-10px_rgba(220,38,38,0.18)]"
+                  key={`${item.type}-${item.id}`}
+                  href={item.type === "prezentatsiya" ? `/dashboard/presentations/${item.id}/edit` : `/dashboard/materials/${item.type}/${item.id}`}
+                  className="flex items-center gap-3 rounded-2xl border border-border-light bg-white p-3 shadow-[0_2px_0_0_var(--color-border-light)] transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_3px_0_0_var(--color-primary-50),0_10px_20px_-8px_rgba(220,38,38,0.15)]"
                 >
-                  <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110`}>
-                    <Icon className={`h-5 w-5 ${color}`} />
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]`}>
+                    <Icon className={`h-4 w-4 ${config.color}`} />
                   </div>
-                  <p className="font-semibold text-text-primary">{label}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary">{item.title}</p>
+                    <p className="truncate text-xs text-text-tertiary">
+                      {t(MATERIAL_TYPE_LABEL_KEY[item.type])} • {item.subject}
+                    </p>
+                  </div>
                 </Link>
               );
             })}
-            <a
-              href="https://zehn.rahnamo.tj/"
-              className="group rounded-2xl border border-border-light bg-white p-4 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_4px_0_0_var(--color-primary-50),0_16px_28px_-10px_rgba(220,38,38,0.18)]"
-            >
-              <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${gameBg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] transition group-hover:scale-110`}>
-                <GameIcon className={`h-5 w-5 ${gameColor}`} />
-              </div>
-              <p className="font-semibold text-text-primary">{t("landing.feature.igra.title")}</p>
-            </a>
           </div>
-
-          {}
-          <Link
-            href="/dashboard/create?type=all"
-            className="group relative mt-3 flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-light via-primary to-primary-dark p-5 text-white shadow-[0_4px_0_0_var(--color-primary-dark),0_16px_32px_-10px_rgba(220,38,38,0.4)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_5px_0_0_var(--color-primary-dark),0_20px_36px_-10px_rgba(220,38,38,0.45)]"
-          >
-            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" aria-hidden />
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div className="relative flex-1">
-              <h3 className="font-semibold">{t("home.allInOne")}</h3>
-              <p className="text-sm text-white/80">{t("home.allInOneDesc")}</p>
-            </div>
-            <ChevronRight className="relative h-5 w-5 shrink-0 text-white/70 transition group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-
-        {}
-        <div>
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-            <Clock className="h-3.5 w-3.5" />
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border-light bg-white/60 p-5 text-center text-sm text-text-tertiary">
             {t("home.recent")}
-          </h2>
-          {recent.length > 0 ? (
-            <div className="space-y-2">
-              {recent.map((item) => {
-                const config = MATERIAL_TYPE_CONFIG[item.type];
-                const Icon = config.icon;
-                return (
-                  <Link
-                    key={`${item.type}-${item.id}`}
-                    href={item.type === "prezentatsiya" ? `/dashboard/presentations/${item.id}/edit` : `/dashboard/materials/${item.type}/${item.id}`}
-                    className="flex items-center gap-3 rounded-2xl border border-border-light bg-white p-3 shadow-[0_2px_0_0_var(--color-border-light)] transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_3px_0_0_var(--color-primary-50),0_10px_20px_-8px_rgba(220,38,38,0.15)]"
-                  >
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg} shadow-[inset_0_-2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]`}>
-                      <Icon className={`h-4 w-4 ${config.color}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text-primary">{item.title}</p>
-                      <p className="truncate text-xs text-text-tertiary">
-                        {t(MATERIAL_TYPE_LABEL_KEY[item.type])} • {item.subject}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border-light bg-white/60 p-5 text-center text-sm text-text-tertiary">
-              {t("home.recent")}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {}
+      {banner?.enabled && (
+        <div className="mt-8">
+          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <Gift className="h-3.5 w-3.5" />
+            {t("home.bonuses")}
+          </h2>
+          <div className="rounded-2xl border border-border-light bg-white p-5 shadow-[0_3px_0_0_var(--color-border-light),0_12px_24px_-10px_rgba(0,0,0,0.06)]">
+            <h3 className="font-semibold text-text-primary">{banner.title}</h3>
+            {banner.subtitle && <p className="mt-1 text-sm text-text-secondary">{banner.subtitle}</p>}
+            {banner.button_text && (
+              <span className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white">
+                {banner.button_text}
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       <div className="h-8" />
     </div>
   );

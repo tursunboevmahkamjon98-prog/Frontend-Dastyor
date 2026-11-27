@@ -73,3 +73,11 @@ backend/tests/_decks/
 # — or rather, the absence of a rule there, which is its own separate
 # judgment call for a private, personal-use repo); this one does not.
 backend/app/textbooks_cache/
+
+# Local dev scratch (not source)
+/.next-dev/
+backend/.cache/
+backend/dastyor_deck_build/
+backend/fix_test.txt
+backend/fix_test2.txt
+backend/out_tail.txt

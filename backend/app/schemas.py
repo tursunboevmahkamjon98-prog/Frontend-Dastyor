@@ -697,6 +697,24 @@ class PayInstructionsUpdate(BaseModel):
     text: str = Field(max_length=2000)
 
 
+class PromoBannerOut(BaseModel):
+    enabled: bool = False
+    title: str = ""
+    subtitle: str = ""
+    button_text: str = ""
+
+
+class PromoBannerUpdate(BaseModel):
+    enabled: bool = False
+    title: str = Field(default="", max_length=200)
+    subtitle: str = Field(default="", max_length=400)
+    button_text: str = Field(default="", max_length=60)
+
+
+class FeatureRequestIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
 class TopupRequestOut(BaseModel):
     id: str
     requested_somoni: float

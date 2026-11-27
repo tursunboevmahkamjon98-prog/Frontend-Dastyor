@@ -928,7 +928,7 @@ def _pptx_bullet_grid(slide, top_in: float, bullets: list[str], row_heights: lis
 
             text_y_in = badge_top_in + badge_d_in + 0.16
             _add_text(slide, Inches(x_in + pad_in), Inches(text_y_in), Inches(text_w_in), Inches(row_h_in - (text_y_in - y_in)),
-                      bp, font_size, False, ink)
+                      _math_plain(bp), font_size, False, ink)
         y_in += row_h_in + row_gap_in
 
 
@@ -1038,7 +1038,7 @@ def _pptx_visual_block(slide, top_in: float, width_in: float, block: dict, accen
                     head_fill, head_text_color = accent, _TEXT_WHITE
                 _add_shape(slide, MSO_SHAPE.RECTANGLE, left + Inches(c * col_w_in), Inches(y), Inches(col_w_in), Inches(row_h_in), head_fill)
                 _add_text(slide, left + Inches(c * col_w_in) + Inches(0.05), Inches(y + 0.06), Inches(col_w_in - 0.1), Inches(row_h_in - 0.1),
-                          str(h), 11, True, head_text_color, PP_ALIGN.CENTER)
+                          _math_plain(h), 11, True, head_text_color, PP_ALIGN.CENTER)
             y += row_h_in
             for r_i, row in enumerate(rows):
                 if r_i % 2 == 0:
@@ -1046,7 +1046,7 @@ def _pptx_visual_block(slide, top_in: float, width_in: float, block: dict, accen
                     _add_shape(slide, MSO_SHAPE.RECTANGLE, left, Inches(y), Inches(width_in), Inches(row_h_in), stripe)
                 for c, cell in enumerate(list(row)[:n_cols]):
                     _add_text(slide, left + Inches(c * col_w_in) + Inches(0.05), Inches(y + 0.06), Inches(col_w_in - 0.1), Inches(row_h_in - 0.1),
-                              str(cell), 10, c == 0 and btype == "comparison", ink, PP_ALIGN.CENTER)
+                              _math_plain(cell), 10, c == 0 and btype == "comparison", ink, PP_ALIGN.CENTER)
                 y += row_h_in
             return y - top_in
 
@@ -1059,8 +1059,8 @@ def _pptx_visual_block(slide, top_in: float, width_in: float, block: dict, accen
             rows, total_h = _pptx_process_layout(steps, width_in)
             y = top_in
             for i, (step, (title_h, desc_h)) in enumerate(zip(steps, rows)):
-                title = str((step or {}).get("title", "")).strip()
-                desc = str((step or {}).get("description", "")).strip()
+                title = _math_plain(str((step or {}).get("title", "")).strip())
+                desc = _math_plain(str((step or {}).get("description", "")).strip())
                 if title:
                     _add_text(slide, left, Inches(y), Inches(_PROCESS_NUM_COL_IN),
                               Inches(title_h), f"{i + 1}.", _PROCESS_TITLE_PT, True, accent)
@@ -1513,7 +1513,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                 _pptx_washi_tape(slide, 0.75, 0.1, _PLAYFUL_PALETTE[i % len(_PLAYFUL_PALETTE)])
             slide_decor.draw(slide, _DECOR, _SUPPORT, _BG, i)
 
-        title_str = sd.get("title", f"Слайд {i + 1}")
+        title_str = _math_plain(sd.get("title", f"Слайд {i + 1}"))
 
         band_h_in = 1.15
         if _design:
@@ -1706,7 +1706,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                            _ACCENT)
                 _add_text(slide, Inches(_CONTENT_X_IN + 0.24), Inches(cursor),
                           Inches(_CONTENT_W_IN - 0.4), Inches(lead_h_in),
-                          body_text, lead_pt, False, _INK,
+                          _math_plain(body_text), lead_pt, False, _INK,
                           font_name=theme["body_font"])
                 cursor += lead_h_in + 0.34
                 body_text, body_h_in = "", 0.0
@@ -1714,7 +1714,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
         if is_formula_slide and bullets:
             formula_text = next((str(b) for b in bullets if "$" in str(b)), str(bullets[0]))
             rest = [str(b) for b in bullets if str(b) != formula_text]
-            from app.math_render import measure as _measure
+            from app.math_render import measure as _measure, render_png as _render_math_png
             latex_src = formula_text.strip().strip("$").strip()
             avail_pt = 9.5 * 72
             f_size = 32
@@ -1728,14 +1728,27 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
             panel_top = Inches(available_top_in + 0.35)
             _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.6), panel_top,
                        Inches(10.1), Inches(panel_h_in), _ACCENT_SOFT)
-            _add_text(slide, Inches(1.9),
-                      panel_top + Inches((panel_h_in - text_h_in) / 2),
-                      Inches(9.5), Inches(text_h_in),
-                      formula_text, f_size, True, _ACCENT_DARK, PP_ALIGN.CENTER)
+            # Typeset the LaTeX as an image — a plain text run would (and
+            # used to) print the raw "\frac{1}{2}" source instead of a
+            # formula, since pptx text runs can't render math.
+            formula_png = _render_math_png(latex_src, f_size, pad=4, bg=None, oversample=3)
+            if formula_png:
+                w_pt, asc_pt, desc_pt = _measure(latex_src, f_size)
+                pic_w_in = min(9.5, max(0.1, w_pt / 72))
+                pic_h_in = max(0.1, (asc_pt + desc_pt) / 72)
+                pic_x_in = 1.6 + (10.1 - pic_w_in) / 2
+                pic_y_in = available_top_in + 0.35 + (panel_h_in - pic_h_in) / 2
+                slide.shapes.add_picture(io.BytesIO(formula_png), Inches(pic_x_in), Inches(pic_y_in),
+                                         Inches(pic_w_in), Inches(pic_h_in))
+            else:
+                _add_text(slide, Inches(1.9),
+                          panel_top + Inches((panel_h_in - text_h_in) / 2),
+                          Inches(9.5), Inches(text_h_in),
+                          formula_text, f_size, True, _ACCENT_DARK, PP_ALIGN.CENTER)
             below = available_top_in + 0.35 + panel_h_in + 0.45
             for line in rest[:2]:
                 _add_text(slide, Inches(1.9), Inches(below), Inches(9.5), Inches(0.5),
-                          line, 18, False, _MUTED, PP_ALIGN.CENTER)
+                          _math_plain(line), 18, False, _MUTED, PP_ALIGN.CENTER)
                 below += 0.55
             cursor = below
             body_width_in = 9.5
@@ -1767,7 +1780,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                 _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(text_x_in), Inches(by + 0.08),
                            Pt(3), Inches(max(0.22, row_h_in - 0.16)), _ACCENT)
                 _add_text(slide, Inches(text_x_in + 0.22), Inches(by), Inches(bullet_width_in - 0.3),
-                          Inches(row_h_in), str(bp), bullet_pt, False, _INK)
+                          Inches(row_h_in), _math_plain(bp), bullet_pt, False, _INK)
                 by += row_h_in + bullet_gap_in
             cursor = by - bullet_gap_in
 
@@ -1793,7 +1806,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
                           _ACCENT, PP_ALIGN.CENTER)
 
                 _add_text(slide, Inches(1.55), Inches(by - 0.07), bullet_width, Inches(row_h),
-                          bp, bullet_font, False, _INK)
+                          _math_plain(bp), bullet_font, False, _INK)
                 cursor += row_h + bullet_gap_in
             if bullets:
                 cursor -= bullet_gap_in
@@ -1834,7 +1847,7 @@ def build_presentation_pptx(content: dict) -> io.BytesIO:
             _add_shape(slide, MSO_SHAPE.RECTANGLE, Inches(body_x_in), Inches(cursor + 0.06),
                        Pt(2.5), Inches(max(0.3, body_h_in - 0.24)), _ACCENT_SOFT)
             _add_text(slide, Inches(body_x_in + 0.18), Inches(cursor), Inches(body_width_in - 0.2),
-                      Inches(body_h_in), body_text, body_font, False, _MUTED,
+                      Inches(body_h_in), _math_plain(body_text), body_font, False, _MUTED,
                       font_name=theme["body_font"])
             cursor += body_h_in
 
@@ -2474,6 +2487,56 @@ def _plain_to_latex(text) -> str:
         return plain_to_latex(text)
     except Exception:
         return ""
+
+
+_SUP_MAP = {'0': '\u2070', '1': '\u00b9', '2': '\u00b2', '3': '\u00b3', '4': '\u2074',
+            '5': '\u2075', '6': '\u2076', '7': '\u2077', '8': '\u2078', '9': '\u2079',
+            '+': '\u207a', '-': '\u207b', '=': '\u207c', '(': '\u207d', ')': '\u207e',
+            'n': '\u207f', 'i': '\u2071'}
+_SUB_MAP = {'0': '\u2080', '1': '\u2081', '2': '\u2082', '3': '\u2083', '4': '\u2084',
+            '5': '\u2085', '6': '\u2086', '7': '\u2087', '8': '\u2088', '9': '\u2089',
+            '+': '\u208a', '-': '\u208b', '=': '\u208c', '(': '\u208d', ')': '\u208e',
+            'a': '\u2090', 'e': '\u2091', 'o': '\u2092', 'x': '\u2093'}
+_GREEK_LATEX = {
+    'alpha': '\u03b1', 'beta': '\u03b2', 'gamma': '\u03b3', 'Gamma': '\u0393',
+    'delta': '\u03b4', 'Delta': '\u0394', 'pi': '\u03c0', 'Pi': '\u03a0',
+    'theta': '\u03b8', 'lambda': '\u03bb', 'mu': '\u03bc', 'sigma': '\u03c3',
+    'Sigma': '\u03a3', 'omega': '\u03c9', 'Omega': '\u03a9', 'phi': '\u03c6',
+    'infty': '\u221e', 'times': '\u00d7', 'cdot': '\u00b7', 'pm': '\u00b1',
+    'sqrt': '\u221a', 'approx': '\u2248', 'neq': '\u2260', 'leq': '\u2264',
+    'geq': '\u2265', 'rightarrow': '\u2192', 'to': '\u2192',
+}
+_FRAC_RE = re.compile(r'\\frac\{([^{}]*)\}\{([^{}]*)\}')
+_SQRT_RE = re.compile(r'\\sqrt\{([^{}]*)\}')
+_SUP_RE = re.compile(r'\^\{([^{}]+)\}|\^(\w)')
+_SUB_RE = re.compile(r'_\{([^{}]+)\}|_(\w)')
+_GREEK_RE = re.compile(r'\\(' + '|'.join(sorted(_GREEK_LATEX, key=len, reverse=True)) + r')\b')
+_LATEX_CMD_RE = re.compile(r'\\[a-zA-Z]+')
+_DOLLAR_RE = re.compile(r'\$([^$]+)\$')
+
+
+def _latex_span_to_plain(latex: str) -> str:
+    s = latex
+    for _ in range(3):
+        s = _FRAC_RE.sub(lambda m: f'({m.group(1)}/{m.group(2)})', s)
+        s = _SQRT_RE.sub(lambda m: f'\u221a({m.group(1)})', s)
+    s = _GREEK_RE.sub(lambda m: _GREEK_LATEX[m.group(1)], s)
+    s = _SUP_RE.sub(lambda m: ''.join(_SUP_MAP.get(c, c) for c in (m.group(1) or m.group(2))), s)
+    s = _SUB_RE.sub(lambda m: ''.join(_SUB_MAP.get(c, c) for c in (m.group(1) or m.group(2))), s)
+    s = s.replace('{', '').replace('}', '')
+    s = _LATEX_CMD_RE.sub('', s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def _math_plain(text) -> str:
+    """Best-effort LaTeX -> readable Unicode fallback for pptx text runs,
+    which (unlike the reportlab PDF path's _math_inline) can't flow an
+    inline formula image mid-paragraph. Without this, a slide's $...$
+    formula prints its raw LaTeX source ("\\frac{1}{2}") instead of math."""
+    text = str(text or "")
+    if "$" not in text:
+        return text
+    return _DOLLAR_RE.sub(lambda m: _latex_span_to_plain(m.group(1)), text)
 
 
 def _normalize_math(text) -> str:
@@ -4174,11 +4237,11 @@ def build_presentation_pdf(content: dict) -> io.BytesIO:
             story.append(d)
 
         for j, bp in enumerate(bullets):
-            story.append(_pdf_numbered_bullet(j + 1, bp, ACCENT))
+            story.append(_pdf_numbered_bullet(j + 1, _math_inline(bp, 10.5), ACCENT))
 
         body_text = str(s.get("body") or "").strip()
         if body_text:
-            story.append(Paragraph(body_text, ParagraphStyle(
+            story.append(Paragraph(_math_inline(body_text, 10), ParagraphStyle(
                 name=f'DeckBody_{i}', fontName=body_font, fontSize=10,
                 leading=14.5, textColor=HexColor('#334155'),
                 alignment=TA_JUSTIFY, leftIndent=20, rightIndent=6,
@@ -4211,7 +4274,7 @@ def build_presentation_pdf(content: dict) -> io.BytesIO:
                 spaceAfter=8,
             )
             story.append(Spacer(1, 4))
-            story.append(Paragraph(f'<font color="{ACCENT}"><b>Заметки:</b></font> {notes}', notes_style))
+            story.append(Paragraph(f'<font color="{ACCENT}"><b>Заметки:</b></font> {_math_inline(notes, 9)}', notes_style))
 
         story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor('#E2E8F0')))
 

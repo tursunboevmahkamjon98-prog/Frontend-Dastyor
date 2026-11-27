@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,11 +14,15 @@ from app.schemas import (
     AdminDashboardStats, AdminUserOut, AdminRoleUpdate, AdminPremiumUpdate, AdminBalanceTopUp,
     AdminMaterialOut, AdminMaterialsPage, BalanceTransactionOut,
     AdminSmsRequest, AdminBulkSmsRequest, AdminSmsResult, AdminSmsReport,
+    PromoBannerOut, PromoBannerUpdate,
 )
 from app.auth import get_current_admin
 from app.logger import get_logger
 from app.sms_service import send_sms_text
 from app.config import get_settings
+from app.telegram import service as telegram_service
+
+PROMO_BANNER_KEY = "promo_banner"
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -432,3 +437,20 @@ async def balance_history(
         )
         for tx, actor_name in rows
     ]
+
+
+@router.get("/promo-banner", response_model=PromoBannerOut)
+async def get_promo_banner(admin: User = Depends(get_current_admin)):
+    raw = await telegram_service.get_state(PROMO_BANNER_KEY)
+    if not raw:
+        return PromoBannerOut()
+    return PromoBannerOut(**json.loads(raw))
+
+
+@router.put("/promo-banner", response_model=PromoBannerOut)
+async def update_promo_banner(
+    data: PromoBannerUpdate,
+    admin: User = Depends(get_current_admin),
+):
+    await telegram_service.set_state(PROMO_BANNER_KEY, data.model_dump_json())
+    return PromoBannerOut(**data.model_dump())
